@@ -8,14 +8,12 @@ updated if that support position changes.
 
 ## Reporting a vulnerability
 
-Do not open a public issue for an unresolved vulnerability.
+Report suspected security vulnerabilities privately to
+<icyshadow5.devsec@outlook.com>.
 
-A private reporting channel is not configured yet. Before release, the
-repository owner must either enable GitHub Private Vulnerability Reporting or
-publish another owner-approved private contact. If GitHub reporting is enabled,
-use **Security → Report a vulnerability** in the repository. No dedicated
-security email address is currently published. Until a private channel is
-available, do not send secrets or exploit details through public issues.
+Do not open a public GitHub Issue for an undisclosed vulnerability or send
+secrets or exploit details through public issues. Ordinary non-security bugs may
+still use GitHub Issues after the repository is published.
 
 A useful report should include:
 
@@ -28,5 +26,4 @@ A useful report should include:
 - any known workaround or suggested remediation.
 
 Please allow reasonable time for confirmation and remediation before public
-disclosure. Receipt, response time, and fix timing cannot be promised until a
-private reporting channel and maintainer process are configured.
+disclosure. No response-time or remediation SLA is promised.
