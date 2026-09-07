@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for helping improve RepoManager. Do not include secrets, private repository content, or personal data.
-        Undisclosed security vulnerabilities must be reported through [GitHub Private Vulnerability Reporting](https://github.com/IcyShadow5/RepoManager/security/advisories/new), not through this public form.
+        Undisclosed security vulnerabilities must not be reported through this public form. Use [GitHub Private Vulnerability Reporting](https://github.com/IcyShadow5/RepoManager/security/advisories/new) or the private email listed in SECURITY.md.
   - type: textarea
     id: problem
     attributes:

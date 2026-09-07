@@ -11,6 +11,7 @@ from uuid import uuid4
 
 VALID = "VALID"
 MISSING = "MISSING"
+UNTRACKED = "UNTRACKED"
 STALE = "STALE"
 AMBIGUOUS = "AMBIGUOUS"
 UNAVAILABLE = "UNAVAILABLE"
@@ -173,7 +174,7 @@ def inspect_workspace(
         elif (allowed is not None
               and member.get("repository_id") not in allowed):
             results.append({
-                "state": MISSING, "member": dict(member),
+                "state": UNTRACKED, "member": dict(member),
                 "repository_id": member.get("repository_id"),
                 "path": member.get("path"),
                 "evidence": ["repository_id is not present in the Project registry"],
@@ -182,7 +183,8 @@ def inspect_workspace(
             results.append(inspect_member(
                 member, observe=observe, exists=exists))
     counts = {state.lower(): sum(r.get("state") == state for r in results)
-              for state in (VALID, MISSING, STALE, AMBIGUOUS, UNAVAILABLE, UNKNOWN)}
+              for state in (VALID, MISSING, UNTRACKED, STALE, AMBIGUOUS,
+                            UNAVAILABLE, UNKNOWN)}
     return {
         "workspace_id": workspace_id(workspace),
         "name": workspace.get("name", ""),
@@ -196,7 +198,7 @@ def inspect_workspace(
 
 def _aggregate_status(results: Iterable[Mapping[str, Any]]) -> str:
     states = {r.get("state") for r in results}
-    if MISSING in states or AMBIGUOUS in states:
+    if MISSING in states or UNTRACKED in states or AMBIGUOUS in states:
         return "BLOCKED"
     if UNAVAILABLE in states or UNKNOWN in states:
         return "UNKNOWN"

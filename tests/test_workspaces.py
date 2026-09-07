@@ -33,12 +33,14 @@ class WorkspaceTests(unittest.TestCase):
             workspace,
             observe=lambda path: observations.get(path),
             exists=lambda path: path != "missing",
+            repository_ids={"valid", "stale", "missing"},
         )
         self.assertEqual(result["status"], "BLOCKED")
         states = [item["state"] for item in result["members"]]
         self.assertEqual(states, [workspaces.VALID, workspaces.STALE, workspaces.MISSING])
         self.assertEqual(result["members"][0]["dirty"], 2)
         self.assertEqual(result["counts"]["missing"], 1)
+        self.assertEqual(result["counts"]["untracked"], 0)
 
     def test_invalid_git_observation_is_unavailable(self):
         workspace = workspaces.new_workspace("Unavailable")
@@ -48,14 +50,20 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(result["status"], "UNKNOWN")
         self.assertEqual(result["members"][0]["state"], workspaces.UNAVAILABLE)
 
-    def test_unknown_repository_id_is_missing_without_observation(self):
+    def test_unknown_repository_id_is_untracked_without_observation(self):
         workspace = workspaces.new_workspace("Unknown member")
         workspaces.add_member(workspace, "removed-project", "repo")
         calls = []
         result = workspaces.inspect_workspace(
-            workspace, observe=lambda path: calls.append(path),
+            workspace, observe=lambda path: calls.append(("observe", path)),
+            exists=lambda path: calls.append(("exists", path)),
             repository_ids={"current-project"})
-        self.assertEqual(result["members"][0]["state"], workspaces.MISSING)
+        self.assertEqual(result["members"][0]["state"], workspaces.UNTRACKED)
+        self.assertIn("not present in the Project registry",
+                      result["members"][0]["evidence"][0])
+        self.assertEqual(result["counts"]["missing"], 0)
+        self.assertEqual(result["counts"]["untracked"], 1)
+        self.assertEqual(result["status"], "BLOCKED")
         self.assertEqual(calls, [])
 
     def test_workspace_validation_rejects_incomplete_members(self):

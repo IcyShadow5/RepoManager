@@ -44,8 +44,8 @@ deferred; running generic Python source there does not make those platforms
 supported.
 
 The intended end-user distribution is an unsigned portable Windows ZIP built
-with normal 64-bit CPython 3.14.7. The final V0.1.0 portable artifact has not yet
-been built and verified from a fresh clone of this public repository.
+with normal 64-bit CPython 3.14.7. Release candidates and published artifacts
+are built and verified from a fresh clone of this public repository.
 
 When that artifact is available, the intended experience is:
 

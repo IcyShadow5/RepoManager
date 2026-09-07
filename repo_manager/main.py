@@ -4907,6 +4907,7 @@ class RepoManagerApp(tk.Tk):
             text=(f"{status} · {member_count} members · "
                   f"valid {counts.get('valid', 0)} · dirty {dirty} · "
                   f"missing {counts.get('missing', 0)} · "
+                  f"untracked {counts.get('untracked', 0)} · "
                   f"stale {counts.get('stale', 0)}"),
             style=theme.semantic_style(status))
 

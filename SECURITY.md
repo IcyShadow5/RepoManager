@@ -2,18 +2,20 @@
 
 ## Supported versions
 
-There is no supported public release yet. After 0.1.0 is published, the 0.1.x
-line is the only line intended to receive security fixes. This policy must be
-updated if that support position changes.
+The 0.1.x line is the only release line intended to receive security fixes once
+V0.1.0 is published. Source snapshots and unpublished release candidates are
+not supported releases. This policy must be updated if that support position
+changes.
 
 ## Reporting a vulnerability
 
-Report suspected security vulnerabilities privately to
-<icyshadow5.devsec@outlook.com>.
+Report suspected security vulnerabilities privately through GitHub Private
+Vulnerability Reporting. If that channel is unavailable or email is more
+appropriate, use <icyshadow5.devsec@outlook.com>.
 
 Do not open a public GitHub Issue for an undisclosed vulnerability or send
 secrets or exploit details through public issues. Ordinary non-security bugs may
-still use GitHub Issues after the repository is published.
+use GitHub Issues.
 
 A useful report should include:
 

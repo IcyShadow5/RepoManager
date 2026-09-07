@@ -3192,6 +3192,25 @@ class WorkspaceHeadingHardeningGuiTests(_StoreIsolationMixin,
         self.assertIn("UNKNOWN", text)
         self.assertIn("0 members", text)
 
+    def test_missing_and_untracked_counts_are_distinct(self):
+        app, workspace = self._selected_app()
+        app._apply_workspace_inspection(
+            workspaces.workspace_id(workspace), {
+                "status": "BLOCKED", "member_count": 5,
+                "members": [
+                    {"state": "MISSING", "dirty": 0},
+                    {"state": "MISSING", "dirty": 0},
+                    {"state": "UNTRACKED", "dirty": 0},
+                    {"state": "UNTRACKED", "dirty": 0},
+                    {"state": "UNTRACKED", "dirty": 0},
+                ],
+                "counts": {"valid": 0, "missing": 2, "untracked": 3,
+                           "stale": 0},
+            }, 7)
+        text = app.workspace_status.cget("text")
+        self.assertIn("missing 2", text)
+        self.assertIn("untracked 3", text)
+
 
 if __name__ == "__main__":
     unittest.main()
