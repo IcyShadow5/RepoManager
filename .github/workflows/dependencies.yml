@@ -1,0 +1,36 @@
+name: dependency audit
+
+on:
+  push:
+    paths:
+      - "packaging/requirements-*.txt"
+      - ".github/requirements-audit.txt"
+      - ".github/workflows/dependencies.yml"
+  pull_request:
+  schedule:
+    - cron: "23 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14.7"
+      - name: Install advisory scanner
+        run: |
+          python -I -m pip --isolated install --disable-pip-version-check --only-binary=:all: --require-hashes --index-url https://pypi.org/simple -r packaging/requirements-bootstrap.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -I -m pip --isolated install --disable-pip-version-check --only-binary=:all: --index-url https://pypi.org/simple -r .github/requirements-audit.txt
+      - name: Check pinned build dependencies and installer
+        run: python -I -m pip_audit --strict --require-hashes --disable-pip -r packaging/requirements-build.txt -r packaging/requirements-bootstrap.txt
+      - name: Check scanner environment
+        run: python -I -m pip_audit --strict
