@@ -1,0 +1,46 @@
+name: Feature request
+description: Suggest a focused improvement to RepoManager.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem first so the proposed behavior can be evaluated in context.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What problem would this feature solve, and for whom?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the behavior you would like RepoManager to provide.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or workarounds
+      description: Describe any alternatives or workarounds you have considered or currently use.
+  - type: textarea
+    id: benefit
+    attributes:
+      label: Expected benefit
+      description: Explain the practical benefit and how you would know the feature is useful.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add any other relevant context, examples, or screenshots without sensitive data.
+  - type: checkboxes
+    id: existing_issue
+    attributes:
+      label: Existing issue check
+      options:
+        - label: I searched the existing issues for this request.
+          required: true

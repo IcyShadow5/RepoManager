@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/IcyShadow5/RepoManager/security/advisories/new
+    about: Do not disclose vulnerabilities through public Issues. Use GitHub Private Vulnerability Reporting; SECURITY.md documents the email fallback.

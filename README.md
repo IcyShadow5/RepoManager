@@ -1,5 +1,11 @@
 # RepoManager
 
+[![MIT License](https://img.shields.io/github/license/IcyShadow5/RepoManager?label=license)](LICENSE)
+[![CPython 3.14.7](https://img.shields.io/badge/CPython-3.14.7-3776AB?logo=python&logoColor=white)](#run-from-source)
+[![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white)](#platform-and-release-status)
+[![tests](https://github.com/IcyShadow5/RepoManager/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/IcyShadow5/RepoManager/actions/workflows/ci.yml?query=branch%3Amain)
+[![dependency audit](https://github.com/IcyShadow5/RepoManager/actions/workflows/dependencies.yml/badge.svg?branch=main)](https://github.com/IcyShadow5/RepoManager/actions/workflows/dependencies.yml?query=branch%3Amain)
+
 RepoManager 0.1.0 is a Windows desktop application for finding, organizing,
 and inspecting local Git repositories. It keeps a separate Project registry,
 shows current repository metadata, and puts a small set of explicit actions in
@@ -38,8 +44,8 @@ deferred; running generic Python source there does not make those platforms
 supported.
 
 The intended end-user distribution is an unsigned portable Windows ZIP built
-with normal 64-bit CPython 3.14.7. The final public-release artifact has not yet
-been built and verified from the future public repository.
+with normal 64-bit CPython 3.14.7. The final V0.1.0 portable artifact has not yet
+been built and verified from a fresh clone of this public repository.
 
 When that artifact is available, the intended experience is:
 
