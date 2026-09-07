@@ -5,9 +5,9 @@ distribution for Windows. Users extract the ZIP and run
 `RepoManager\RepoManager.exe`; a separate Python installation is not required.
 Git remains an external runtime requirement and must be available on `PATH`.
 
-This document defines the build and verification contract. It does not claim
-that the final public artifact has been built or verified from the future
-public repository.
+This document defines the build and verification contract. The final V0.1.0
+public artifact is considered release-ready only after it has been built and
+verified from a fresh clone of this public repository.
 
 ## Build prerequisites
 
