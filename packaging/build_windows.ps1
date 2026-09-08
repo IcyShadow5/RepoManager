@@ -19,11 +19,15 @@ $buildPython = Join-Path $buildVenv "Scripts\python.exe"
 $requirements = Join-Path $PSScriptRoot "requirements-build.txt"
 $bootstrap = Join-Path $PSScriptRoot "requirements-bootstrap.txt"
 $versionSource = Join-Path $repoRoot "repo_manager\version.py"
+$applicationLicense = Join-Path $repoRoot "LICENSE"
 $buildRoot = Join-Path ([IO.Path]::GetFullPath($OutputRoot)) "build"
 $distRoot = Join-Path ([IO.Path]::GetFullPath($OutputRoot)) "dist"
 $versionInfo = Join-Path $buildRoot "windows_version_info.txt"
 
 $runtimeProbe = 'import json,platform,struct,sys,sysconfig; print(json.dumps(dict(version=platform.python_version(), implementation=platform.python_implementation(), bits=struct.calcsize(''P'')*8, base=sys._base_executable, free_threaded=bool(sysconfig.get_config_var(''Py_GIL_DISABLED'')))))'
+if (-not (Test-Path -LiteralPath $applicationLicense -PathType Leaf)) {
+    throw "Required application license is unavailable: $applicationLicense"
+}
 $requestedJson = & $Python -I -c $runtimeProbe
 if ($LASTEXITCODE -ne 0) { throw "Requested Python could not be inspected." }
 $requested = $requestedJson | ConvertFrom-Json
@@ -134,6 +138,7 @@ $runtimeMetadata = Join-Path $buildRoot "runtime-metadata.json"
 & $buildPython -I (Join-Path $PSScriptRoot "runtime_licenses.py") $bundlePath $runtimeMetadata
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $runtime = Get-Content -LiteralPath $runtimeMetadata -Raw | ConvertFrom-Json
+Copy-Item -LiteralPath $applicationLicense -Destination (Join-Path $bundlePath "LICENSE") -Force
 Compress-Archive -LiteralPath $bundlePath -DestinationPath $archivePath -Force
 
 $archive = Get-Item -LiteralPath $archivePath

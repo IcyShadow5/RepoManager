@@ -55,10 +55,12 @@ build outputs. Omit `-BuildVenv` to use `.build-venv` when it matches.
 `-OutputRoot` selects a separate parent for fresh `build/` and `dist/`
 directories, allowing existing candidates to be preserved.
 
-Each package contains `LICENSES/Python.txt` from the actual CPython runtime,
-Tcl and Tk notices read from their active libraries (including Tcl/Tk 9 zipfs),
-and the PyInstaller notice. Missing required notices fail the build before
-the ZIP is produced. This runtime notice inclusion does not choose or replace
+Each package includes RepoManager's own `LICENSE` from the repository root,
+alongside the third-party runtime notices under `RepoManager\LICENSES\`. The
+runtime notices include `Python.txt` from the actual CPython runtime, Tcl and Tk
+notices read from their active libraries (including Tcl/Tk 9 zipfs), and the
+PyInstaller notice. Missing required licenses or notices fail the build before
+the ZIP is produced. The third-party runtime notices do not choose or replace
 RepoManager's own application license.
 
 `build/`, `dist/`, and `.build-venv/` are generated and ignored. Pinned inputs
