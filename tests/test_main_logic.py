@@ -1233,6 +1233,73 @@ class ScanResultReconciliationTests(unittest.TestCase):
         result = reconcile_scan_result(merged, live)
         self.assertEqual(result, live)
 
+    def test_stale_scan_cannot_reactivate_newly_ignored_project(self):
+        # The worker snapshot was captured before the current Project was
+        # explicitly ignored, so its payload carries the old active state.
+        live = [{"project_id": "p-1", "path": "repo",
+                 "name": "Current", "status": "active", "ignored": True,
+                 "focus": "keep", "pinned": True}]
+        merged = [{"project_id": "p-1", "path": "repo",
+                   "name": "Scanner snapshot", "status": "idea",
+                   "ignored": False, "focus": "stale"}]
+
+        result = reconcile_scan_result(merged, live)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["project_id"], "p-1")
+        self.assertTrue(result[0]["ignored"])
+        self.assertEqual(result[0]["status"], "active")
+        self.assertEqual(result[0]["focus"], "keep")
+        self.assertTrue(result[0]["pinned"])
+
+    def test_stale_scan_cannot_reignore_explicitly_restored_project(self):
+        live = [{"project_id": "p-1", "path": "repo",
+                 "name": "Current", "status": "active", "ignored": False,
+                 "focus": "keep", "pinned": True}]
+        merged = [{"project_id": "p-1", "path": "repo",
+                   "name": "Scanner snapshot", "status": "idea",
+                   "ignored": True, "focus": "stale", "pinned": False}]
+
+        result = reconcile_scan_result(merged, live)
+
+        self.assertEqual(result, live)
+
+    def test_different_project_ids_same_path_do_not_transfer_ignored_state(self):
+        live = [{"project_id": "live-b", "path": r"C:\repo",
+                 "name": "Live B", "status": "active", "ignored": True,
+                 "focus": "B focus"}]
+        merged = [{"project_id": "scan-a", "path": r"C:\repo",
+                   "name": "Scan A", "status": "idea", "ignored": False,
+                   "focus": "A focus"}]
+
+        result = reconcile_scan_result(merged, live)
+
+        self.assertEqual(result, live)
+
+    def test_stale_ignored_identity_cannot_reignore_live_identity_at_same_path(self):
+        live = [{"project_id": "live-b", "path": r"C:\repo",
+                 "name": "Live B", "status": "active", "ignored": False,
+                 "focus": "B focus", "pinned": True}]
+        merged = [{"project_id": "scan-a", "path": r"C:\repo",
+                   "name": "Scan A", "status": "idea", "ignored": True,
+                   "focus": "A focus", "pinned": False}]
+
+        result = reconcile_scan_result(merged, live)
+
+        self.assertEqual(result, live)
+
+    def test_idless_legacy_record_can_still_match_by_path(self):
+        live = [{"path": r"C:\repo", "name": "Current",
+                 "status": "active", "ignored": True}]
+        merged = [{"project_id": "scan-a", "path": r"C:\repo",
+                   "name": "Snapshot", "ignored": False}]
+
+        result = reconcile_scan_result(merged, live)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "Current")
+        self.assertTrue(result[0]["ignored"])
+
 
 class StatusLineTests(unittest.TestCase):
     class FakeVar:

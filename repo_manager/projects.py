@@ -137,6 +137,15 @@ def project_id(project: Mapping[str, Any]) -> str | None:
     return value if isinstance(value, str) and value.strip() else None
 
 
+def is_ignored(project: Mapping[str, Any]) -> bool:
+    """Return whether a Project has been explicitly ignored.
+
+    Ignored is an independent, reversible persistence state rather than a
+    lifecycle status. Missing legacy values are active/not ignored.
+    """
+    return project.get("ignored") is True
+
+
 def is_repository_backed(project: Mapping[str, Any]) -> bool:
     """Whether the Project currently has an associated repository."""
     return isinstance(project.get("path"), str) and bool(project["path"].strip())
@@ -362,6 +371,7 @@ def working_on_now_rows(
     rows = [
         project for project in projects
         if str(project.get("status", "")) == "active"
+        and not is_ignored(project)
         and exists(str(project_folder(project) or ""))
     ]
     rows.sort(

@@ -124,6 +124,65 @@ class MergeScanTests(unittest.TestCase):
             self.assertEqual(merged[0]["name"], "Curated Alpha")
             self.assertTrue(merged[0]["project_id"])
 
+    def test_ignored_project_stays_ignored_when_rediscovered(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = make_real_repo(Path(tmp), "Ignored")
+            old = [{
+                "project_id": "ignored-project",
+                "path": str(d),
+                "name": "Curated ignored",
+                "status": "active",
+                "focus": "retain",
+                "pinned": True,
+                "ignored": True,
+                "last_seen": "2020-01-01T00:00:00Z",
+            }]
+
+            merged, problems = scanner.merge_scan(old, [str(d)])
+
+            self.assertEqual(problems, [])
+            self.assertEqual(len(merged), 1)
+            self.assertEqual(merged[0]["project_id"], "ignored-project")
+            self.assertTrue(merged[0]["ignored"])
+            self.assertEqual(merged[0]["status"], "active")
+            self.assertEqual(merged[0]["focus"], "retain")
+            self.assertTrue(merged[0]["pinned"])
+
+    def test_ignored_project_is_not_scanner_pruned_when_vanished(self):
+        old = [{
+            "project_id": "ignored-project",
+            "path": r"C:\\gone\\Ignored",
+            "name": "Ignored",
+            "status": "active",
+            "ignored": True,
+            "last_seen": "2020-01-01T00:00:00Z",
+        }]
+
+        merged, problems = scanner.merge_scan(old, [])
+
+        self.assertEqual(problems, [])
+        self.assertEqual(merged, old)
+
+    def test_ignored_and_normal_projects_remain_independently_addressable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ignored_path = make_real_repo(Path(tmp), "Ignored")
+            normal_path = make_real_repo(Path(tmp), "Normal")
+            old = [
+                {"project_id": "ignored-project", "path": str(ignored_path),
+                 "name": "Ignored", "status": "active", "ignored": True},
+                {"project_id": "normal-project", "path": str(normal_path),
+                 "name": "Normal", "status": "active"},
+            ]
+
+            merged, problems = scanner.merge_scan(
+                old, [str(ignored_path), str(normal_path)])
+
+            self.assertEqual(problems, [])
+            by_id = {item["project_id"]: item for item in merged}
+            self.assertEqual(set(by_id), {"ignored-project", "normal-project"})
+            self.assertTrue(by_id["ignored-project"]["ignored"])
+            self.assertFalse(projects.is_ignored(by_id["normal-project"]))
+
     def test_legacy_repository_name_is_not_rewritten_on_rescan(self):
         with tempfile.TemporaryDirectory() as tmp:
             project_root = Path(tmp) / "PocketLedger"

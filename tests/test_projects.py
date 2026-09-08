@@ -304,6 +304,13 @@ class ProjectOrderingTests(unittest.TestCase):
 
 
 class WorkingOnNowTests(unittest.TestCase):
+    def test_ignored_active_project_is_not_in_working_on_now_projection(self):
+        ignored = {"name": "Ignored", "path": "ignored",
+                   "status": "active", "ignored": True}
+
+        self.assertEqual(
+            working_on_now_rows([ignored], lambda _path: True), [])
+
     def test_only_explicitly_active_projects_are_kept_including_folder_only(self):
         projects = [
             {"name": "active", "path": "active", "status": "active"},

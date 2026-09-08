@@ -38,6 +38,106 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(loaded[0]["name"], projects[0]["name"])
         self.assertTrue(loaded[0]["project_id"])
 
+    def test_ignored_project_roundtrips_without_losing_identity_or_note(self):
+        record = {
+            "project_id": "ignored-project",
+            "path": r"C:\ignored",
+            "name": "Ignored project",
+            "status": "active",
+            "focus": "retain this curation",
+            "pinned": True,
+            "ignored": True,
+        }
+        store.save_note(record["name"], record["path"],
+                        "keep this note", record["project_id"])
+        store.save_projects([record])
+
+        loaded, report = store.read_registry()
+
+        self.assertEqual(report["status"], "valid")
+        self.assertEqual(loaded, [record])
+        self.assertEqual(loaded[0]["project_id"], "ignored-project")
+        self.assertTrue(project_domain.is_ignored(loaded[0]))
+        self.assertEqual(
+            store.load_note(record["name"], record["path"],
+                            record["project_id"]),
+            "keep this note")
+
+    def test_valid_false_ignored_project_remains_active(self):
+        record = {
+            "project_id": "active-project",
+            "path": r"C:\active",
+            "name": "Active project",
+            "status": "active",
+            "ignored": False,
+        }
+        store.save_projects([record])
+
+        loaded, report = store.read_registry()
+
+        self.assertEqual(report["status"], "valid")
+        self.assertEqual(loaded, [record])
+        self.assertIs(loaded[0]["ignored"], False)
+        self.assertFalse(project_domain.is_ignored(loaded[0]))
+
+    def test_malformed_ignored_values_fail_closed_with_validation_evidence(self):
+        for malformed in ("true", 1, {}, None):
+            with self.subTest(malformed=malformed):
+                payload = {"projects": [{
+                    "project_id": "uncertain-project",
+                    "path": r"C:\uncertain",
+                    "name": "Uncertain project",
+                    "status": "active",
+                    "ignored": malformed,
+                }]}
+                self._write_raw(json.dumps(payload))
+
+                loaded, report = store.read_registry()
+
+                self.assertEqual(report["status"], "valid")
+                self.assertTrue(any("invalid 'ignored'" in reason
+                                    for reason in report["reasons"]))
+                self.assertIs(loaded[0]["ignored"], True)
+                self.assertTrue(project_domain.is_ignored(loaded[0]))
+                self.assertEqual(
+                    project_domain.working_on_now_rows(
+                        loaded, lambda _path: True), [])
+
+    def test_legacy_project_defaults_to_not_ignored(self):
+        payload = {"projects": [{
+            "project_id": "legacy-project",
+            "path": r"C:\legacy",
+            "name": "Legacy",
+            "status": "active",
+        }]}
+        self._write_raw(json.dumps(payload))
+
+        loaded, report = store.read_registry()
+
+        self.assertEqual(report["status"], "valid")
+        self.assertFalse(project_domain.is_ignored(loaded[0]))
+        self.assertNotIn("ignored", loaded[0])
+
+    def test_archived_and_ignored_are_distinct_persisted_states(self):
+        records = [
+            {"project_id": "archived-project", "path": r"C:\archived",
+             "name": "Archived", "status": "archived"},
+            {"project_id": "ignored-project", "path": r"C:\ignored",
+             "name": "Ignored", "status": "active", "ignored": True},
+        ]
+        store.save_projects(records)
+
+        loaded = store.load_projects()
+
+        archived = next(item for item in loaded
+                        if item["project_id"] == "archived-project")
+        ignored = next(item for item in loaded
+                       if item["project_id"] == "ignored-project")
+        self.assertEqual(archived["status"], "archived")
+        self.assertFalse(project_domain.is_ignored(archived))
+        self.assertEqual(ignored["status"], "active")
+        self.assertTrue(project_domain.is_ignored(ignored))
+
     def test_workspace_metadata_roundtrip_and_legacy_compatibility(self):
         workspace = {"workspace_id": "w-1", "name": "Feature X", "members": []}
         store.save_projects([], workspaces=[workspace])

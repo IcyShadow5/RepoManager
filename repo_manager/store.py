@@ -253,6 +253,12 @@ def _sanitize_operational_fields(record, index):
     if broken is not None and not isinstance(broken, bool):
         cleaned.pop("broken", None)
         issues.append(f"[{index}] invalid 'broken'; ignored")
+    if "ignored" in cleaned and not isinstance(cleaned["ignored"], bool):
+        # An uncertain exclusion decision must fail closed. Keep the record
+        # retained and explicitly report the malformed source, but never turn
+        # it into an active Project by resetting it to False.
+        cleaned["ignored"] = True
+        issues.append(f"[{index}] invalid 'ignored'; preserved as ignored")
     for field in _COUNT_FIELDS:
         value = cleaned.get(field)
         if value is not None and (

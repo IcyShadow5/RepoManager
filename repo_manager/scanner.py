@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
-from .projects import (ensure_project_id, project_display_name,
+from .projects import (ensure_project_id, is_ignored, project_display_name,
                        repository_default_name)
 
 GIT_TIMEOUT = 10
@@ -815,7 +815,8 @@ def merge_scan(existing_projects, scanned_paths, move_suppressions=None,
         except (TypeError, ValueError):
             last_seen = None
         if (id(old) not in upgraded_ids and key not in seen
-                and (under_failed_root(old.get("path"))
+                and (is_ignored(old)
+                     or under_failed_root(old.get("path"))
                      or last_seen is None or last_seen >= cutoff
                      or key in protected)):
             projects.append(old)
