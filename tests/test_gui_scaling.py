@@ -291,6 +291,68 @@ class PersistProjectIgnoreTests(_StoreIsolationMixin, unittest.TestCase):
         self.assertNotIn("ignored", replacement)
 
 
+class PersistProjectRestoreTests(_StoreIsolationMixin, unittest.TestCase):
+    def test_persists_stable_target_and_preserves_files_note_and_metadata(self):
+        repository = self._store_iso.app_dir / "repository"
+        repository.mkdir()
+        source = repository / "keep.txt"
+        source.write_bytes(b"repository-content")
+        target = {
+            "project_id": "target-id", "path": str(repository),
+            "name": "Same", "status": "archived", "focus": "keep",
+            "pinned": True, "custom_metadata": {"owner": "user"},
+            "ignored": True,
+        }
+        other = {
+            "project_id": "other-id", "path": str(repository) + "-other",
+            "name": "Same", "status": "active", "ignored": True,
+        }
+        store.save_note(target["name"], target["path"], "note-body",
+                        target["project_id"])
+
+        applied = main_module.persist_project_restore(
+            [target, other], "target-id", store.save_projects)
+        loaded = store.load_projects()
+
+        self.assertIs(applied, target)
+        self.assertIs(target["ignored"], False)
+        self.assertTrue(other["ignored"])
+        persisted = {item["project_id"]: item for item in loaded}
+        self.assertIs(persisted["target-id"]["ignored"], False)
+        self.assertEqual(persisted["target-id"]["status"], "archived")
+        self.assertEqual(persisted["target-id"]["focus"], "keep")
+        self.assertTrue(persisted["target-id"]["pinned"])
+        self.assertEqual(persisted["target-id"]["custom_metadata"],
+                         {"owner": "user"})
+        self.assertEqual(source.read_bytes(), b"repository-content")
+        self.assertEqual(
+            store.load_note(target["name"], target["path"], "target-id"),
+            "note-body")
+
+    def test_save_failure_restores_ignored_state(self):
+        project = {"project_id": "target-id", "path": "target",
+                   "name": "Target", "ignored": True}
+
+        with self.assertRaises(OSError):
+            main_module.persist_project_restore(
+                [project], "target-id",
+                lambda _records: (_ for _ in ()).throw(OSError("disk full")))
+
+        self.assertTrue(project["ignored"])
+
+    def test_missing_stable_identity_never_falls_back_to_name_or_path(self):
+        replacement = {"project_id": "replacement-id", "path": "same",
+                       "name": "Same", "ignored": True}
+        saved = []
+
+        applied = main_module.persist_project_restore(
+            [replacement], "vanished-id", saved.append)
+
+        self.assertIsNone(applied)
+        self.assertEqual(saved, [])
+        self.assertTrue(replacement["ignored"])
+
+
 class LargeDatasetToolsTests(unittest.TestCase):
     def test_filter_sort_large_dataset_deterministic(self):
         projects = [_mk_project(i) for i in range(10000)]
@@ -1224,6 +1286,172 @@ class Ua02ResizeLayoutRegressionTests(_StoreIsolationMixin, unittest.TestCase):
             app.detail_canvas.yview_moveto(offset / max(1, app.detail_body.winfo_height()))
             app.update_idletasks()
             self.assertGreater(section.winfo_height(), 0)
+
+    def test_notes_wheel_scrolls_child_then_outer_at_child_boundary(self):
+        app = _build_real_app(1)
+        self.addCleanup(app.destroy)
+        row = main_module.project_row_id(app.projects[0])
+        app.tree.selection_set(row)
+        app.update_idletasks()
+        app.update()
+        self._settle(app, "1040x640")
+
+        body_height = max(1, app.detail_body.winfo_height())
+        notes_bottom = (app.d_notes_section.winfo_y()
+                        + app.d_notes_section.winfo_height())
+        app.detail_canvas.yview_moveto(
+            max(0, notes_bottom - app.detail_canvas.winfo_height())
+            / body_height)
+        app.d_notes.delete("1.0", "end")
+        app.d_notes.insert("1.0", "\n".join(f"note {i}" for i in range(40)))
+        app.d_notes.yview_moveto(0.0)
+        app.update()
+
+        outer_before = app.detail_canvas.yview()
+        app.d_notes.event_generate("<MouseWheel>", delta=-120, x=8, y=8)
+        app.update()
+        self.assertGreater(app.d_notes.yview()[0], 0.0)
+        self.assertEqual(app.detail_canvas.yview(), outer_before)
+
+        app.d_notes.yview_moveto(1.0)
+        outer_before = app.detail_canvas.yview()
+        app.d_notes.event_generate("<MouseWheel>", delta=-120, x=8, y=8)
+        app.update()
+        self.assertGreater(
+            app.detail_canvas.yview()[0], outer_before[0],
+            (app.d_notes.yview(), outer_before, app.detail_canvas.yview()))
+
+        app.d_notes.insert("end", "\nstill editable")
+        self.assertIn("still editable", app.d_notes.get("1.0", "end"))
+
+    @staticmethod
+    def _launcher_button(app, text="Generate run.bat"):
+        pending = list(app.d_launch.winfo_children())
+        while pending:
+            widget = pending.pop()
+            pending.extend(widget.winfo_children())
+            if isinstance(widget, ttk.Button) and widget.cget("text") == text:
+                return widget
+        raise AssertionError(f"launcher button not found: {text}")
+
+    @staticmethod
+    def _show_launcher_region(app):
+        body_height = max(1, app.detail_body.winfo_height())
+        offset = max(0, app.d_launch_section.winfo_y() - 10)
+        app.detail_canvas.yview_moveto(offset / body_height)
+        app.update()
+        first, last = app.detail_canvas.yview()
+        if last >= 1.0:
+            raise AssertionError("launcher region left no outer scroll range")
+        return first
+
+    def test_dynamic_launcher_button_routes_wheel_to_detail_canvas(self):
+        app = _build_real_app(1)
+        self.addCleanup(app.destroy)
+        project = app.projects[0]
+        with mock.patch.object(app, "_request_detail_observation"):
+            app._show_detail(main_module.project_row_id(project))
+        app._populate_launchers(project, [])
+        self._settle(app, "1040x640")
+
+        button = self._launcher_button(app)
+        before = self._show_launcher_region(app)
+        button.event_generate("<MouseWheel>", delta=-120, x=8, y=8)
+        app.update()
+
+        self.assertGreater(app.detail_canvas.yview()[0], before)
+
+    def test_project_switch_recreated_launchers_route_once_without_global_bind(self):
+        app = _build_real_app(2)
+        self.addCleanup(app.destroy)
+        global_before = app.bind_all("<MouseWheel>")
+        old_buttons = []
+        button_movements = []
+        container_movements = []
+
+        with mock.patch.object(app, "_request_detail_observation"):
+            for project in (app.projects[0], app.projects[1], app.projects[0]):
+                app._show_detail(main_module.project_row_id(project))
+                app._populate_launchers(project, [])
+                self._settle(app, "1040x640")
+                button = self._launcher_button(app)
+                for old_button in old_buttons:
+                    self.assertFalse(old_button.winfo_exists())
+                before = self._show_launcher_region(app)
+                button.event_generate(
+                    "<MouseWheel>", delta=-120, x=8, y=8)
+                app.update()
+                button_movements.append(
+                    app.detail_canvas.yview()[0] - before)
+                before = self._show_launcher_region(app)
+                app.d_launch.event_generate(
+                    "<MouseWheel>", delta=-120, x=8, y=8)
+                app.update()
+                container_movements.append(
+                    app.detail_canvas.yview()[0] - before)
+                old_buttons = [button]
+
+        for movements in (button_movements, container_movements):
+            self.assertTrue(all(movement > 0.0 for movement in movements))
+            self.assertAlmostEqual(max(movements), min(movements), places=7)
+        self.assertEqual(app.bind_all("<MouseWheel>"), global_before)
+
+    def test_loading_and_folder_only_replacement_route_wheel_to_detail(self):
+        app = _build_real_app(1)
+        self.addCleanup(app.destroy)
+        project = app.projects[0]
+        project["folder_path"] = project.pop("path")
+
+        def suppress_observation(_project):
+            app._detail_gen += 1
+
+        with mock.patch.object(
+                app, "_request_detail_observation",
+                side_effect=suppress_observation):
+            app._show_detail(main_module.project_row_id(project))
+        self._settle(app, "1040x640")
+        loading = next(
+            child for child in app.d_launch.winfo_children()
+            if isinstance(child, ttk.Label))
+        before = self._show_launcher_region(app)
+        loading.event_generate("<MouseWheel>", delta=-120, x=8, y=8)
+        app.update()
+        self.assertGreater(app.detail_canvas.yview()[0], before)
+
+        target = {
+            "project_id": main_module.projects.project_id(project),
+            "path": project["folder_path"],
+        }
+        app._apply_detail_observation(
+            target, {"health": None, "launchers": (), "note": ""},
+            app._detail_gen)
+        app.update()
+        unavailable = next(
+            child for child in app.d_launch.winfo_children()
+            if isinstance(child, ttk.Label))
+        self.assertIn("Unavailable", unavailable.cget("text"))
+        before = self._show_launcher_region(app)
+        unavailable.event_generate(
+            "<MouseWheel>", delta=-120, x=8, y=8)
+        app.update()
+        self.assertGreater(app.detail_canvas.yview()[0], before)
+
+    def test_detail_body_background_routes_wheel_to_detail_canvas(self):
+        app = _build_real_app(1)
+        self.addCleanup(app.destroy)
+        project = app.projects[0]
+        with mock.patch.object(app, "_request_detail_observation"):
+            app._show_detail(main_module.project_row_id(project))
+        self._settle(app, "1040x640")
+        app.detail_canvas.yview_moveto(0.0)
+        app.update()
+
+        before = app.detail_canvas.yview()[0]
+        app.detail_body.event_generate(
+            "<MouseWheel>", delta=-120, x=8, y=8)
+        app.update()
+
+        self.assertGreater(app.detail_canvas.yview()[0], before)
 
     def test_rapid_resize_and_selection_leaves_final_detail_authoritative(self):
         app = _build_real_app(2)
@@ -2223,6 +2451,373 @@ class RemoveFromRepoManagerGuiTests(_StoreIsolationMixin, unittest.TestCase):
             self.assertEqual(
                 store.load_note(target["name"], target["path"], target_id),
                 "keep-note")
+        finally:
+            app.destroy()
+
+
+@unittest.skipUnless(TK_AVAILABLE, "Tk not available")
+class IgnoredProjectsSettingsGuiTests(_StoreIsolationMixin,
+                                      unittest.TestCase):
+    @staticmethod
+    def _button(dialog, text):
+        pending = list(dialog.winfo_children())
+        while pending:
+            widget = pending.pop()
+            pending.extend(widget.winfo_children())
+            if isinstance(widget, ttk.Button) and widget.cget("text") == text:
+                return widget
+        raise AssertionError(f"button not found: {text}")
+
+    @staticmethod
+    def _ignored_tree(dialog):
+        pending = list(dialog.winfo_children())
+        while pending:
+            widget = pending.pop()
+            pending.extend(widget.winfo_children())
+            if (isinstance(widget, ttk.Treeview)
+                    and tuple(widget.cget("columns"))
+                    == ("name", "status", "path", "project_id")):
+                return widget
+        raise AssertionError("ignored-project tree not found")
+
+    def _app(self, count=2):
+        app = _build_real_app(count)
+        for index, project in enumerate(app.projects):
+            project["project_id"] = f"project-{index}"
+        app._populate_trees()
+        app.update()
+        return app
+
+    def _open(self, app):
+        app.open_settings()
+        app.update()
+        dialog = next(
+            child for child in app.winfo_children()
+            if isinstance(child, tk.Toplevel) and child.title() == "Settings")
+        return dialog, self._ignored_tree(dialog), self._button(
+            dialog, "Restore selected")
+
+    @staticmethod
+    def _vertical_canvas_ancestor(widget):
+        current = widget.master
+        while current is not None:
+            if isinstance(current, tk.Canvas):
+                return current
+            current = current.master
+        raise AssertionError("scrolling canvas not found")
+
+    def _assert_vertically_reachable(self, app, widget, viewport):
+        viewport.yview_moveto(1.0)
+        app.update()
+        self.assertTrue(widget.winfo_ismapped())
+        self.assertGreater(widget.winfo_height(), 1)
+        self.assertGreaterEqual(widget.winfo_rooty(), viewport.winfo_rooty())
+        self.assertLessEqual(
+            widget.winfo_rooty() + widget.winfo_height(),
+            viewport.winfo_rooty() + viewport.winfo_height())
+
+    def test_settings_controls_reachable_at_normal_and_constrained_heights(self):
+        for screen_height in (1080, 720, 640):
+            with self.subTest(screen_height=screen_height):
+                app = self._app(1)
+                try:
+                    app.projects[0]["ignored"] = True
+                    with mock.patch.object(
+                            tk.Misc, "winfo_screenheight",
+                            return_value=screen_height):
+                        dialog, tree, restore = self._open(app)
+
+                    save = self._button(dialog, "Save & Rescan")
+                    canvas = self._vertical_canvas_ancestor(tree)
+                    self.assertLessEqual(
+                        dialog.winfo_height(), max(1, screen_height - 96))
+                    self.assertTrue(save.winfo_ismapped())
+                    self.assertGreater(save.winfo_height(), 1)
+                    self.assertLessEqual(
+                        save.winfo_rooty() + save.winfo_height(),
+                        dialog.winfo_rooty() + dialog.winfo_height())
+
+                    self._assert_vertically_reachable(app, tree, canvas)
+                    self._assert_vertically_reachable(app, restore, canvas)
+                    if screen_height == 1080:
+                        self.assertEqual(dialog.winfo_height(), 700)
+                    else:
+                        first, last = canvas.yview()
+                        self.assertGreater(first, 0.0)
+                        self.assertEqual(last, 1.0)
+                    dialog.destroy()
+                finally:
+                    app.destroy()
+
+    def test_wheel_over_editable_child_routes_through_scanning_viewport(self):
+        app = self._app(8)
+        try:
+            for project in app.projects:
+                project["ignored"] = True
+            with mock.patch.object(
+                    tk.Misc, "winfo_screenheight", return_value=640):
+                dialog, tree, restore = self._open(app)
+            canvas = self._vertical_canvas_ancestor(tree)
+            pending = list(canvas.winfo_children())
+            entry = None
+            while pending:
+                widget = pending.pop()
+                pending.extend(widget.winfo_children())
+                if type(widget) is ttk.Entry:
+                    entry = widget
+                    break
+            self.assertIsNotNone(entry)
+
+            canvas.yview_moveto(0.0)
+            app.update()
+            entry.insert(0, "editable")
+            before = canvas.yview()
+            entry.event_generate("<MouseWheel>", delta=-120, x=8, y=8)
+            app.update()
+            self.assertGreater(canvas.yview()[0], before[0])
+            self.assertIn("editable", entry.get())
+
+            for _ in range(40):
+                entry.event_generate("<MouseWheel>", delta=-120, x=8, y=8)
+                app.update()
+            self.assertEqual(canvas.yview()[1], 1.0)
+            self._assert_vertically_reachable(app, tree, canvas)
+            self._assert_vertically_reachable(app, restore, canvas)
+            dialog.destroy()
+        finally:
+            app.destroy()
+
+    def test_scanning_content_background_routes_wheel_to_viewport(self):
+        app = self._app(8)
+        try:
+            for project in app.projects:
+                project["ignored"] = True
+            with mock.patch.object(
+                    tk.Misc, "winfo_screenheight", return_value=640):
+                dialog, tree, _restore = self._open(app)
+            canvas = self._vertical_canvas_ancestor(tree)
+            content = next(
+                child for child in canvas.winfo_children()
+                if isinstance(child, ttk.Frame))
+            canvas.yview_moveto(0.0)
+            app.update()
+
+            before = canvas.yview()[0]
+            content.event_generate(
+                "<MouseWheel>", delta=-120, x=8, y=8)
+            app.update()
+
+            self.assertGreater(canvas.yview()[0], before)
+            dialog.destroy()
+        finally:
+            app.destroy()
+
+    def test_ignored_tree_scrolls_natively_then_hands_boundary_to_settings(self):
+        app = self._app(8)
+        try:
+            for project in app.projects:
+                project["ignored"] = True
+            with mock.patch.object(
+                    tk.Misc, "winfo_screenheight", return_value=640):
+                dialog, tree, _restore = self._open(app)
+            canvas = self._vertical_canvas_ancestor(tree)
+            canvas.yview_moveto(0.25)
+            tree.yview_moveto(0.0)
+            tree.selection_set(tree.get_children()[0])
+            app.update()
+
+            outer_before = canvas.yview()
+            tree.event_generate("<MouseWheel>", delta=-120, x=8, y=8)
+            app.update()
+            self.assertGreater(tree.yview()[0], 0.0)
+            self.assertEqual(canvas.yview(), outer_before)
+            self.assertTrue(tree.selection())
+
+            tree.yview_moveto(1.0)
+            outer_before = canvas.yview()
+            tree.event_generate("<MouseWheel>", delta=-120, x=8, y=8)
+            app.update()
+            self.assertGreater(canvas.yview()[0], outer_before[0])
+            self.assertTrue(tree.selection())
+            dialog.destroy()
+        finally:
+            app.destroy()
+
+    def test_repeated_settings_cycles_leave_no_global_or_duplicate_wheel_bind(self):
+        app = self._app(1)
+        try:
+            global_before = app.bind_all("<MouseWheel>")
+            movements = []
+            for _ in range(3):
+                with mock.patch.object(
+                        tk.Misc, "winfo_screenheight", return_value=640):
+                    dialog, tree, _restore = self._open(app)
+                canvas = self._vertical_canvas_ancestor(tree)
+                pending = list(canvas.winfo_children())
+                entry = None
+                while pending:
+                    widget = pending.pop()
+                    pending.extend(widget.winfo_children())
+                    if type(widget) is ttk.Entry:
+                        entry = widget
+                        break
+                self.assertIsNotNone(entry)
+                canvas.yview_moveto(0.0)
+                app.update()
+                before = canvas.yview()[0]
+                entry.event_generate(
+                    "<MouseWheel>", delta=-120, x=8, y=8)
+                app.update()
+                movements.append(canvas.yview()[0] - before)
+                dialog.destroy()
+                app.update()
+                self.assertEqual(app.bind_all("<MouseWheel>"), global_before)
+
+            self.assertTrue(all(movement > 0.0 for movement in movements))
+            self.assertAlmostEqual(max(movements), min(movements), places=7)
+        finally:
+            app.destroy()
+
+    @staticmethod
+    def _select(app, tree, button, project_id):
+        tree.selection_set(project_id)
+        tree.focus(project_id)
+        app.update()
+        if "disabled" in button.state():
+            raise AssertionError("Restore selected was not enabled by selection")
+
+    def test_view_lists_only_ignored_projects_with_stable_identity(self):
+        app = self._app(2)
+        try:
+            ignored = app.projects[0]
+            ignored["ignored"] = True
+            active = app.projects[1]
+            dialog, tree, button = self._open(app)
+
+            self.assertEqual(tree.get_children(), (ignored["project_id"],))
+            values = tree.item(ignored["project_id"], "values")
+            self.assertEqual(values[0], ignored["name"])
+            self.assertEqual(values[2], ignored["path"])
+            self.assertEqual(values[3], ignored["project_id"])
+            self.assertNotIn(active["project_id"], tree.get_children())
+            self.assertIn("disabled", button.state())
+            self.assertTrue(tree.winfo_ismapped())
+            self.assertGreater(tree.winfo_height(), 60)
+            self.assertTrue(button.winfo_ismapped())
+            dialog.destroy()
+        finally:
+            app.destroy()
+
+    def test_restore_persists_then_updates_ignored_and_normal_views(self):
+        app = self._app(2)
+        try:
+            target = app.projects[0]
+            target["ignored"] = True
+            target_id = target["project_id"]
+            store.save_projects(app.projects)
+            app._populate_trees()
+            dialog, tree, button = self._open(app)
+            self._select(app, tree, button, target_id)
+
+            button.invoke()
+            app.update()
+
+            self.assertIs(target["ignored"], False)
+            self.assertNotIn(target_id, tree.get_children())
+            self.assertIn(target_id, app.tree.get_children())
+            persisted = {item["project_id"]: item
+                         for item in store.load_projects()}
+            self.assertIs(persisted[target_id]["ignored"], False)
+            dialog.destroy()
+        finally:
+            app.destroy()
+
+    def test_pre_commit_failure_rolls_memory_and_ignored_ui_back(self):
+        app = self._app(1)
+        try:
+            target = app.projects[0]
+            target["ignored"] = True
+            target_id = target["project_id"]
+            store.save_projects(app.projects)
+            app._populate_trees()
+            dialog, tree, button = self._open(app)
+            self._select(app, tree, button, target_id)
+
+            with mock.patch.object(
+                    app, "_persist_projects", side_effect=OSError("disk full")), \
+                    mock.patch.object(main_module.messagebox,
+                                      "showerror") as shown:
+                button.invoke()
+                app.update()
+
+            shown.assert_called_once()
+            self.assertTrue(target["ignored"])
+            self.assertTrue(store.load_projects()[0]["ignored"])
+            self.assertIn(target_id, tree.get_children())
+            self.assertNotIn(target_id, app.tree.get_children())
+            self.assertTrue(dialog.winfo_exists())
+            dialog.destroy()
+        finally:
+            app.destroy()
+
+    def test_post_commit_cache_failure_remains_successful(self):
+        app = self._app(1)
+        try:
+            target = app.projects[0]
+            target["ignored"] = True
+            target_id = target["project_id"]
+            store.save_projects(app.projects)
+            app._populate_trees()
+            dialog, tree, button = self._open(app)
+            self._select(app, tree, button, target_id)
+
+            with mock.patch.object(
+                    store, "_cache_recovered_workspaces",
+                    side_effect=OSError("post-replace cache failure")) as cache, \
+                    self.assertLogs(
+                        "repo_manager.store", level="ERROR") as logs, \
+                    mock.patch.object(
+                        main_module.messagebox, "showerror") as shown:
+                button.invoke()
+                app.update()
+
+            cache.assert_called_once_with([])
+            shown.assert_not_called()
+            self.assertIs(target["ignored"], False)
+            self.assertNotIn(target_id, tree.get_children())
+            self.assertIn(target_id, app.tree.get_children())
+            persisted = json.loads(
+                store.REPOS_FILE.read_text(encoding="utf-8"))["projects"]
+            self.assertIs(persisted[0]["ignored"], False)
+            self.assertTrue(any(
+                "registry committed but recovered Workspace cache update failed"
+                in message for message in logs.output))
+            dialog.destroy()
+        finally:
+            app.destroy()
+
+    def test_stale_ui_target_cannot_restore_same_path_replacement(self):
+        app = self._app(1)
+        try:
+            target = app.projects[0]
+            target["ignored"] = True
+            target_id = target["project_id"]
+            dialog, tree, button = self._open(app)
+            self._select(app, tree, button, target_id)
+            replacement = dict(target, project_id="replacement-id")
+            app.projects[:] = [replacement]
+
+            with mock.patch.object(app, "_persist_projects") as persist, \
+                    mock.patch.object(main_module.messagebox,
+                                      "showerror") as shown:
+                button.invoke()
+                app.update()
+
+            persist.assert_not_called()
+            shown.assert_called_once()
+            self.assertTrue(replacement["ignored"])
+            self.assertIn(target_id, tree.get_children())
+            dialog.destroy()
         finally:
             app.destroy()
 

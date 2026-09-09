@@ -460,6 +460,27 @@ def persist_project_ignore(project_records, target_id, save_projects):
     return target
 
 
+def persist_project_restore(project_records, target_id, save_projects):
+    """Persist restore against the current stable Project identity only."""
+    if not isinstance(target_id, str) or not target_id.strip():
+        return None
+    target = next(
+        (project for project in project_records
+         if projects.project_id(project) == target_id),
+        None,
+    )
+    if target is None or not projects.is_ignored(target):
+        return None
+    previous = target["ignored"]
+    target["ignored"] = False
+    try:
+        save_projects(project_records)
+    except Exception:
+        target["ignored"] = previous
+        raise
+    return target
+
+
 def empty_state_text(roots):
     """Compact first-run guidance shown when no Projects are discovered."""
     roots = [r for r in (roots or []) if r]
@@ -1735,7 +1756,10 @@ class RepoManagerApp(tk.Tk):
         self.detail_canvas.bind("<Configure>", self._sync_detail_width)
         self._build_detail(self.detail_body)
         lower.add(detail, weight=0)
-        self.bind_all("<MouseWheel>", self._on_detail_mousewheel, add="+")
+        self.detail_canvas.bind(
+            "<MouseWheel>", self._on_detail_mousewheel, add="+")
+        self._bind_descendant_mousewheel(
+            self.detail_body, self._on_detail_mousewheel)
         pane.bind("<Configure>", self._clamp_panes, add="+")
         pane.bind("<ButtonRelease-1>", self._clamp_panes, add="+")
         lower.bind("<Configure>", self._clamp_panes, add="+")
@@ -1777,19 +1801,51 @@ class RepoManagerApp(tk.Tk):
                     pass
 
 
-    def _on_detail_mousewheel(self, event):
-        """Scroll only when the pointer is inside the contextual panel."""
-        widget = self.winfo_containing(event.x_root, event.y_root)
-        if widget is None or widget is self.d_notes:
-            return None
-        path = str(widget)
-        if (widget is not self.detail_canvas
-                and not path.startswith(str(self.detail_body))):
+    @staticmethod
+    def _bind_descendant_mousewheel(container, handler):
+        """Bind one scoped wheel router to the current widget subtree."""
+        pending = [container]
+        while pending:
+            widget = pending.pop()
+            pending.extend(widget.winfo_children())
+            handlers = getattr(
+                widget, "_repo_manager_mousewheel_handlers", set())
+            if handler in handlers:
+                continue
+            widget.bind("<MouseWheel>", handler, add="+")
+            handlers.add(handler)
+            widget._repo_manager_mousewheel_handlers = handlers
+
+    @staticmethod
+    def _nested_scroll_child_can_move(widget, direction):
+        """Return whether a native vertical scroller can move as requested."""
+        if not isinstance(widget, (tk.Listbox, tk.Text, ttk.Treeview)):
+            return False
+        try:
+            first, last = widget.yview()
+        except tk.TclError:
+            return False
+        return first > 0.0 if direction < 0 else last < 1.0
+
+    @classmethod
+    def _route_nested_mousewheel(cls, event, outer):
+        """Let a child scroll first, then hand its boundary to ``outer``."""
+        if event.delta == 0:
             return None
         direction = -1 if event.delta > 0 else 1
-        steps = max(1, min(12, abs(event.delta) // 120))
-        self.detail_canvas.yview_scroll(direction * steps * 3, "units")
+        if cls._nested_scroll_child_can_move(event.widget, direction):
+            return None
+
+        first, last = outer.yview()
+        can_move = first > 0.0 if direction < 0 else last < 1.0
+        if can_move:
+            steps = max(1, min(12, abs(event.delta) // 120))
+            outer.yview_scroll(direction * steps * 3, "units")
         return "break"
+
+    def _on_detail_mousewheel(self, event):
+        """Route wheel input within the contextual panel without trapping it."""
+        return self._route_nested_mousewheel(event, self.detail_canvas)
 
     def _clamp_panes(self, _event=None, *, initial=False):
         """Keep both primary panes usable after aggressive separator drags."""
@@ -2263,6 +2319,8 @@ class RepoManagerApp(tk.Tk):
         ttk.Label(
             self.d_launch, text="Loading local launchers…",
             style=theme.semantic_style("IN_PROGRESS")).pack(anchor="w")
+        self._bind_descendant_mousewheel(
+            self.d_launch, self._on_detail_mousewheel)
         self._health_result = None
         self.d_health_status.configure(
             text="Checking local repository health…",
@@ -2368,6 +2426,8 @@ class RepoManagerApp(tk.Tk):
                     self.d_launch,
                     text="Unavailable · no associated repository",
                     style=theme.semantic_style("UNAVAILABLE")).pack(anchor="w")
+                self._bind_descendant_mousewheel(
+                    self.d_launch, self._on_detail_mousewheel)
 
             if (getattr(self, "_note_loading_gen", None) == generation
                     and getattr(self, "_note_user_edited_gen", None) is None
@@ -4350,7 +4410,7 @@ class RepoManagerApp(tk.Tk):
             pass
 
     def _prepare_dialog(self, dlg, title, geometry, *, modal=True,
-                        on_close=None):
+                        on_close=None, top_align=False):
         """Apply shared theme, placement and keyboard behavior to a Toplevel."""
         close = on_close or dlg.destroy
         dlg.title(title)
@@ -4360,7 +4420,9 @@ class RepoManagerApp(tk.Tk):
         width, height = (int(part) for part in geometry.split("x", 1))
         self.update_idletasks()
         x = self.winfo_rootx() + max(16, (self.winfo_width() - width) // 2)
-        y = self.winfo_rooty() + max(16, (self.winfo_height() - height) // 2)
+        y = (0 if top_align else
+             self.winfo_rooty() + max(
+                 16, (self.winfo_height() - height) // 2))
         x = max(0, min(x, dlg.winfo_screenwidth() - width))
         y = max(0, min(y, dlg.winfo_screenheight() - height))
         dlg.geometry(f"{width}x{height}+{x}+{y}")
@@ -4436,7 +4498,10 @@ class RepoManagerApp(tk.Tk):
 
     def open_settings(self):
         dlg = tk.Toplevel(self)
-        self._prepare_dialog(dlg, "Settings", "760x580")
+        settings_height = min(700, max(1, dlg.winfo_screenheight() - 96))
+        self._prepare_dialog(
+            dlg, "Settings", f"760x{settings_height}",
+            top_align=settings_height < 700)
         ttk.Label(dlg, text="Settings", font=("", 15, "bold"),
                   foreground=self.pal["accent2"]).pack(
                       anchor="w", padx=16, pady=(16, 2))
@@ -4447,23 +4512,57 @@ class RepoManagerApp(tk.Tk):
         notebook = ttk.Notebook(dlg)
         notebook.pack(fill="both", expand=True, padx=16)
 
-        scanning_tab = ttk.Frame(notebook, padding=14)
+        scanning_tab = ttk.Frame(notebook)
         integrations_tab = ttk.Frame(notebook, padding=14)
         appearance_tab = ttk.Frame(notebook, padding=14)
         notebook.add(scanning_tab, text="Scanning")
         notebook.add(integrations_tab, text="Integrations")
         notebook.add(appearance_tab, text="Appearance")
 
-        ttk.Label(scanning_tab, text="Scan folders",
+        scanning_canvas = tk.Canvas(
+            scanning_tab, bg=self.pal["panel"], bd=0,
+            highlightthickness=0, takefocus=True)
+        scanning_scrollbar = ttk.Scrollbar(
+            scanning_tab, orient="vertical", command=scanning_canvas.yview)
+        scanning_canvas.configure(yscrollcommand=scanning_scrollbar.set)
+        scanning_canvas.pack(side="left", fill="both", expand=True)
+        scanning_scrollbar.pack(side="right", fill="y")
+        scanning_content = ttk.Frame(scanning_canvas, padding=14)
+        scanning_window = scanning_canvas.create_window(
+            (0, 0), window=scanning_content, anchor="nw")
+
+        def resize_scanning_content(event):
+            scanning_canvas.itemconfigure(scanning_window, width=event.width)
+
+        def update_scanning_scrollregion(_event=None):
+            scanning_canvas.configure(scrollregion=scanning_canvas.bbox("all"))
+
+        scanning_canvas.bind("<Configure>", resize_scanning_content)
+        scanning_content.bind("<Configure>", update_scanning_scrollregion)
+        scanning_canvas.bind(
+            "<Up>", lambda _event: scanning_canvas.yview_scroll(-1, "units"))
+        scanning_canvas.bind(
+            "<Down>", lambda _event: scanning_canvas.yview_scroll(1, "units"))
+        scanning_canvas.bind(
+            "<Prior>", lambda _event: scanning_canvas.yview_scroll(-1, "pages"))
+        scanning_canvas.bind(
+            "<Next>", lambda _event: scanning_canvas.yview_scroll(1, "pages"))
+        def route_scanning_mousewheel(event):
+            return self._route_nested_mousewheel(event, scanning_canvas)
+
+        scanning_canvas.bind(
+            "<MouseWheel>", route_scanning_mousewheel, add="+")
+
+        ttk.Label(scanning_content, text="Scan folders",
                   font=("", 11, "bold")).pack(anchor="w")
         ttk.Label(
-            scanning_tab,
+            scanning_content,
             text="RepoManager discovers Git repositories below these folders. "
                  "Saving starts a new scan.",
             style="Muted.TLabel", wraplength=660, justify="left").pack(
                 anchor="w", pady=(2, 8))
-        roots_frame = ttk.Frame(scanning_tab)
-        roots_frame.pack(fill="both", expand=True)
+        roots_frame = ttk.Frame(scanning_content)
+        roots_frame.pack(fill="x")
         roots_list = tk.Listbox(roots_frame, height=8, exportselection=False)
         theme.style_tk_widget(roots_list, self.pal, "list")
         roots_list.grid(row=0, column=0, rowspan=2, sticky="nsew")
@@ -4473,7 +4572,8 @@ class RepoManagerApp(tk.Tk):
         roots_frame.rowconfigure(0, weight=1)
         root_entry = ttk.Entry(roots_frame)
         root_entry.grid(row=1, column=0, sticky="ew", pady=(6, 0))
-        root_error = ttk.Label(scanning_tab, text="", style="Muted.TLabel")
+        root_error = ttk.Label(
+            scanning_content, text="", style="Muted.TLabel")
 
         def add_root():
             v = root_entry.get().strip()
@@ -4510,7 +4610,7 @@ class RepoManagerApp(tk.Tk):
                        row=0, column=1, sticky="new", padx=(8, 0))
         root_error.pack(anchor="w", fill="x", pady=(8, 0))
 
-        depth_row = ttk.Frame(scanning_tab)
+        depth_row = ttk.Frame(scanning_content)
         depth_row.pack(fill="x", pady=(12, 0))
         ttk.Label(depth_row, text="Maximum scan depth").pack(side="left")
         depth = ttk.Spinbox(depth_row, from_=1, to=10, width=5)
@@ -4518,6 +4618,117 @@ class RepoManagerApp(tk.Tk):
         depth.pack(side="left", padx=(8, 0))
         ttk.Label(depth_row, text="1–10", style="Muted.TLabel").pack(
             side="left", padx=8)
+
+        ttk.Label(scanning_content, text="Ignored projects",
+                  font=("", 11, "bold")).pack(anchor="w", pady=(14, 0))
+        ttk.Label(
+            scanning_content,
+            text=("Projects removed from RepoManager remain in the registry. "
+                  "Select one to restore it without changing repository files."),
+            style="Muted.TLabel", wraplength=660, justify="left").pack(
+                anchor="w", pady=(2, 6))
+        ignored_frame = ttk.Frame(scanning_content)
+        ignored_frame.pack(fill="x")
+        ignored_columns = ("name", "status", "path", "project_id")
+        ignored_tree = ttk.Treeview(
+            ignored_frame, columns=ignored_columns, show="headings", height=4,
+            selectmode="browse")
+        for column, heading, width, stretch in (
+                ("name", "Project", 150, False),
+                ("status", "Status", 80, False),
+                ("path", "Folder", 260, True),
+                ("project_id", "Project ID", 190, False)):
+            ignored_tree.heading(column, text=heading)
+            ignored_tree.column(column, width=width, minwidth=70,
+                                stretch=stretch, anchor="w")
+        ignored_y = ttk.Scrollbar(
+            ignored_frame, orient="vertical", command=ignored_tree.yview)
+        ignored_x = ttk.Scrollbar(
+            ignored_frame, orient="horizontal", command=ignored_tree.xview)
+        ignored_tree.configure(yscrollcommand=ignored_y.set,
+                               xscrollcommand=ignored_x.set)
+        ignored_tree.grid(row=0, column=0, sticky="nsew")
+        ignored_y.grid(row=0, column=1, sticky="ns")
+        ignored_x.grid(row=1, column=0, sticky="ew")
+        ignored_frame.rowconfigure(0, weight=1)
+        ignored_frame.columnconfigure(0, weight=1)
+
+        restore_row = ttk.Frame(scanning_content)
+        restore_row.pack(fill="x", pady=(6, 0))
+        restore_status = ttk.Label(
+            restore_row, text="", style="Muted.TLabel")
+        restore_status.pack(side="left", fill="x", expand=True)
+
+        def refresh_ignored_projects():
+            selected = tuple(ignored_tree.selection())
+            ignored_tree.delete(*ignored_tree.get_children())
+            for project in self.projects:
+                project_id = projects.project_id(project)
+                if project_id is None or not projects.is_ignored(project):
+                    continue
+                ignored_tree.insert(
+                    "", "end", iid=project_id,
+                    values=(
+                        projects.project_display_name(project),
+                        project.get("status") or "—",
+                        projects.project_folder(project) or "—",
+                        project_id,
+                    ),
+                )
+            if selected and selected[0] in ignored_tree.get_children():
+                ignored_tree.selection_set(selected[0])
+            restore_button.state(
+                ["!disabled"] if ignored_tree.selection() else ["disabled"])
+
+        def restore_selected():
+            selection = tuple(ignored_tree.selection())
+            if not selection:
+                return
+            target_id = selection[0]
+            try:
+                restored = persist_project_restore(
+                    self.projects, target_id,
+                    lambda records: self._persist_projects(records),
+                )
+            except Exception as exc:
+                log.exception("Project restore persistence failed")
+                messagebox.showerror(
+                    "RepoManager",
+                    f"Project was not restored:\n{exc}",
+                    parent=dlg,
+                )
+                restore_status.configure(
+                    text="Project was not restored · registry save failed",
+                    style=theme.semantic_style("ERROR"))
+                return
+            if restored is None:
+                messagebox.showerror(
+                    "RepoManager",
+                    "The selected Project is no longer available for restore.",
+                    parent=dlg,
+                )
+                restore_status.configure(
+                    text="Project was not restored · selection is stale",
+                    style=theme.semantic_style("ERROR"))
+                return
+
+            self._cancel_project_save()
+            refresh_ignored_projects()
+            self._populate_trees()
+            restore_status.configure(
+                text="Project restored", style=theme.semantic_style("SUCCESS"))
+            self._status.set("Project restored from Settings", important=True)
+
+        restore_button = ttk.Button(
+            restore_row, text="Restore selected", command=restore_selected)
+        restore_button.pack(side="right")
+        ignored_tree.bind(
+            "<<TreeviewSelect>>",
+            lambda _event: restore_button.state(
+                ["!disabled"] if ignored_tree.selection()
+                else ["disabled"]),
+        )
+        refresh_ignored_projects()
 
         ttk.Label(integrations_tab, text="Agent command",
                   font=("", 11, "bold")).grid(row=0, column=0, sticky="w")
@@ -4626,6 +4837,33 @@ class RepoManagerApp(tk.Tk):
                    style="Primary.TButton").pack(side="right")
         ttk.Button(btns, text="Cancel", command=dlg.destroy).pack(
             side="right", padx=(0, 6))
+
+        def reveal_scanning_control(event):
+            widget = event.widget
+            top = 0
+            current = widget
+            while current is not scanning_content:
+                top += current.winfo_y()
+                current = current.master
+                if current is None:
+                    return
+            viewport_top = scanning_canvas.canvasy(0)
+            viewport_height = scanning_canvas.winfo_height()
+            bottom = top + widget.winfo_height()
+            content_height = max(1, scanning_content.winfo_reqheight())
+            if top < viewport_top:
+                scanning_canvas.yview_moveto(top / content_height)
+            elif bottom > viewport_top + viewport_height:
+                scanning_canvas.yview_moveto(
+                    max(0, bottom - viewport_height) / content_height)
+
+        pending = list(scanning_content.winfo_children())
+        while pending:
+            widget = pending.pop()
+            pending.extend(widget.winfo_children())
+            widget.bind("<FocusIn>", reveal_scanning_control, add="+")
+        self._bind_descendant_mousewheel(
+            scanning_content, route_scanning_mousewheel)
         dlg.bind("<Return>", lambda _e: save_and_close())
         root_entry.focus_set()
 
@@ -4668,6 +4906,8 @@ class RepoManagerApp(tk.Tk):
                     empty_actions, text="Generate run.bat",
                     command=lambda: self._generate_stub(proj)).pack(
                     anchor="w", pady=(6, 0))
+            self._bind_descendant_mousewheel(
+                self.d_launch, self._on_detail_mousewheel)
             return
         if not healthy:
             ttk.Label(
@@ -4736,6 +4976,8 @@ class RepoManagerApp(tk.Tk):
             edit_grid, text="Add Custom Launcher…",
             command=lambda: self._edit_custom_launcher(proj)).grid(
                 row=add_row, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        self._bind_descendant_mousewheel(
+            self.d_launch, self._on_detail_mousewheel)
 
     def _edit_custom_launcher(self, proj, existing=None):
         """Add or edit one structured, project-owned Custom Launcher."""
