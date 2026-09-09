@@ -313,6 +313,25 @@ def _text_sort_key(value: Any) -> str:
     return unicodedata.normalize("NFKC", str(value or "")).casefold()
 
 
+def display_worktree_records(value: Any) -> list[dict[str, Any]]:
+    """Project scanner-shaped Worktree records for display and counting."""
+    if not isinstance(value, list):
+        return []
+    records = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        path = item.get("path")
+        current = item.get("current")
+        branch = item.get("branch")
+        if (not isinstance(path, str) or not path.strip()
+                or not isinstance(current, bool)
+                or (branch is not None and not isinstance(branch, str))):
+            continue
+        records.append(item)
+    return records
+
+
 def sorted_projects(
     projects: Iterable[Mapping[str, Any]],
     sort_col: str | None = None,
@@ -345,7 +364,7 @@ def sorted_projects(
                 + str(project.get("status", ""))
             )
         elif sort_col == "worktrees":
-            primary = len(project.get("worktrees") or ())
+            primary = len(display_worktree_records(project.get("worktrees")))
         elif sort_col == "last_commit":
             primary = _text_sort_key(project.get("last_commit_date"))
         elif sort_col == "path":

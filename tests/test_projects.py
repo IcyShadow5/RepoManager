@@ -5,6 +5,7 @@ from repo_manager.projects import (apply_curation, associate_repository,
                                    association_candidates, ensure_project_id,
                                    build_project_export,
                                    build_repository_report,
+                                   display_worktree_records,
                                    is_visible, project_display_name, project_id,
                                    repository_default_name,
                                    sorted_projects, validate_association_target,
@@ -270,13 +271,19 @@ class ProjectOrderingTests(unittest.TestCase):
             "project_id": "a", "name": "Zulu", "path": r"C:\b",
             "status": "idea", "pinned": False, "branch": "Zulu",
             "dirty": 2, "ahead": 2, "behind": 1,
-            "worktrees": [{}, {}], "last_commit_date": "2026-02-01",
+            "worktrees": [
+                {"path": r"C:\b", "current": True, "branch": "main"},
+                {"path": r"C:\b-linked", "current": False,
+                 "branch": "topic"},
+            ], "last_commit_date": "2026-02-01",
         }
         project_b = {
             "project_id": "b", "name": "alpha", "folder_path": r"C:\a",
             "status": "active", "pinned": True, "branch": "alpha",
             "dirty": 1, "ahead": 0, "behind": 1,
-            "worktrees": [{}], "last_commit_date": "2026-01-01",
+            "worktrees": [
+                {"path": r"C:\a", "current": True, "branch": "main"},
+            ], "last_commit_date": "2026-01-01",
         }
         expected_first = {
             "name": "b", "classification": "a", "status": "a",
@@ -287,6 +294,63 @@ class ProjectOrderingTests(unittest.TestCase):
             with self.subTest(column=column):
                 ordered = sorted_projects([project_a, project_b], column)
                 self.assertEqual(ordered[0]["project_id"], project_id)
+
+    def test_worktree_projection_rejects_malformed_collections(self):
+        for value in (None, 7, "invalid-entry", {"path": "invalid"}, ()):
+            with self.subTest(value=value):
+                self.assertEqual(display_worktree_records(value), [])
+
+    def test_worktree_projection_preserves_only_scanner_compatible_records(self):
+        normal = {"path": r"C:\main", "current": True, "branch": "main",
+                  "head": "abc", "locked": False, "prunable": False}
+        detached = {"path": r"C:\detached", "current": False,
+                    "branch": None, "head": "def"}
+        malformed = ["invalid-entry", None, 7, [], {},
+                     {"path": "", "current": False, "branch": "topic"},
+                     {"path": r"C:\missing-current", "branch": "topic"},
+                     {"path": r"C:\bad-current", "current": 1,
+                      "branch": "topic"},
+                     {"path": r"C:\bad-branch", "current": False,
+                      "branch": 7}]
+        value = [normal, *malformed, detached]
+        before = list(value)
+
+        self.assertEqual(display_worktree_records(value), [normal, detached])
+        self.assertEqual(value, before)
+
+    def test_worktree_sort_uses_projected_count_without_mutation(self):
+        one = {"project_id": "one", "name": "One", "worktrees": [
+            {"path": r"C:\one", "current": True, "branch": "main"},
+        ]}
+        mixed = {"project_id": "mixed", "name": "Mixed", "worktrees": [
+            {"path": r"C:\mixed", "current": True, "branch": None},
+            "invalid-entry",
+        ]}
+        two = {"project_id": "two", "name": "Two", "worktrees": [
+            {"path": r"C:\two", "current": True, "branch": "main"},
+            {"path": r"C:\two-linked", "current": False,
+             "branch": "topic"},
+        ]}
+        malformed = [
+            {"project_id": "int", "name": "Integer", "worktrees": 7},
+            {"project_id": "string", "name": "String",
+             "worktrees": "invalid-entry"},
+        ]
+        records = [two, one, *malformed, mixed]
+        before = [dict(record) for record in records]
+
+        self.assertEqual(len(display_worktree_records(mixed["worktrees"])), 1)
+        self.assertEqual(
+            [record["project_id"]
+             for record in sorted_projects(records, "worktrees")],
+            ["int", "string", "mixed", "one", "two"],
+        )
+        self.assertEqual(
+            [record["project_id"]
+             for record in sorted_projects(records, "worktrees", True)],
+            ["two", "one", "mixed", "string", "int"],
+        )
+        self.assertEqual(records, before)
 
     def test_duplicate_names_use_visible_path_then_stable_id(self):
         records = [

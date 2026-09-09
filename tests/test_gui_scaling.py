@@ -1008,6 +1008,137 @@ class ProjectDisplayNameGuiRegressionTests(_StoreIsolationMixin,
 
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk not available")
+class MalformedWorktreeDetailGuiTests(_StoreIsolationMixin,
+                                      unittest.TestCase):
+    def test_malformed_string_keeps_broken_detail_and_does_not_persist(self):
+        app = _build_real_app(1)
+        self.addCleanup(app.destroy)
+        project = app.projects[0]
+        project.update({
+            "project_id": "broken-project",
+            "path": str(self._store_iso.app_dir),
+            "name": "Broken project",
+            "broken": True,
+            "status_available": False,
+            "worktrees_available": True,
+            "worktrees": ["invalid-entry"],
+        })
+        app._populate_trees()
+
+        with mock.patch.object(app, "_persist_projects") as persist, \
+                mock.patch.object(
+                    main_module, "launcher_candidates_for_project",
+                    return_value=[]):
+            app._show_detail("broken-project")
+            self.assertTrue(_pump_until(
+                app, lambda: app._note_loading_gen is None))
+
+        persist.assert_not_called()
+        self.assertFalse(store.REPOS_FILE.exists())
+        self.assertEqual(app.d_name.cget("text"), "Broken project")
+        self.assertEqual(app.d_path.cget("text"),
+                         str(self._store_iso.app_dir))
+        self.assertEqual(app.d_worktrees.cget("text"), "")
+        self.assertEqual(app.tree.item("broken-project", "values")[6], "0")
+        health_text = app.d_health.cget("text")
+        self.assertIn("Git metadata could not be trusted", health_text)
+        self.assertIn("Working-tree state could not be observed", health_text)
+        self.assertTrue(app.detail_content.winfo_manager())
+        self.assertTrue(app.d_notes_section.winfo_manager())
+
+    def test_mixed_valid_and_malformed_entries_preserve_valid_rendering(self):
+        app = _build_real_app(1)
+        self.addCleanup(app.destroy)
+        project = app.projects[0]
+        project.update({
+            "project_id": "mixed-project",
+            "worktrees": [
+                {"path": project["path"], "current": True},
+                "invalid-entry",
+                {"path": r"C:\repos\feature-a", "current": False},
+                None,
+                7,
+                [],
+                {"path": r"C:\repos\feature-b", "branch": "topic",
+                 "current": False},
+            ],
+        })
+        app._populate_trees()
+
+        with mock.patch.object(app, "_request_detail_observation"):
+            app._show_detail("mixed-project")
+
+        self.assertEqual(
+            app.d_worktrees.cget("text"),
+            "Worktrees: main + 2 linked (feature-a · topic)")
+        self.assertEqual(app.tree.item("mixed-project", "values")[6], "3")
+
+    def test_valid_and_zero_worktree_summaries_are_unchanged(self):
+        app = _build_real_app(1)
+        self.addCleanup(app.destroy)
+        project = app.projects[0]
+        cases = (
+            ([], ""),
+            ([{"path": project["path"], "current": True}],
+             "Worktree: this checkout only"),
+            ([{"path": project["path"], "current": True},
+              {"path": r"C:\repos\one", "branch": "one",
+               "current": False},
+              {"path": r"C:\repos\two", "branch": "two",
+               "current": False}],
+             "Worktrees: main + 2 linked (one · two)"),
+        )
+        for worktrees, expected in cases:
+            with self.subTest(worktrees=worktrees):
+                project["worktrees"] = worktrees
+                self.assertEqual(app._worktrees_text(project), expected)
+
+    def test_malformed_collection_shapes_are_not_fake_worktrees(self):
+        app = _build_real_app(1)
+        self.addCleanup(app.destroy)
+        project = app.projects[0]
+        for worktrees in (None, 7, "invalid-entry", {"path": "invalid"}):
+            with self.subTest(worktrees=worktrees):
+                project["worktrees"] = worktrees
+                self.assertEqual(app._worktrees_text(project), "")
+                self.assertEqual(app._main_row_state(project)["values"][6], 0)
+
+    def test_trees_sort_refresh_uses_the_visible_defensive_count(self):
+        app = _build_real_app(3)
+        self.addCleanup(app.destroy)
+        malformed, mixed, multiple = app.projects
+        malformed.update({"project_id": "malformed", "name": "Malformed",
+                          "worktrees": 7})
+        mixed.update({
+            "project_id": "mixed", "name": "Mixed",
+            "worktrees": [
+                {"path": mixed["path"], "current": True, "branch": None},
+                "invalid-entry",
+            ],
+        })
+        multiple.update({
+            "project_id": "multiple", "name": "Multiple",
+            "worktrees": [
+                {"path": multiple["path"], "current": True,
+                 "branch": "main"},
+                {"path": r"C:\repos\linked", "current": False,
+                 "branch": "topic"},
+            ],
+        })
+        app._sort_col = "worktrees"
+        app._sort_desc = False
+
+        app._populate_trees()
+
+        rows = app.tree.get_children()
+        self.assertEqual(rows, ("malformed", "mixed", "multiple"))
+        self.assertEqual(
+            [app.tree.item(row, "values")[6] for row in rows],
+            ["0", "1", "2"],
+        )
+
+
+@unittest.skipUnless(TK_AVAILABLE, "Tk not available")
 class LauncherPresentationGuiRegressionTests(_StoreIsolationMixin,
                                              unittest.TestCase):
     @staticmethod

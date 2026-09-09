@@ -2094,7 +2094,7 @@ class RepoManagerApp(tk.Tk):
             sync = f"+{p.get('ahead', 0)}/-{p.get('behind', 0)}"
         dirty = (p.get("dirty") if p.get("status_available", True)
                  else "?")
-        trees = (len(p.get("worktrees") or [])
+        trees = (len(projects.display_worktree_records(p.get("worktrees")))
                  if p.get("worktrees_available", True) else "?")
         return {"values": (
             projects.project_display_name(p),
@@ -2486,7 +2486,7 @@ class RepoManagerApp(tk.Tk):
         """One-line summary of already-collected Worktree records."""
         if proj.get("worktrees_available") is False:
             return "Worktrees: unavailable"
-        trees = proj.get("worktrees") or []
+        trees = projects.display_worktree_records(proj.get("worktrees"))
         linked = [t for t in trees if not t.get("current")]
         if not trees:
             return ""
