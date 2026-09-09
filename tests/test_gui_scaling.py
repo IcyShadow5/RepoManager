@@ -4,6 +4,7 @@ Tk-dependent cases are guarded so the suite also runs without a display;
 pure planning and caching logic is tested without a widget.
 """
 import copy
+import json
 import os
 import queue
 import random
@@ -221,6 +222,73 @@ class AvailabilityCacheTests(unittest.TestCase):
         self.assertIsInstance(cache.get(p["path"]), bool)
         # Repeated lookups remain consistent and do not raise.
         self.assertEqual(cache.get(p["path"]), cache.get(p["path"]))
+
+
+class PersistProjectIgnoreTests(_StoreIsolationMixin, unittest.TestCase):
+    def test_persists_only_stable_target_and_preserves_files_note_and_curation(self):
+        repository = self._store_iso.app_dir / "repository"
+        repository.mkdir()
+        source = repository / "keep.txt"
+        source.write_bytes(b"repository-content")
+        target = {
+            "project_id": "target-id", "path": str(repository),
+            "name": "Same", "status": "archived", "focus": "keep",
+            "pinned": True,
+        }
+        other = {
+            "project_id": "other-id", "path": str(repository) + "-other",
+            "name": "Same", "status": "active",
+        }
+        store.save_note(target["name"], target["path"], "note-body",
+                        target["project_id"])
+
+        applied = main_module.persist_project_ignore(
+            [target, other], "target-id", store.save_projects)
+        loaded = store.load_projects()
+
+        self.assertIs(applied, target)
+        self.assertTrue(target["ignored"])
+        self.assertNotIn("ignored", other)
+        persisted = {item["project_id"]: item for item in loaded}
+        self.assertTrue(persisted["target-id"]["ignored"])
+        self.assertEqual(persisted["target-id"]["status"], "archived")
+        self.assertEqual(persisted["target-id"]["focus"], "keep")
+        self.assertTrue(persisted["target-id"]["pinned"])
+        self.assertEqual(source.read_bytes(), b"repository-content")
+        self.assertEqual(
+            store.load_note(target["name"], target["path"], "target-id"),
+            "note-body")
+
+    def test_save_failure_restores_exact_prior_ignored_state(self):
+        for prior in (None, False):
+            with self.subTest(prior=prior):
+                project = {"project_id": "target-id", "path": "target",
+                           "name": "Target"}
+                if prior is not None:
+                    project["ignored"] = prior
+
+                with self.assertRaises(OSError):
+                    main_module.persist_project_ignore(
+                        [project], "target-id",
+                        lambda _records: (_ for _ in ()).throw(
+                            OSError("disk full")))
+
+                if prior is None:
+                    self.assertNotIn("ignored", project)
+                else:
+                    self.assertIs(project["ignored"], False)
+
+    def test_missing_stable_identity_never_falls_back_to_name_or_path(self):
+        replacement = {"project_id": "replacement-id", "path": "same",
+                       "name": "Same"}
+        saved = []
+
+        applied = main_module.persist_project_ignore(
+            [replacement], "vanished-id", saved.append)
+
+        self.assertIsNone(applied)
+        self.assertEqual(saved, [])
+        self.assertNotIn("ignored", replacement)
 
 
 class LargeDatasetToolsTests(unittest.TestCase):
@@ -1884,6 +1952,279 @@ class ActiveTreeAndContextMenuTests(_StoreIsolationMixin, unittest.TestCase):
                     self.assertIsNotNone(app._ctx_menu)
                 finally:
                     app.destroy()
+
+
+@unittest.skipUnless(TK_AVAILABLE, "Tk not available")
+class RemoveFromRepoManagerGuiTests(_StoreIsolationMixin, unittest.TestCase):
+    @staticmethod
+    def _button(dialog, text):
+        pending = list(dialog.winfo_children())
+        while pending:
+            widget = pending.pop()
+            pending.extend(widget.winfo_children())
+            if isinstance(widget, ttk.Button) and widget.cget("text") == text:
+                return widget
+        raise AssertionError(f"button not found: {text}")
+
+    @staticmethod
+    def _dialog_text(dialog):
+        values = []
+        pending = list(dialog.winfo_children())
+        while pending:
+            widget = pending.pop()
+            pending.extend(widget.winfo_children())
+            if isinstance(widget, ttk.Label):
+                values.append(str(widget.cget("text")))
+        return "\n".join(values)
+
+    @staticmethod
+    def _menu_labels(menu):
+        end = menu.index("end")
+        return [menu.entrycget(index, "label")
+                for index in range((end if end is not None else -1) + 1)
+                if menu.type(index) != "separator"]
+
+    def _app(self, count=2):
+        app = _build_real_app(count)
+        for index, project in enumerate(app.projects):
+            project["project_id"] = f"project-{index}"
+        app._populate_trees()
+        app.update()
+        return app
+
+    @staticmethod
+    def _select(app, index=0):
+        project = app.projects[index]
+        row = project["project_id"]
+        app._set_active("main")
+        app.tree.selection_set(row)
+        app.tree.focus(row)
+        app.update()
+        return project
+
+    def test_context_menu_offers_remove_for_unavailable_and_archived_states(self):
+        states = (
+            ("normal", {}, True),
+            ("missing folder", {}, False),
+            ("broken Git", {"broken": True}, True),
+            ("status unavailable", {"status_available": False}, True),
+            ("archived", {"status": "archived"}, True),
+        )
+        for label, changes, available in states:
+            with self.subTest(state=label):
+                app = self._app(1)
+                try:
+                    target = app.projects[0]
+                    target.update(changes)
+                    app._avail = main_module.AvailabilityCache(
+                        sampler=lambda _path, value=available: value)
+                    app._populate_trees()
+                    self._select(app)
+
+                    app._build_context_menu()
+
+                    self.assertIn("Remove from RepoManager\u2026",
+                                  self._menu_labels(app._ctx_menu))
+                finally:
+                    app.destroy()
+
+    def test_cancel_has_no_mutation_persistence_or_ui_removal(self):
+        app = self._app(1)
+        try:
+            target = self._select(app)
+            row = target["project_id"]
+            with mock.patch.object(app, "_persist_projects") as persist:
+                dialog = app._remove_from_repomanager()
+                text = self._dialog_text(dialog)
+                self.assertIn("repository and its files will not be changed",
+                              text)
+                self.assertIn("restore it later in Settings", text)
+
+                self._button(dialog, "Cancel").invoke()
+                app.update()
+
+            persist.assert_not_called()
+            self.assertNotIn("ignored", target)
+            self.assertIn(row, app.tree.get_children())
+            self.assertIn(row, app.now_tree.get_children())
+        finally:
+            app.destroy()
+
+    def test_confirm_persists_then_hides_only_selected_stable_identity(self):
+        app = self._app(2)
+        try:
+            target = self._select(app)
+            other = app.projects[1]
+            target["name"] = other["name"] = "Similar"
+            target["path"] = r"C:\repos\similar"
+            other["path"] = r"C:\repos\similar-child"
+            target_id = target["project_id"]
+            saved = []
+            with mock.patch.object(
+                    app, "_persist_projects",
+                    side_effect=lambda records=None, **_kwargs:
+                    saved.append(copy.deepcopy(records or app.projects))):
+                dialog = app._remove_from_repomanager()
+                self._button(dialog, "Remove").invoke()
+                app.update()
+
+            self.assertEqual(len(saved), 1)
+            persisted = {item["project_id"]: item for item in saved[0]}
+            self.assertTrue(persisted[target_id]["ignored"])
+            self.assertNotIn("ignored", persisted[other["project_id"]])
+            self.assertEqual(target["project_id"], target_id)
+            self.assertNotIn(target_id, app.tree.get_children())
+            self.assertNotIn(target_id, app.now_tree.get_children())
+            self.assertIn(other["project_id"], app.tree.get_children())
+        finally:
+            app.destroy()
+
+    def test_save_failure_rolls_back_and_keeps_complete_ui_state(self):
+        app = self._app(1)
+        try:
+            target = self._select(app)
+            row = target["project_id"]
+            with mock.patch.object(
+                    app, "_persist_projects", side_effect=OSError("disk full")), \
+                    mock.patch.object(main_module.messagebox, "showerror") as shown:
+                dialog = app._remove_from_repomanager()
+                self._button(dialog, "Remove").invoke()
+                app.update()
+
+            shown.assert_called_once()
+            self.assertNotIn("ignored", target)
+            self.assertIn(row, app.tree.get_children())
+            self.assertIn(row, app.now_tree.get_children())
+            self.assertTrue(dialog.winfo_exists())
+            dialog.destroy()
+        finally:
+            app.destroy()
+
+    def test_post_commit_cache_failure_keeps_remove_successful_and_hidden(self):
+        app = self._app(1)
+        try:
+            target = self._select(app)
+            target_id = target["project_id"]
+            with mock.patch.object(
+                    store, "_cache_recovered_workspaces",
+                    side_effect=OSError("post-replace cache failure")) as cache, \
+                    self.assertLogs(
+                        "repo_manager.store", level="ERROR") as logs, \
+                    mock.patch.object(
+                        main_module.messagebox, "showerror") as shown:
+                dialog = app._remove_from_repomanager()
+                self._button(dialog, "Remove").invoke()
+                app.update()
+
+            cache.assert_called_once_with([])
+            shown.assert_not_called()
+            self.assertFalse(dialog.winfo_exists())
+            self.assertTrue(target["ignored"])
+            self.assertEqual(target["project_id"], target_id)
+            self.assertNotIn(target_id, app.tree.get_children())
+            self.assertNotIn(target_id, app.now_tree.get_children())
+            persisted = json.loads(
+                store.REPOS_FILE.read_text(encoding="utf-8"))["projects"]
+            self.assertEqual(len(persisted), 1)
+            self.assertEqual(persisted[0]["project_id"], target_id)
+            self.assertTrue(persisted[0]["ignored"])
+            self.assertTrue(any(
+                "registry committed but recovered Workspace cache update failed"
+                in message for message in logs.output))
+        finally:
+            app.destroy()
+
+    def test_dialog_reresolves_by_id_and_does_not_mutate_replacement(self):
+        app = self._app(1)
+        try:
+            target = self._select(app)
+            dialog = app._remove_from_repomanager()
+            app.d_notes.insert("1.0", "unsaved")
+            app._schedule_note_save()
+            replacement = dict(target, project_id="replacement-id")
+            app.projects[:] = [replacement]
+            with mock.patch.object(app, "_persist_projects") as persist, \
+                    mock.patch.object(store, "save_note") as save_note, \
+                    mock.patch.object(main_module.messagebox, "showerror") as shown:
+                self._button(dialog, "Remove").invoke()
+                app.update()
+
+            persist.assert_not_called()
+            save_note.assert_not_called()
+            shown.assert_called_once()
+            self.assertNotIn("ignored", replacement)
+            dialog.destroy()
+        finally:
+            app.destroy()
+
+    def test_ignored_project_is_hidden_and_has_no_normal_remove_action(self):
+        app = self._app(1)
+        try:
+            target = app.projects[0]
+            target["ignored"] = True
+            app._populate_trees()
+            app.update()
+
+            self.assertNotIn(target["project_id"], app.tree.get_children())
+            self.assertNotIn(target["project_id"], app.now_tree.get_children())
+            self.assertNotIn(
+                "Remove from RepoManager\u2026",
+                [item[1] for item in main_module.context_menu_layout(
+                    target["status"], ignored=True) if item != "-sep-"])
+        finally:
+            app.destroy()
+
+    def test_pending_edited_note_is_flushed_under_unchanged_project_id(self):
+        app = self._app(1)
+        try:
+            target = self._select(app)
+            target_id = target["project_id"]
+            app.d_notes.delete("1.0", "end")
+            app.d_notes.insert("1.0", "edited-note")
+            app._schedule_note_save()
+
+            dialog = app._remove_from_repomanager()
+            self._button(dialog, "Remove").invoke()
+            app.update()
+
+            self.assertEqual(
+                store.load_note(target["name"], target["path"], target_id),
+                "edited-note")
+            self.assertEqual(store.load_projects()[0]["project_id"],
+                             target_id)
+        finally:
+            app.destroy()
+
+    def test_stale_scan_cannot_resurrect_removed_project(self):
+        app = self._app(1)
+        try:
+            target = self._select(app)
+            target_id = target["project_id"]
+            stale_result = [dict(target)]
+            store.save_note(target["name"], target["path"], "keep-note",
+                            target_id)
+            dialog = app._remove_from_repomanager()
+            self._button(dialog, "Remove").invoke()
+            app.update()
+
+            app._scan_queue.put(("result", stale_result, [], app._scan_gen))
+            app._drain_scan_queue()
+            app.update()
+
+            self.assertEqual(len(app.projects), 1)
+            self.assertEqual(app.projects[0]["project_id"], target_id)
+            self.assertTrue(app.projects[0]["ignored"])
+            self.assertNotIn(target_id, app.tree.get_children())
+            self.assertNotIn(target_id, app.now_tree.get_children())
+            loaded = store.load_projects()
+            self.assertEqual(len(loaded), 1)
+            self.assertEqual(loaded[0]["project_id"], target_id)
+            self.assertTrue(loaded[0]["ignored"])
+            self.assertEqual(
+                store.load_note(target["name"], target["path"], target_id),
+                "keep-note")
+        finally:
+            app.destroy()
 
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk not available")

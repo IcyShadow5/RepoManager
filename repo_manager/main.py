@@ -397,6 +397,7 @@ CONTEXT_MENU_LAYOUT = (
     # metadata / curation group
     ("cascade", "Set status", None),
     ("command", "Pin / Unpin", "_toggle_pinned"),
+    ("command", "Remove from RepoManager\u2026", "_remove_from_repomanager"),
     "-sep-",
     # read-only information group
     ("command", "Open on GitHub", "open_remote"),
@@ -414,12 +415,49 @@ def working_action_label(status):
     return "Stop working on this" if status == "active" else "Work on this"
 
 
-def context_menu_layout(status):
+def context_menu_layout(status, *, ignored=False):
     """Return the context menu with a status-aware current-work action."""
     label = working_action_label(status)
     if status != "active":
         label += " (pin + Active)"
-    return (("command", label, "_toggle_working_on_this"),) + CONTEXT_MENU_LAYOUT[1:]
+    layout = (("command", label, "_toggle_working_on_this"),) \
+        + CONTEXT_MENU_LAYOUT[1:]
+    if ignored:
+        layout = tuple(
+            item for item in layout
+            if not (isinstance(item, tuple)
+                    and item[2] == "_remove_from_repomanager")
+        )
+    return layout
+
+
+def persist_project_ignore(project_records, target_id, save_projects):
+    """Persist an explicit ignore against the current stable Project identity.
+
+    The live collection remains authoritative. Persistence happens while the
+    record is marked ignored, and any failure restores its exact prior state.
+    """
+    if not isinstance(target_id, str) or not target_id.strip():
+        return None
+    target = next(
+        (project for project in project_records
+         if projects.project_id(project) == target_id),
+        None,
+    )
+    if target is None or projects.is_ignored(target):
+        return None
+    missing = object()
+    previous = target.get("ignored", missing)
+    target["ignored"] = True
+    try:
+        save_projects(project_records)
+    except Exception:
+        if previous is missing:
+            target.pop("ignored", None)
+        else:
+            target["ignored"] = previous
+        raise
+    return target
 
 
 def empty_state_text(roots):
@@ -2046,10 +2084,12 @@ class RepoManagerApp(tk.Tk):
 
         unique = {}
         for p in self.projects:
+            if projects.is_ignored(p):
+                continue
             unique.setdefault(project_row_id(p), p)
         visible = [p for p in unique.values() if is_visible(p, flt)]
         ordered = sorted_projects(visible, self._sort_col, self._sort_desc)
-        if self.projects:
+        if unique:
             self.empty_lbl.lower()
         else:
             self.empty_lbl.configure(
@@ -3409,7 +3449,8 @@ class RepoManagerApp(tk.Tk):
         selected = self._selected_project()
         current = selected or getattr(self, "_current", None)
         layout = context_menu_layout(
-            current.get("status") if current else None)
+            current.get("status") if current else None,
+            ignored=projects.is_ignored(current) if current else False)
         for item in layout:
             if item == "-sep-":
                 m.add_separator()
@@ -3460,6 +3501,108 @@ class RepoManagerApp(tk.Tk):
             return
         self.d_pinned.set(not bool(self.d_pinned.get()))
         self._save_detail()
+
+    def _remove_from_repomanager(self):
+        """Confirm and persist an explicit Project ignore by stable identity."""
+        selected = self._selected_project()
+        target_id = projects.project_id(selected) if selected else None
+        if selected is None or target_id is None or projects.is_ignored(selected):
+            return None
+
+        dlg = tk.Toplevel(self)
+        self._prepare_dialog(dlg, "Remove from RepoManager", "520x250")
+        body = ttk.Frame(dlg, padding=16)
+        body.pack(fill="both", expand=True)
+        ttk.Label(
+            body, text="Remove this project from RepoManager?",
+            font=("", 13, "bold"), foreground=self.pal["accent2"],
+        ).pack(anchor="w", pady=(0, 12))
+        ttk.Label(
+            body,
+            text=("The repository and its files will not be changed.\n\n"
+                  "RepoManager will ignore this project during future scans.\n"
+                  "You can restore it later in Settings."),
+            wraplength=470, justify="left",
+        ).pack(anchor="w", fill="x")
+
+        def remove():
+            current_target = next(
+                (project for project in self.projects
+                 if projects.project_id(project) == target_id),
+                None,
+            )
+            if current_target is None or projects.is_ignored(current_target):
+                messagebox.showerror(
+                    "RepoManager",
+                    "The selected Project is no longer available for removal.",
+                    parent=dlg,
+                )
+                return
+            current_detail = self.__dict__.get("_current")
+            detail_matches = (
+                current_detail is not None
+                and projects.project_id(current_detail) == target_id
+            )
+            if (detail_matches
+                    and getattr(self, "_note_user_edited_gen", None)
+                    is not None):
+                try:
+                    self._flush_note_save()
+                except OSError as exc:
+                    log.exception("Project note save failed before ignore")
+                    messagebox.showerror(
+                        "RepoManager",
+                        f"Project was not removed because its note could not "
+                        f"be saved:\n{exc}",
+                        parent=dlg,
+                    )
+                    return
+            try:
+                ignored = persist_project_ignore(
+                    self.projects, target_id,
+                    lambda records: self._persist_projects(records),
+                )
+            except Exception as exc:
+                log.exception("Project ignore persistence failed")
+                messagebox.showerror(
+                    "RepoManager",
+                    f"Project was not removed from RepoManager:\n{exc}",
+                    parent=dlg,
+                )
+                self._status.set(
+                    "Project was not removed · registry save failed",
+                    important=True,
+                )
+                return
+            if ignored is None:
+                messagebox.showerror(
+                    "RepoManager",
+                    "The selected Project is no longer available for removal.",
+                    parent=dlg,
+                )
+                return
+
+            self._cancel_project_save()
+            dlg.destroy()
+            if detail_matches:
+                # The current note was flushed under the unchanged Project ID.
+                # Prevent _clear_detail from issuing a redundant second write.
+                self._note_target = None
+                self._clear_detail()
+            self._populate_trees()
+            self._status.set(
+                "Project removed from RepoManager · restore later in Settings",
+                important=True,
+            )
+
+        buttons = ttk.Frame(body)
+        buttons.pack(side="bottom", fill="x", pady=(18, 0))
+        ttk.Button(buttons, text="Remove", command=remove,
+                   style="Primary.TButton").pack(side="right")
+        ttk.Button(buttons, text="Cancel", command=dlg.destroy).pack(
+            side="right", padx=(0, 6))
+        dlg.bind("<Return>", lambda _e: remove())
+        return dlg
 
     def _copy_path(self):
         p = self._selected_project()

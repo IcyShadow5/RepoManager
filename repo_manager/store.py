@@ -110,6 +110,15 @@ def _cached_recovered_workspaces():
     return copy.deepcopy(_RECOVERED_WORKSPACE_CACHE.get(_registry_cache_key(), []))
 
 
+def _cache_committed_workspaces(workspaces):
+    """Refresh derived recovery state without reversing a durable save."""
+    try:
+        _cache_recovered_workspaces(workspaces)
+    except Exception:
+        log.exception(
+            "registry committed but recovered Workspace cache update failed")
+
+
 def _quarantine_settings(raw):
     """Preserve malformed settings bytes under a bounded sidecar name."""
     global _SETTINGS_QUARANTINED_KEY
@@ -751,7 +760,7 @@ def save_projects(projects, workspaces=None):
         except (OSError, ValueError, UnicodeDecodeError, RecursionError):
             current = None
         if current == data and _load_backup() is not None:
-            _cache_recovered_workspaces(data["workspaces"])
+            _cache_committed_workspaces(data["workspaces"])
             return
         tmp = REPOS_FILE.with_suffix(".tmp")
         with open(tmp, "w", encoding="utf-8", newline="") as f:
@@ -760,7 +769,7 @@ def save_projects(projects, workspaces=None):
             os.fsync(f.fileno())
         _rotate_backups()
         os.replace(tmp, REPOS_FILE)
-        _cache_recovered_workspaces(data["workspaces"])
+        _cache_committed_workspaces(data["workspaces"])
 
 
 def _note_slug(name):

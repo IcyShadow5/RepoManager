@@ -164,6 +164,11 @@ class ProjectAssociationTests(unittest.TestCase):
                   "broken": True}
         self.assertEqual(association_candidates([self.current, self.other, broken], self.current), [self.other])
 
+    def test_candidates_exclude_ignored_repositories(self):
+        ignored = dict(self.other, ignored=True)
+        self.assertEqual(
+            association_candidates([self.current, ignored], self.current), [])
+
     def test_valid_association_preserves_project_identity_and_metadata(self):
         associate_repository(self.current, self.other)
         self.assertEqual(self.current["project_id"], "project-1")

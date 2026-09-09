@@ -569,6 +569,24 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(report["status"], "valid")
         self.assertEqual([p["name"] for p in projects], ["good"])
 
+    def test_post_replace_cache_failure_keeps_committed_save_successful(self):
+        desired = [{"project_id": "target-id", "path": r"C:\target",
+                    "name": "Target", "ignored": True}]
+
+        with mock.patch.object(
+                store, "_cache_recovered_workspaces",
+                side_effect=OSError("post-replace cache failure")) as cache, \
+                self.assertLogs("repo_manager.store", level="ERROR") as logs:
+            store.save_projects(desired)
+
+        cache.assert_called_once_with([])
+        persisted = json.loads(store.REPOS_FILE.read_text(encoding="utf-8"))
+        self.assertEqual(persisted["projects"], desired)
+        self.assertFalse(store.REPOS_FILE.with_suffix(".tmp").exists())
+        self.assertTrue(any(
+            "registry committed but recovered Workspace cache update failed"
+            in message for message in logs.output))
+
     def test_successful_save_keeps_primary_valid_and_rotates(self):
         store.save_projects([{"path": r"C:\1", "name": "1"}])
         store.save_projects([{"path": r"C:\2", "name": "2"}])

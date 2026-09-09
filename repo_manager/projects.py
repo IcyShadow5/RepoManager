@@ -255,6 +255,8 @@ def association_candidates(projects: Iterable[Mapping[str, Any]], current: Mappi
     for candidate in projects:
         if candidate is current or project_id(candidate) == current_id:
             continue
+        if is_ignored(candidate):
+            continue
         if not is_repository_backed(candidate):
             continue
         if candidate.get("broken"):

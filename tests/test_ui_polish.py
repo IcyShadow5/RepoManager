@@ -221,7 +221,8 @@ class ContextMenuGroupingTests(unittest.TestCase):
             label for group in self._groups() for label in group)
         for label in ("Work on this (pin + Active)",
                       "Open in Explorer", "Open Terminal", "Open Agent",
-                      "Set status", "Pin / Unpin", "Open on GitHub",
+                      "Set status", "Pin / Unpin",
+                      "Remove from RepoManager\u2026", "Open on GitHub",
                       "Copy path", "Copy GitHub URL",
                       "Commit & Push\u2026", "Pull"):
             self.assertIn(label, all_labels)
@@ -241,8 +242,9 @@ class ContextMenuGroupingTests(unittest.TestCase):
         self.assertTrue(
             any(set(group).issuperset(launch) for group in self._groups()))
 
-    def test_metadata_group_contains_status_and_pin_only(self):
-        metadata = {"Set status", "Pin / Unpin"}
+    def test_project_metadata_actions_are_grouped_together(self):
+        metadata = {"Set status", "Pin / Unpin",
+                    "Remove from RepoManager\u2026"}
         self.assertTrue(
             any(set(group).issuperset(metadata) for group in self._groups()))
 
