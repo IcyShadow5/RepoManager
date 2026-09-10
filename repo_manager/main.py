@@ -86,13 +86,11 @@ HELP_TOPICS = {
         "Archived) is your curation and is separate from Health."
     ),
     "workspace": (
-        "Workspaces and agents",
-        "A Workspace is RepoManager metadata that groups Projects for "
-        "inspection. It does not coordinate Git changes. An Agent is an "
-        "explicitly launched local command for the selected repository. "
-        "Ready means both its executable and the selected target were "
-        "rechecked. After exit, Target rechecked means RepoManager observed "
-        "Git state again; it does not approve the Agent's work."
+        "Agents",
+        "An Agent is an explicitly launched local command for the selected "
+        "repository. Ready means both its executable and the selected target "
+        "were rechecked. After exit, Target rechecked means RepoManager "
+        "observed Git state again; it does not approve the Agent's work."
     ),
     "provider": (
         "Providers and launchers",
@@ -1441,7 +1439,6 @@ class RepoManagerApp(tk.Tk):
         self.provider = providers.GitHubAdapter()
         self._provider_observation = None
         self._provider_gen = 0  # guards stale async provider results
-        self._workspace_gen = 0  # guards stale async Workspace results
         self._metadata_gen = 0  # guards stale async metadata results
         self._detail_gen = 0  # guards stale local detail observations
         self._detail_lock = threading.Lock()
@@ -1618,7 +1615,6 @@ class RepoManagerApp(tk.Tk):
             self.projects = loaded
             self.workspaces = report.get("workspaces", [])
             self._avail.invalidate()
-            self._refresh_workspace_list()
             self._populate_trees()
         if self._registry_blocked():
             self._notify_registry_report()
@@ -2511,52 +2507,6 @@ class RepoManagerApp(tk.Tk):
         more = f" (+{len(linked) - 4} more)" if len(linked) > 4 else ""
         return f"Worktrees: main + {len(linked)} linked ({names}{more})"
 
-    def _choose_association(self):
-        """Choose another known healthy repository for the current Project."""
-        if self._registry_blocked() or not self._current:
-            return
-        candidates = projects.association_candidates(self.projects, self._current)
-        if not candidates:
-            messagebox.showinfo("RepoManager", "No other valid known repositories are available.")
-            return
-        dlg = tk.Toplevel(self)
-        self._prepare_dialog(
-            dlg, "Change associated repository", "620x380")
-        ttk.Label(dlg, text="Select an existing valid repository:").pack(anchor="w", padx=12, pady=(12, 6))
-        listbox = tk.Listbox(dlg, exportselection=False, height=min(10, len(candidates)))
-        theme.style_tk_widget(listbox, self.pal, "list")
-        listbox.pack(fill="both", expand=True, padx=12, pady=6)
-        for candidate in candidates:
-            listbox.insert(
-                "end",
-                f"{projects.project_display_name(candidate)} — "
-                f"{candidate['path']}")
-
-        def apply():
-            selection = listbox.curselection()
-            if not selection:
-                messagebox.showerror("RepoManager", "Select a repository first.", parent=dlg)
-                return
-            target = candidates[selection[0]]
-            valid, reason = projects.validate_association_target(self.projects, self._current, target)
-            if not valid:
-                messagebox.showerror("RepoManager", reason, parent=dlg)
-                return
-            self.associate_repository(self._current, target)
-            self._refresh_current_detail()
-            self._update_row(self._current)
-            self._schedule_project_save()
-            dlg.destroy()
-
-        buttons = ttk.Frame(dlg)
-        buttons.pack(fill="x", padx=12, pady=12)
-        ttk.Button(buttons, text="Cancel", command=dlg.destroy).pack(side="right", padx=(6, 0))
-        ttk.Button(buttons, text="Save association", command=apply,
-                   style="Primary.TButton").pack(side="right")
-        dlg.bind("<Return>", lambda _e: apply())
-        listbox.focus_set()
-        listbox.selection_set(0)
-
     def _refresh_current_detail(self):
         """Refresh the selected Project without doing local observation in Tk."""
         if not self._current:
@@ -2710,9 +2660,6 @@ class RepoManagerApp(tk.Tk):
             parent, text="Technical project details…",
             command=self._open_project_technical_details)
         self.d_technical_details_btn.pack(anchor="w", pady=(0, 6))
-        self.associate_btn = ttk.Button(parent, text="Change associated repository",
-                                        command=self._choose_association)
-        self.associate_btn.pack(anchor="w", pady=(0, 8))
 
         curation = ttk.Labelframe(parent, text=" Curation ", padding=8)
         curation.pack(fill="x", pady=(0, 8))
@@ -4352,10 +4299,6 @@ class RepoManagerApp(tk.Tk):
                     # event (observe is fully exception-handled off-thread).
                     target, observation, gen = payload, *rest
                     self._apply_provider(target, observation, gen)
-                elif kind == "workspace":
-                    workspace_id, inspection, gen = payload
-                    self._apply_workspace_inspection(
-                        workspace_id, inspection, gen)
                 elif kind == "done":
                     done, ok, out = payload
                     done(ok, out)
@@ -4374,13 +4317,6 @@ class RepoManagerApp(tk.Tk):
                             and generation != getattr(self, "_metadata_gen", 0)):
                         continue
                     scan_done = True
-                    errors.append(payload.get("message", str(payload))
-                                  if isinstance(payload, dict) else payload)
-                elif kind == "workspace_error":
-                    if (isinstance(payload, dict)
-                            and payload.get("generation")
-                            != getattr(self, "_workspace_gen", 0)):
-                        continue
                     errors.append(payload.get("message", str(payload))
                                   if isinstance(payload, dict) else payload)
                 else:
@@ -5214,198 +5150,21 @@ class RepoManagerApp(tk.Tk):
                                  f"Could not write run.bat:\n{e}")
 
     # ------------------------------------------------------------- Workspaces
+    # Workspace metadata stays loaded, validated and persisted for existing
+    # data compatibility, but V0.1.0 exposes no Workspace GUI controls.
+
     def _build_context_ui(self):
-        """Keep Workspace and Agent capability visible but secondary."""
+        """Expose Agent capability in the compact context strip."""
         frame = ttk.Labelframe(
             self, text=" Context & automation ", padding=7)
         frame.pack(fill="x", padx=10, pady=(0, 6))
-        frame.columnconfigure(0, weight=3)
-        frame.columnconfigure(1, weight=2)
-        self._build_workspace_ui(frame)
+        frame.columnconfigure(0, weight=1)
         self._build_agent_ui(frame)
-
-    def _build_workspace_ui(self, parent):
-        """Expose Workspace metadata in the compact context strip."""
-        frame = ttk.Frame(parent, style="Surface.TFrame")
-        frame.grid(row=0, column=0, sticky="ew", padx=(0, 10))
-        ttk.Label(frame, text="Workspace", style="Surface.TLabel",
-                  font=("", 9, "bold")).pack(side="left", padx=(0, 6))
-        self.workspace_var = tk.StringVar()
-        self.workspace_combo = ttk.Combobox(frame, textvariable=self.workspace_var,
-                                            state="readonly", width=20)
-        self.workspace_combo.pack(side="left")
-        self.workspace_combo.bind("<<ComboboxSelected>>", lambda _e: self._show_workspace())
-        ttk.Button(frame, text="New", command=self._new_workspace).pack(
-            side="left", padx=(6, 0))
-        ttk.Button(frame, text="Remove", command=self._remove_workspace).pack(
-            side="left", padx=(4, 0))
-        self.workspace_status = ttk.Label(
-            frame, text="No Workspace selected", style="SurfaceMuted.TLabel",
-            wraplength=330, justify="left")
-        self.workspace_status.pack(side="left", padx=10)
-        ttk.Button(frame, text="Guide", style="Link.TButton",
-                   command=lambda: self.open_help("workspace")).pack(
-                       side="right")
-        self._refresh_workspace_list()
-
-    def _refresh_workspace_list(self):
-        self._workspace_by_name = {w.get("name", ""): w for w in self.workspaces}
-        names = list(self._workspace_by_name)
-        self.workspace_combo["values"] = names
-        if names and self.workspace_var.get() not in names:
-            self.workspace_var.set(names[0])
-        self._show_workspace()
-
-    def _show_workspace(self):
-        workspace = self._workspace_by_name.get(self.workspace_var.get())
-        if not workspace:
-            self.workspace_status.configure(
-                text="No Workspace selected",
-                style="SurfaceMuted.TLabel")
-            return
-        self._workspace_gen += 1
-        generation = self._workspace_gen
-        workspace_id = workspaces.workspace_id(workspace)
-        allowed_ids = {
-            projects.project_id(project) for project in self.projects
-            if projects.project_id(project) is not None
-        }
-        snapshot = dict(workspace)
-        snapshot["members"] = [
-            dict(member) if isinstance(member, dict) else member
-            for member in workspace.get("members", [])
-        ]
-        self.workspace_status.configure(
-            text="Checking Workspace members…",
-            style=theme.semantic_style("IN_PROGRESS"))
-
-        def inspect():
-            result = workspaces.inspect_workspace(
-                snapshot, observe=scanner.collect_metadata,
-                repository_ids=allowed_ids)
-            self._scan_queue.put(
-                ("workspace", (workspace_id, result, generation)))
-
-        threading.Thread(
-            target=guarded_worker(
-                self._scan_queue, inspect, error_kind="workspace_error",
-                error_payload=lambda message: {
-                    "message": message, "generation": generation,
-                }),
-            daemon=True).start()
-
-    def _apply_workspace_inspection(self, workspace_id, inspection, generation):
-        """Render only the current Workspace generation on the Tk thread."""
-        selected = self._workspace_by_name.get(self.workspace_var.get())
-        if (generation != self._workspace_gen
-                or selected is None
-                or workspaces.workspace_id(selected) != workspace_id):
-            return
-        if not isinstance(inspection, dict):
-            inspection = {"status": workspaces.UNKNOWN, "member_count": 0,
-                          "members": [], "counts": {}}
-        counts = inspection.get("counts")
-        counts = counts if isinstance(counts, dict) else {}
-        members = inspection.get("members")
-        members = members if isinstance(members, list) else []
-        dirty = sum(
-            isinstance(item, dict)
-            and isinstance(item.get("dirty"), int)
-            and not isinstance(item.get("dirty"), bool)
-            and item.get("dirty") > 0
-            for item in members)
-        status = inspection.get("status", workspaces.UNKNOWN)
-        if status == "READY" and any(
-                not isinstance(item, dict)
-                or not isinstance(item.get("dirty"), int)
-                or isinstance(item.get("dirty"), bool)
-                for item in members):
-            status = workspaces.UNKNOWN
-        member_count = inspection.get("member_count", len(members))
-        if not isinstance(member_count, int) or isinstance(member_count, bool):
-            member_count = len(members)
-        self.workspace_status.configure(
-            text=(f"{status} · {member_count} members · "
-                  f"valid {counts.get('valid', 0)} · dirty {dirty} · "
-                  f"missing {counts.get('missing', 0)} · "
-                  f"untracked {counts.get('untracked', 0)} · "
-                  f"stale {counts.get('stale', 0)}"),
-            style=theme.semantic_style(status))
-
-    def _new_workspace(self):
-        dlg = tk.Toplevel(self)
-        self._prepare_dialog(dlg, "New Workspace", "500x260")
-        ttk.Label(dlg, text="New Workspace", font=("", 14, "bold"),
-                  foreground=self.pal["accent2"]).pack(
-                      anchor="w", padx=16, pady=(16, 2))
-        ttk.Label(
-            dlg,
-            text="Group Projects for read-only inspection. This creates "
-                 "RepoManager metadata only and starts empty.",
-            style="Muted.TLabel", wraplength=450, justify="left").pack(
-                anchor="w", padx=16, pady=(0, 14))
-        ttk.Label(dlg, text="Workspace name").pack(
-            anchor="w", padx=16, pady=(0, 4))
-        name = ttk.Entry(dlg, width=40)
-        name.pack(fill="x", padx=16)
-        validation = ttk.Label(dlg, text="", style="Muted.TLabel")
-        validation.pack(fill="x", padx=16, pady=(8, 0))
-
-        def save():
-            value = name.get().strip()
-            if not value:
-                validation.configure(
-                    text="Enter a Workspace name.",
-                    style=theme.semantic_style("ERROR"))
-                name.focus_set()
-                return
-            if value in self._workspace_by_name:
-                validation.configure(
-                    text="A Workspace with that name already exists.",
-                    style=theme.semantic_style("ERROR"))
-                name.focus_set()
-                return
-            updated = [*self.workspaces, workspaces.new_workspace(value)]
-            try:
-                self._persist_projects(workspaces=updated)
-            except OSError as exc:
-                validation.configure(
-                    text=f"Workspace was not saved: {exc}",
-                    style=theme.semantic_style("ERROR"))
-                return
-            self.workspaces[:] = updated
-            self._refresh_workspace_list()
-            dlg.destroy()
-
-        buttons = ttk.Frame(dlg)
-        buttons.pack(fill="x", padx=16, pady=14)
-        ttk.Button(buttons, text="Create Workspace", command=save,
-                   style="Primary.TButton").pack(side="right")
-        ttk.Button(buttons, text="Cancel", command=dlg.destroy).pack(
-            side="right", padx=(0, 6))
-        dlg.bind("<Return>", lambda _e: save())
-        name.focus_set()
-
-    def _remove_workspace(self):
-        name = self.workspace_var.get()
-        if not name:
-            return
-        if not messagebox.askyesno("RepoManager", f"Remove Workspace metadata '{name}'?\nRepositories and Worktrees remain untouched."):
-            return
-        updated = [w for w in self.workspaces if w.get("name") != name]
-        try:
-            self._persist_projects(workspaces=updated)
-        except OSError as exc:
-            messagebox.showerror(
-                "RepoManager", f"Workspace was not removed: {exc}", parent=self)
-            return
-        self.workspaces[:] = updated
-        self._refresh_workspace_list()
 
     # --------------------------------------------------------------- Agents
     def _build_agent_ui(self, parent):
         frame = ttk.Frame(parent, style="Surface.TFrame")
-        frame.grid(row=0, column=1, sticky="ew", padx=(10, 0))
+        frame.grid(row=0, column=0, sticky="ew", padx=(10, 0))
         heading = ttk.Frame(frame, style="Surface.TFrame")
         heading.pack(fill="x")
         ttk.Label(heading, text="Agent", style="Surface.TLabel",

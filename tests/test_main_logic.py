@@ -323,12 +323,13 @@ class AssociationAuthorityTests(unittest.TestCase):
     def test_application_api_has_no_subset_authority_parameter_or_bypass(self):
         parameters = inspect.signature(
             main_module.RepoManagerApp.associate_repository).parameters
-        gui_caller = inspect.getsource(
-            main_module.RepoManagerApp._choose_association)
 
         self.assertEqual(list(parameters), ["self", "project", "target"])
         self.assertFalse(hasattr(main_module.projects, "associate_repository"))
-        self.assertIn("self.associate_repository(", gui_caller)
+        # RM-002: the V0.1.0 GUI entry point is hidden; the validated
+        # application-layer API remains the only association authority.
+        self.assertFalse(hasattr(main_module.RepoManagerApp,
+                                 "_choose_association"))
 
     def test_partial_context_cannot_be_supplied_to_authorize_mutation(self):
         target = {"path": r"D:\owned", "name": "Owned", "broken": False}

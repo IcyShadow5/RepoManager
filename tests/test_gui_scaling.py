@@ -2051,7 +2051,7 @@ class HealthDashboardGuiTests(_StoreIsolationMixin, unittest.TestCase):
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk not available")
 class CoreSurfaceVisibilityRegressionTests(_StoreIsolationMixin, unittest.TestCase):
-    def test_workspace_and_agent_surfaces_are_visible_at_default_size(self):
+    def test_reduced_v010_surfaces_are_visible_and_misleading_ones_absent(self):
         with mock.patch.object(main_module.RepoManagerApp,
                                "_schedule_after", return_value=None), \
                 mock.patch.object(main_module.RepoManagerApp, "start_scan"):
@@ -2060,14 +2060,31 @@ class CoreSurfaceVisibilityRegressionTests(_StoreIsolationMixin, unittest.TestCa
         app.update_idletasks()
         app.update()
 
-        for widget in (app.workspace_combo, app.workspace_status,
-                       app.agent_status, app.run_status):
+        for widget in (app.agent_status, app.run_status):
             with self.subTest(widget=str(widget)):
                 self.assertTrue(widget.winfo_ismapped())
                 self.assertGreater(widget.winfo_width(), 1)
                 self.assertLessEqual(
                     widget.winfo_rooty() + widget.winfo_height(),
                     app.winfo_rooty() + app.winfo_height())
+
+        # RM-001/RM-002 release-surface reduction: no Workspace controls and
+        # no "Change associated repository" entry point are user-visible.
+        for absent in ("workspace_combo", "workspace_status", "associate_btn"):
+            with self.subTest(absent=absent):
+                self.assertFalse(hasattr(app, absent))
+        surface_texts = []
+
+        def collect_texts(widget):
+            if isinstance(widget, (ttk.Label, ttk.Button)):
+                surface_texts.append(str(widget.cget("text")))
+            for child in widget.winfo_children():
+                collect_texts(child)
+
+        collect_texts(app)
+        joined = " ".join(surface_texts)
+        self.assertNotIn("Workspace", joined)
+        self.assertNotIn("Change associated repository", joined)
 
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk not available")
@@ -2130,7 +2147,7 @@ class WP07LayoutRegressionTests(_StoreIsolationMixin, unittest.TestCase):
                          app.pal["panel"])
         self.assertEqual(app.d_notes.cget("background"), app.pal["panel"])
 
-    def test_help_and_workspace_dialog_share_theme_and_escape_behavior(self):
+    def test_help_and_settings_dialogs_share_theme_and_escape_behavior(self):
         app = self._app_with_selection()
         self.addCleanup(app.destroy)
         help_dialog = app.open_help("health")
@@ -2142,19 +2159,6 @@ class WP07LayoutRegressionTests(_StoreIsolationMixin, unittest.TestCase):
         help_dialog.destroy()
         app.update()
         self.assertFalse(help_dialog.winfo_exists())
-
-        app._new_workspace()
-        app.update()
-        dialogs = [child for child in app.winfo_children()
-                   if isinstance(child, tk.Toplevel)
-                   and child.title() == "New Workspace"]
-        self.assertEqual(len(dialogs), 1)
-        workspace_dialog = dialogs[0]
-        self.assertEqual(workspace_dialog.cget("background"), app.pal["bg"])
-        self.assertTrue(workspace_dialog.bind("<Escape>"))
-        workspace_dialog.destroy()
-        app.update()
-        self.assertFalse(workspace_dialog.winfo_exists())
 
         app.open_settings()
         app.update()
@@ -4226,57 +4230,52 @@ class StubGenerationGuiTests(_StoreIsolationMixin, unittest.TestCase):
 
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk not available")
-class WorkspaceHeadingHardeningGuiTests(_StoreIsolationMixin,
+class WorkspaceSurfaceReductionGuiTests(_StoreIsolationMixin,
                                         unittest.TestCase):
-    """partial Workspace metadata must never render as READY."""
+    """RM-001: hidden Workspace GUI must not touch persisted Workspace data."""
 
-    def _selected_app(self):
-        app = _build_real_app(1)
-        self.addCleanup(app.destroy)
+    def test_app_startup_does_not_mutate_persisted_workspaces(self):
         workspace = workspaces.new_workspace("Feature X")
-        app._workspace_gen = 7
-        app.workspace_var.set(workspace["name"])
-        app._workspace_by_name = {workspace["name"]: workspace}
-        return app, workspace
+        workspace["members"] = [{"repository_id": "repo-1",
+                                 "path": r"C:\repo", "branch": "main"}]
+        store.save_projects([], workspaces=[workspace])
+        self.assertEqual(store.load_workspaces(), [workspace])
 
-    def test_ready_is_demoted_when_member_dirty_is_partial(self):
-        app, workspace = self._selected_app()
-        app._apply_workspace_inspection(
-            workspaces.workspace_id(workspace), {
-                "status": "READY", "member_count": 1,
-                "members": [{"state": "VALID", "dirty": "many"}],
-                "counts": {"valid": 1, "missing": 0, "stale": 0},
-            }, 7)
-        text = app.workspace_status.cget("text")
-        self.assertNotIn("READY", text)
-        self.assertIn("UNKNOWN", text)
+        with mock.patch.object(main_module.RepoManagerApp,
+                               "_schedule_after", return_value=None), \
+                mock.patch.object(main_module.RepoManagerApp, "start_scan"):
+            app = main_module.RepoManagerApp()
+        self.addCleanup(app.destroy)
+        app.update_idletasks()
+        app.update()
 
-    def test_malformed_inspection_does_not_crash_heading(self):
-        app, workspace = self._selected_app()
-        app._apply_workspace_inspection(
-            workspaces.workspace_id(workspace), None, 7)
-        text = app.workspace_status.cget("text")
-        self.assertIn("UNKNOWN", text)
-        self.assertIn("0 members", text)
+        # Building and showing the reduced UI must neither create, remove,
+        # nor rewrite Workspace metadata.
+        self.assertEqual(app.workspaces, [workspace])
+        self.assertEqual(store.load_workspaces(), [workspace])
 
-    def test_missing_and_untracked_counts_are_distinct(self):
-        app, workspace = self._selected_app()
-        app._apply_workspace_inspection(
-            workspaces.workspace_id(workspace), {
-                "status": "BLOCKED", "member_count": 5,
-                "members": [
-                    {"state": "MISSING", "dirty": 0},
-                    {"state": "MISSING", "dirty": 0},
-                    {"state": "UNTRACKED", "dirty": 0},
-                    {"state": "UNTRACKED", "dirty": 0},
-                    {"state": "UNTRACKED", "dirty": 0},
-                ],
-                "counts": {"valid": 0, "missing": 2, "untracked": 3,
-                           "stale": 0},
-            }, 7)
-        text = app.workspace_status.cget("text")
-        self.assertIn("missing 2", text)
-        self.assertIn("untracked 3", text)
+    def test_help_topic_no_longer_advertises_workspace_grouping(self):
+        with mock.patch.object(main_module.RepoManagerApp,
+                               "_schedule_after", return_value=None), \
+                mock.patch.object(main_module.RepoManagerApp, "start_scan"):
+            app = main_module.RepoManagerApp()
+        self.addCleanup(app.destroy)
+        app.open_help("workspace")
+        app.update()
+        help_dialog = app._help_dialog
+        self.addCleanup(help_dialog.destroy)
+        texts = []
+
+        def collect_texts(widget):
+            if isinstance(widget, ttk.Label):
+                texts.append(str(widget.cget("text")))
+            for child in widget.winfo_children():
+                collect_texts(child)
+
+        collect_texts(help_dialog)
+        joined = "\n".join(texts)
+        self.assertIn("Agent", joined)
+        self.assertNotIn("A Workspace is RepoManager metadata", joined)
 
 
 if __name__ == "__main__":
