@@ -8,7 +8,7 @@ from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
 from .projects import (ensure_project_id, is_ignored, project_display_name,
-                       repository_default_name)
+                       repository_default_name, repository_path_key)
 
 GIT_TIMEOUT = 10
 MAX_WORKERS = 8
@@ -692,7 +692,7 @@ def merge_scan(existing_projects, scanned_paths, move_suppressions=None,
                     and isinstance(name, str) and name.strip()):
                 ensure_project_id(p)
                 standalone_projects.append(p)
-                standalone_by_folder[os.path.normcase(os.path.abspath(folder_path))] = p
+                standalone_by_folder[repository_path_key(folder_path)] = p
                 continue
             log.warning("scan merge skipped registry record %d: no valid path",
                         i)
@@ -701,7 +701,7 @@ def merge_scan(existing_projects, scanned_paths, move_suppressions=None,
             log.warning("scan merge skipped registry record %d (%s): "
                         "no valid name", i, path)
             continue
-        by_path[path.lower()] = p
+        by_path[repository_path_key(path)] = p
 
     now = utc_now_iso()
     problems = []
@@ -729,15 +729,14 @@ def merge_scan(existing_projects, scanned_paths, move_suppressions=None,
     for old in by_path.values():
         ensure_project_id(old)
     for sp, meta in zip(scanned_paths, metas):
-        key = sp.lower()
+        key = repository_path_key(sp)
         old = by_path.get(key)
         if old is None:
-            folder_key = os.path.normcase(os.path.abspath(sp))
-            candidate = standalone_by_folder.get(folder_key)
+            candidate = standalone_by_folder.get(key)
             if candidate is not None:
                 old = candidate
                 standalone_projects.remove(candidate)
-                standalone_by_folder.pop(folder_key, None)
+                standalone_by_folder.pop(key, None)
                 upgraded_ids.add(id(candidate))
                 old["path"] = sp
                 old.pop("folder_path", None)
@@ -786,20 +785,23 @@ def merge_scan(existing_projects, scanned_paths, move_suppressions=None,
     # advisory move suggestions BEFORE retention so entries referenced by
     # an open suggestion are shielded from the prune below. Purely
     # informational — nothing here migrates or mutates either side.
-    scanned_keys = {sp.lower() for sp in scanned_paths}
+    scanned_keys = {repository_path_key(sp) for sp in scanned_paths}
     stale_entries = [p for k, p in by_path.items()
                      if k not in seen and k not in scanned_keys
                      and not under_failed_root(p.get("path"))]
     fresh_items = [(sp, m.get("fingerprint"))
                    for sp, m in zip(scanned_paths, metas)
-                   if sp.lower() not in by_path and not m["broken"]]
+                   if repository_path_key(sp) not in by_path and not m["broken"]]
     suggestions = match_move_candidates(stale_entries, fresh_items,
                                         move_suppressions)
     problems.extend(suggestions)
 
-    protected = set(protected_paths or [])
+    protected = {
+        key for value in protected_paths or []
+        if (key := repository_path_key(value)) is not None
+    }
     protected.update(
-        str(x).lower()
+        repository_path_key(x)
         for s in suggestions
         for x in ([s.get("old_path")] + list(s.get("old_paths") or []))
         if x)

@@ -1,8 +1,8 @@
 import unittest
 from unittest import mock
 
-from repo_manager.projects import (apply_curation, associate_repository,
-                                   association_candidates, ensure_project_id,
+from repo_manager.projects import (apply_curation, association_candidates,
+                                   ensure_project_id,
                                    build_project_export,
                                    build_repository_report,
                                    display_worktree_records,
@@ -170,13 +170,15 @@ class ProjectAssociationTests(unittest.TestCase):
         self.assertEqual(
             association_candidates([self.current, ignored], self.current), [])
 
-    def test_valid_association_preserves_project_identity_and_metadata(self):
-        associate_repository(self.current, self.other)
-        self.assertEqual(self.current["project_id"], "project-1")
-        self.assertEqual(self.current["path"], "D:/other")
-        self.assertEqual(self.current["status"], "active")
-        self.assertEqual(self.current["focus"], "keep this")
-        self.assertTrue(self.current["pinned"])
+    def test_distinct_project_ids_cannot_be_collapsed_by_association(self):
+        before = dict(self.current)
+
+        valid, reason = validate_association_target(
+            [self.current, self.other], self.current, self.other)
+
+        self.assertFalse(valid)
+        self.assertIn("another Project", reason)
+        self.assertEqual(self.current, before)
 
     def test_invalid_association_is_blocked(self):
         valid, reason = validate_association_target([self.current], self.current, self.other)
@@ -188,16 +190,6 @@ class ProjectAssociationTests(unittest.TestCase):
         valid, reason = validate_association_target([self.current, broken], self.current, broken)
         self.assertFalse(valid)
         self.assertTrue(reason)
-
-    def test_association_preserves_curated_name_and_clears_observations(self):
-        self.current.update({"dirty": 3, "branch": "old", "remote": "old/repo"})
-        associate_repository(self.current, self.other)
-        self.assertEqual(self.current["name"], "Project")
-        self.assertEqual(self.current["path"], "D:/other")
-        self.assertNotIn("dirty", self.current)
-        self.assertNotIn("branch", self.current)
-        self.assertNotIn("remote", self.current)
-
 
 class ProjectVisibilityTests(unittest.TestCase):
     def test_empty_filter_matches_every_project(self):

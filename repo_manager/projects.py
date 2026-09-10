@@ -5,6 +5,7 @@ launcher behavior. Project records remain dictionary-shaped so the boundary
 can evolve without replacing the existing persistence mechanism.
 """
 from collections.abc import Callable, Iterable, Mapping
+import os
 from pathlib import Path
 from typing import Any
 import unicodedata
@@ -248,6 +249,21 @@ def project_folder(project: Mapping[str, Any]) -> str | None:
     return path if isinstance(path, str) and path.strip() else None
 
 
+def repository_path_key(value: Any) -> str | None:
+    """Return the Registry-compatible key for a repository location."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return os.path.normcase(os.path.abspath(os.path.normpath(value)))
+
+
+def project_location_key(project: Mapping[str, Any]) -> str | None:
+    """Return the Registry-compatible key for a Project's owned location."""
+    path = project.get("path")
+    if not isinstance(path, str) or not path.strip():
+        path = project.get(FOLDER_PATH_FIELD)
+    return repository_path_key(path)
+
+
 def association_candidates(projects: Iterable[Mapping[str, Any]], current: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     """Return other known valid repository records for explicit reassociation."""
     current_id = project_id(current)
@@ -270,14 +286,45 @@ def association_candidates(projects: Iterable[Mapping[str, Any]], current: Mappi
 
 def validate_association_target(projects: Iterable[Mapping[str, Any]], current: Mapping[str, Any], target: Mapping[str, Any]) -> tuple[bool, str]:
     """Validate an existing known repository before reassociation."""
-    candidates = association_candidates(projects, current)
+    records = list(projects)
+    candidates = association_candidates(records, current)
     if target not in candidates:
         return False, "The selected repository is invalid, broken, or already associated."
+    return _validate_association_mutation(records, current, target)
+
+
+def _validate_association_mutation(
+    records: Iterable[Mapping[str, Any]],
+    current: Mapping[str, Any],
+    target: Mapping[str, Any],
+) -> tuple[bool, str]:
+    """Validate target state and path ownership before association mutation."""
+    if (target is current or is_ignored(target)
+            or not is_repository_backed(target) or target.get("broken")):
+        return False, "The selected repository is invalid, broken, or already associated."
+    target_key = repository_path_key(target.get("path"))
+    owner = next(
+        (record for record in records
+         if project_location_key(record) == target_key),
+        None,
+    )
+    if owner is not None:
+        current_id = project_id(current)
+        owner_id = project_id(owner)
+        if owner is not current and current_id and owner_id and current_id != owner_id:
+            return False, (
+                "That repository already belongs to another Project. "
+                "RepoManager will not merge distinct Project identities."
+            )
+        return False, "That repository path is already associated."
     return True, ""
 
 
-def associate_repository(project: dict[str, Any], target: Mapping[str, Any]) -> dict[str, Any]:
-    """Associate one existing repository record without changing Project identity."""
+def _apply_repository_association(
+    project: dict[str, Any],
+    target: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Apply a validated association without changing Project curation."""
     project["path"] = str(target["path"])
     project.pop(FOLDER_PATH_FIELD, None)
     # ``name`` is user-owned curation. Reassociation changes location, not the

@@ -17,6 +17,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from . import agents, health, launchers, processes, projects, providers, reports, scanner, store, theme, workspaces, version
+from .projects import project_location_key, repository_path_key
 
 try:
     import msvcrt  # Windows single-instance lock
@@ -913,7 +914,7 @@ SCANNER_OBSERVATION_FIELDS = {
 def reconcile_scan_result(merged, live_projects):
     """Apply scanner observations without overwriting newer Project state."""
     def location_key(project):
-        return (project.get("path") or project.get("folder_path")
+        return (projects.project_location_key(project)
                 or projects.project_id(project))
 
     def can_use_path_fallback(scanned, current):
@@ -1188,8 +1189,10 @@ def _perform_confirmed_move(projects, suggestion, now_iso,
     if entry is None:
         return MoveOutcome(MOVE_MISSING_OLD, ERROR_TARGET_MISSING,
                            ("approved old registry entry is missing",))
-    if any(p is not entry and str(p.get("path", "")).lower()
-           == new_path.lower() for p in projects):
+    new_path_key = repository_path_key(new_path)
+    if any(p is not entry
+           and project_location_key(p) == new_path_key
+           for p in projects):
         return MoveOutcome(MOVE_DUPLICATE, ERROR_IDENTITY_MISMATCH,
                            ("new path already has a registry entry",))
 
@@ -1585,6 +1588,16 @@ class RepoManagerApp(tk.Tk):
             store.save_projects(records)
         else:
             store.save_projects(records, workspaces=workspaces)
+
+    def associate_repository(self, project, target):
+        """Reassociate a Project through the Registry-owning application layer."""
+        if not any(record is project for record in self.projects):
+            raise ValueError("Source Project is not in the live Registry.")
+        valid, reason = projects._validate_association_mutation(
+            self.projects, project, target)
+        if not valid:
+            raise ValueError(reason)
+        return projects._apply_repository_association(project, target)
 
     def _retry_registry(self):
         """Reload before permitting any write from a previously blocked session."""
@@ -2529,7 +2542,7 @@ class RepoManagerApp(tk.Tk):
             if not valid:
                 messagebox.showerror("RepoManager", reason, parent=dlg)
                 return
-            projects.associate_repository(self._current, target)
+            self.associate_repository(self._current, target)
             self._refresh_current_detail()
             self._update_row(self._current)
             self._schedule_project_save()

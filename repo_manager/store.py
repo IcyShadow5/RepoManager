@@ -243,6 +243,26 @@ def _canonical_registry_path(value):
     return os.path.normcase(os.path.abspath(os.path.normpath(value)))
 
 
+def _reject_duplicate_project_paths(projects):
+    """Refuse to persist state that Registry validation would later drop."""
+    seen = {}
+    for index, record in enumerate(projects):
+        if not isinstance(record, dict):
+            continue
+        path = record.get("path")
+        if not isinstance(path, str) or not path.strip():
+            path = record.get("folder_path")
+        if not isinstance(path, str) or not path.strip():
+            continue
+        key = _canonical_registry_path(path)
+        if key in seen:
+            raise RegistryCorrupt(
+                "refusing to save duplicate Project path at records "
+                f"[{seen[key]}] and [{index}]"
+            )
+        seen[key] = index
+
+
 def _sanitize_operational_fields(record, index):
     cleaned = dict(record)
     issues = []
@@ -749,6 +769,7 @@ def save_projects(projects, workspaces=None):
     them explicitly.
     """
     with _REGISTRY_SAVE_LOCK:
+        _reject_duplicate_project_paths(projects)
         ensure_dirs()
         data = {"schema_version": SCHEMA_VERSION, "projects": projects}
         if workspaces is not None:

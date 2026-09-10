@@ -66,6 +66,45 @@ class FindRepoDirsTests(unittest.TestCase):
 
 
 class MergeScanTests(unittest.TestCase):
+    def test_registry_equivalent_path_variations_merge_into_one_project(self):
+        existing = {
+            "project_id": "coldline", "path": r"D:\Games\COLDLINE",
+            "name": "COLDLINE", "status": "active", "focus": "keep",
+            "last_seen": "2099-01-01T00:00:00Z",
+        }
+        variations = (
+            "d:/games/coldline/.",
+            r"d:\games\coldline",
+            "D:/Games/COLDLINE/",
+            r"D:\Games\Other\..\COLDLINE",
+        )
+
+        for scanned_path in variations:
+            with self.subTest(scanned_path=scanned_path), mock.patch.object(
+                    scanner, "collect_metadata",
+                    side_effect=lambda path: scanner.empty_meta(path)):
+                merged, _problems = scanner.merge_scan(
+                    [dict(existing)], [scanned_path])
+
+            self.assertEqual(len(merged), 1)
+            self.assertEqual(merged[0]["project_id"], "coldline")
+            self.assertEqual(merged[0]["path"], existing["path"])
+            self.assertEqual(merged[0]["focus"], "keep")
+
+    def test_distinct_canonical_paths_remain_distinct(self):
+        existing = {
+            "project_id": "repo", "path": r"D:\Repo", "name": "Repo",
+            "last_seen": "2099-01-01T00:00:00Z",
+        }
+        with mock.patch.object(
+                scanner, "collect_metadata",
+                side_effect=lambda path: scanner.empty_meta(path)):
+            merged, _problems = scanner.merge_scan(
+                [existing], [r"D:\Repo-2"])
+
+        self.assertEqual(len(merged), 2)
+        self.assertEqual(len({record["project_id"] for record in merged}), 2)
+
     def test_folder_only_project_survives_repository_scan(self):
         project = {
             "name": "Planning",
@@ -708,6 +747,24 @@ class MoveAwareMergeTests(unittest.TestCase):
             self.assertEqual(stay["status"], "active")
             self.assertEqual(stay["fingerprint"]["remotes"],
                              ["github.com/o/stay"])
+
+    def test_same_remote_at_two_paths_remains_two_projects(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            first = self._real_repo(
+                root, "First", "https://github.com/o/shared.git")
+            second = self._real_repo(
+                root, "Second", "https://github.com/o/shared.git")
+
+            projects, _problems = scanner.merge_scan(
+                [], [str(first), str(second)])
+
+            self.assertEqual({record["path"] for record in projects},
+                             {str(first), str(second)})
+            self.assertEqual(len({record["project_id"] for record in projects}),
+                             2)
+            self.assertEqual({record["remote"] for record in projects},
+                             {"github.com/o/shared"})
 
 
 class PruneGuardTests(unittest.TestCase):

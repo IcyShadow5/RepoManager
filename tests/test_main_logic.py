@@ -1,3 +1,4 @@
+import inspect
 import json
 import logging
 import queue
@@ -306,6 +307,88 @@ class CoalesceErrorsTests(unittest.TestCase):
         self.assertEqual(coalesce_worker_errors(["only"]), "only")
 
 
+class AssociationAuthorityTests(unittest.TestCase):
+    def setUp(self):
+        self.source = {
+            "project_id": "source", "path": r"C:\source", "name": "Source",
+            "status": "active", "focus": "keep", "pinned": True,
+        }
+        self.owner = {
+            "project_id": "owner", "path": r"D:\owned", "name": "Owner",
+            "status": "idea", "focus": "owner", "pinned": False,
+        }
+        self.app = object.__new__(main_module.RepoManagerApp)
+        self.app.projects = [self.source, self.owner]
+
+    def test_application_api_has_no_subset_authority_parameter_or_bypass(self):
+        parameters = inspect.signature(
+            main_module.RepoManagerApp.associate_repository).parameters
+        gui_caller = inspect.getsource(
+            main_module.RepoManagerApp._choose_association)
+
+        self.assertEqual(list(parameters), ["self", "project", "target"])
+        self.assertFalse(hasattr(main_module.projects, "associate_repository"))
+        self.assertIn("self.associate_repository(", gui_caller)
+
+    def test_partial_context_cannot_be_supplied_to_authorize_mutation(self):
+        target = {"path": r"D:\owned", "name": "Owned", "broken": False}
+        before_source = dict(self.source)
+        before_owner = dict(self.owner)
+
+        for context in (None, [], [self.source], [self.source, self.owner]):
+            with self.subTest(context=context):
+                with self.assertRaises(TypeError):
+                    self.app.associate_repository(
+                        self.source, target, project_records=context)
+
+        self.assertEqual(self.source, before_source)
+        self.assertEqual(self.owner, before_owner)
+
+    def test_live_registry_rejects_canonical_owner_before_mutation(self):
+        target = {"path": r"d:\owned\.", "name": "Owned", "broken": False}
+        before_source = dict(self.source)
+        before_owner = dict(self.owner)
+
+        with self.assertRaisesRegex(ValueError, "another Project"):
+            self.app.associate_repository(self.source, target)
+
+        self.assertEqual(self.source, before_source)
+        self.assertEqual(self.owner, before_owner)
+
+    def test_source_must_belong_to_live_registry(self):
+        foreign = {"project_id": "foreign", "path": r"E:\foreign",
+                   "name": "Foreign"}
+        before = dict(foreign)
+
+        with self.assertRaisesRegex(ValueError, "not in the live Registry"):
+            self.app.associate_repository(
+                foreign, {"path": r"F:\target", "name": "Target"})
+
+        self.assertEqual(foreign, before)
+
+    def test_unowned_target_mutates_only_source_and_preserves_curation(self):
+        self.source.update({"dirty": 3, "branch": "old", "remote": "old/repo",
+                            "custom": {"keep": True}})
+        before_owner = dict(self.owner)
+
+        result = self.app.associate_repository(
+            self.source,
+            {"path": r"E:\unowned", "name": "Unowned", "broken": False},
+        )
+
+        self.assertIs(result, self.source)
+        self.assertEqual(self.source["project_id"], "source")
+        self.assertEqual(self.source["path"], r"E:\unowned")
+        self.assertEqual(self.source["status"], "active")
+        self.assertEqual(self.source["focus"], "keep")
+        self.assertTrue(self.source["pinned"])
+        self.assertEqual(self.source["custom"], {"keep": True})
+        self.assertNotIn("dirty", self.source)
+        self.assertNotIn("branch", self.source)
+        self.assertNotIn("remote", self.source)
+        self.assertEqual(self.owner, before_owner)
+
+
 class MetadataRefreshProjectBoundaryTests(unittest.TestCase):
     def test_stale_metadata_result_is_not_applied_after_reassociation(self):
         app = object.__new__(main_module.RepoManagerApp)
@@ -608,6 +691,18 @@ class ConfirmedMoveTransactionTests(unittest.TestCase):
         self.assertEqual(outcome, "duplicate")
         self.assertIsNone(entry)
         self.assertEqual(len(projects), 2)  # nothing changed
+
+    def test_equivalent_duplicate_new_path_is_blocked(self):
+        projects = self._projects()
+        projects.append({"path": self.NEW_PATH + r"\.", "name": "Iron"})
+
+        outcome, entry = perform_confirmed_move(
+            projects, self.suggestion(), self.NOW,
+            save_projects=self._fail, move_note=self._fail)
+
+        self.assertEqual(outcome, "duplicate")
+        self.assertIsNone(entry)
+        self.assertEqual(projects[0]["path"], self.OLD_PATH)
 
     def test_missing_old_blocked(self):
         outcome, _ = perform_confirmed_move(
@@ -1210,6 +1305,31 @@ class GitMutationGuardTests(unittest.TestCase):
 
 
 class ScanResultReconciliationTests(unittest.TestCase):
+    def test_equivalent_path_variation_does_not_retain_duplicate_identity(self):
+        live = [{"project_id": "live", "path": r"D:\Games\COLDLINE",
+                 "name": "COLDLINE", "focus": "keep"}]
+        merged = [
+            dict(live[0]),
+            {"project_id": "scan", "path": "d:/games/coldline/.",
+             "name": "Scanner duplicate", "focus": "must not transfer"},
+        ]
+
+        result = reconcile_scan_result(merged, live)
+
+        self.assertEqual(result, live)
+
+    def test_distinct_canonical_paths_remain_distinct(self):
+        live = [{"project_id": "repo", "path": r"D:\Repo",
+                 "name": "Repo", "focus": "keep"}]
+        merged = [dict(live[0]),
+                  {"project_id": "repo-2", "path": r"D:\Repo-2",
+                   "name": "Repo 2", "focus": "separate"}]
+
+        result = reconcile_scan_result(merged, live)
+
+        self.assertEqual({record["project_id"] for record in result},
+                         {"repo", "repo-2"})
+
     def test_current_project_fields_survive_same_path_scan(self):
         live = [{"project_id": "p-1", "path": r"C:\repo",
                  "name": "Curated", "focus": "new", "future": 7,
@@ -1232,6 +1352,23 @@ class ScanResultReconciliationTests(unittest.TestCase):
         ]
         result = reconcile_scan_result(merged, live)
         self.assertEqual(result, live)
+
+    def test_name_and_remote_similarity_do_not_transfer_stale_identity(self):
+        live = [{"project_id": "old-ego", "path": r"C:\old\Ego Shooter",
+                 "name": "Ego Shooter", "status": "active",
+                 "focus": "old curation", "remote": "example/game"}]
+        merged = [{"project_id": "new-coldline",
+                   "path": r"D:\new\COLDLINE", "name": "COLDLINE",
+                   "status": "idea", "focus": "",
+                   "remote": "example/game"}]
+
+        result = reconcile_scan_result(merged, live)
+        by_id = {record["project_id"]: record for record in result}
+
+        self.assertEqual(set(by_id), {"old-ego", "new-coldline"})
+        self.assertEqual(by_id["old-ego"]["focus"], "old curation")
+        self.assertEqual(by_id["old-ego"]["path"], r"C:\old\Ego Shooter")
+        self.assertEqual(by_id["new-coldline"]["path"], r"D:\new\COLDLINE")
 
     def test_stale_scan_cannot_reactivate_newly_ignored_project(self):
         # The worker snapshot was captured before the current Project was
