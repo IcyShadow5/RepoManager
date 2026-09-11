@@ -414,12 +414,14 @@ def _backup_paths():
 
 
 def _rotate_backups():
-    """bak2 <- bak1 <- copy of the current primary.
+    """bak2 <- bak1 <- copy of the committed primary.
 
-    The primary is copied (never renamed away) so the registry file stays
-    present the whole time; the caller replaces it atomically afterwards.
-    A partial backup copy is tolerable: recovery validates backups and the
-    primary itself is never exposed to a missing state.
+    Called immediately after the authoritative commit (os.replace of the
+    primary) so the newest backup generation mirrors the latest
+    successfully committed Registry; older generations still preserve
+    earlier valid states. The primary is copied (never renamed away) and
+    rotation is best effort: a degraded backup never rolls back or
+    falsely invalidates the commit that already replaced the primary.
     """
     b1, b2 = _backup_paths()
     primary = Path(REPOS_FILE)
@@ -759,10 +761,13 @@ def _persisted_workspaces():
 def save_projects(projects, workspaces=None):
     """Replace the registry using a flushed temporary file and os.replace.
 
-    Calls within this process are serialized. The new file is written and
-    fsynced before backup rotation and replacement. Failures before replacement
-    leave an existing primary in place; backup maintenance is best effort.
-    This does not promise durability across every filesystem or power failure.
+    Calls within this process are serialized. The new file is written,
+    fsynced, and replaces the primary atomically; backup rotation follows
+    the commit so the newest backup generation mirrors the latest
+    committed Registry. Failures before replacement leave an existing
+    primary and its backups in place; post-commit backup maintenance is
+    best effort. This does not promise durability across every filesystem
+    or power failure.
 
     When ``workspaces`` is None, preserve workspaces from the primary or,
     if it is absent, the last recovery cache. Pass ``workspaces=[]`` to clear
@@ -788,8 +793,16 @@ def save_projects(projects, workspaces=None):
             json.dump(data, f, indent=2, ensure_ascii=False)
             f.flush()
             os.fsync(f.fileno())
-        _rotate_backups()
         os.replace(tmp, REPOS_FILE)
+        # Rotation follows the authoritative commit so bak1 always mirrors
+        # the latest committed Registry; a later recovery from bak1 can then
+        # never resurrect a state that the caller already replaced. Post-
+        # commit maintenance is best effort: a backup failure must neither
+        # roll back nor falsely invalidate the commit above.
+        try:
+            _rotate_backups()
+        except Exception:
+            log.exception("registry committed but backup rotation failed")
         _cache_committed_workspaces(data["workspaces"])
 
 

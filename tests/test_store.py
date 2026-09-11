@@ -544,14 +544,15 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(loaded[0]["future_field"], {"x": 1})
 
     def test_backup_rotation_order(self):
+        # Post-commit rotation: bak1 mirrors the latest committed primary and
+        # bak2 retains the previous committed generation.
         store.save_projects([{"path": "C:\\1", "name": "1"}])
-        store.save_projects([{"path": "C:\\2", "name": "2"}])
         b1, b2 = store._backup_paths()
         self.assertFalse(b2.exists())
         self.assertEqual(
             json.loads(b1.read_text(encoding="utf-8"))["projects"][0]["name"],
             "1")
-        store.save_projects([{"path": "C:\\3", "name": "3"}])
+        store.save_projects([{"path": "C:\\2", "name": "2"}])
         self.assertEqual(
             json.loads(b1.read_text(encoding="utf-8"))["projects"][0]["name"],
             "2")
@@ -567,13 +568,13 @@ class StoreTests(unittest.TestCase):
         b1, b2 = store._backup_paths()
         before_primary = store.REPOS_FILE.read_bytes()
         before_b1 = b1.read_bytes()
-        self.assertFalse(b2.exists())
+        before_b2 = b2.read_bytes()
 
         store.save_projects(second)
 
         self.assertEqual(store.REPOS_FILE.read_bytes(), before_primary)
         self.assertEqual(b1.read_bytes(), before_b1)
-        self.assertFalse(b2.exists())
+        self.assertEqual(b2.read_bytes(), before_b2)
 
     def test_matching_backup_never_suppresses_stale_primary_repair(self):
         desired = {"schema_version": store.SCHEMA_VERSION,
@@ -684,12 +685,16 @@ class StoreTests(unittest.TestCase):
         self.assertEqual([p["name"] for p in projects], ["good"])
 
     def test_recovery_prefers_bak1_then_bak2(self):
+        # Post-commit rotation: bak1 mirrors the latest committed registry
+        # ("two") and bak2 retains the previous generation ("one"); recovery
+        # must prefer the newer bak1 over the older bak2.
         store.save_projects([{"path": "C:\\one", "name": "one"}])
         store.save_projects([{"path": "C:\\two", "name": "two"}])
         self._write_raw("{garbage")
         projects, report = store.read_registry()
         self.assertEqual(report["status"], "recovered")
-        self.assertEqual([p["name"] for p in projects], ["one"])
+        self.assertEqual(report["source"], "repos.json.bak1")
+        self.assertEqual([p["name"] for p in projects], ["two"])
 
     def test_invalid_backups_ignored_unrecoverable(self):
         b1, b2 = store._backup_paths()
