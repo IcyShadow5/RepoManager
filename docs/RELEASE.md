@@ -95,9 +95,9 @@ automatic GitHub Release publication is part of this build.
 The portable ZIP is preferred for 0.1.0 because it keeps Tcl/Tk and other runtime
 files explicit, starts without one-file extraction, requires no administrative
 installation, and leaves user data outside the distribution directory. A
-Windows installer and CI artifact job remain deferred until the release source
-is committed and there is evidence they add enough value to justify their
-additional lifecycle surface.
+Windows installer and CI artifact job remain deferred for 0.1.0; there is no
+current evidence that they add enough value to justify their additional
+lifecycle surface.
 
 The package includes license files collected from the actual Python, Tcl, Tk,
 and PyInstaller build environment. Python and Tcl/Tk redistribution require

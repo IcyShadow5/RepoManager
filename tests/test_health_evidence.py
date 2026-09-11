@@ -5,7 +5,7 @@ from pathlib import Path
 from repo_manager import health
 
 
-class Phase4IntelligenceTests(unittest.TestCase):
+class HealthEvidenceTests(unittest.TestCase):
     def test_finding_exposes_structured_evidence_and_guidance(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = health.evaluate_repository(tmp, {"dirty": 2, "broken": False})

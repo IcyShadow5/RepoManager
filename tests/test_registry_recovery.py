@@ -38,7 +38,7 @@ def deny_sharing(path):
 
 class RegistryFixture(unittest.TestCase):
     def setUp(self):
-        tmp = tempfile.TemporaryDirectory(prefix="repomanager-wp3-")
+        tmp = tempfile.TemporaryDirectory(prefix="repomanager-recovery-")
         self.addCleanup(tmp.cleanup)
         self.base = Path(tmp.name)
         patch = mock.patch.multiple(
@@ -52,11 +52,11 @@ class RegistryFixture(unittest.TestCase):
         self.root.mkdir()
         store.save_settings({"roots": [str(self.root)]})
         self.project = {
-            "project_id": "wp3-project", "folder_path": str(self.root),
+            "project_id": "recovery-project", "folder_path": str(self.root),
             "name": "Known project", "status": "active", "pinned": True,
             "focus": "Keep this curation",
         }
-        self.workspace = {"workspace_id": "wp3-workspace", "name": "Known group",
+        self.workspace = {"workspace_id": "recovery-workspace", "name": "Known group",
                           "members": []}
         self.payload = {"schema_version": store.SCHEMA_VERSION,
                         "projects": [self.project], "workspaces": [self.workspace]}

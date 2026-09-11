@@ -1294,7 +1294,7 @@ class LauncherPresentationGuiRegressionTests(_StoreIsolationMixin,
 
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk not available")
-class Ua02ResizeLayoutRegressionTests(_StoreIsolationMixin, unittest.TestCase):
+class DialogAndLayoutRegressionTests(_StoreIsolationMixin, unittest.TestCase):
     @staticmethod
     def _settle(app, geometry):
         app.geometry(geometry)
@@ -2068,8 +2068,8 @@ class CoreSurfaceVisibilityRegressionTests(_StoreIsolationMixin, unittest.TestCa
                     widget.winfo_rooty() + widget.winfo_height(),
                     app.winfo_rooty() + app.winfo_height())
 
-        # RM-001/RM-002 release-surface reduction: no Workspace controls and
-        # no "Change associated repository" entry point are user-visible.
+        # V0.1.0 exposes no Workspace controls or repository-association
+        # picker in the UI.
         for absent in ("workspace_combo", "workspace_status", "associate_btn"):
             with self.subTest(absent=absent):
                 self.assertFalse(hasattr(app, absent))
@@ -2088,7 +2088,7 @@ class CoreSurfaceVisibilityRegressionTests(_StoreIsolationMixin, unittest.TestCa
 
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk not available")
-class WP07LayoutRegressionTests(_StoreIsolationMixin, unittest.TestCase):
+class DetailLayoutRegressionTests(_StoreIsolationMixin, unittest.TestCase):
     def _app_with_selection(self):
         app = _build_real_app(3)
         row = main_module.project_row_id(app.projects[0])
@@ -3856,7 +3856,7 @@ class ProviderObservationAsyncTests(_StoreIsolationMixin, unittest.TestCase):
 
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk not available")
-class V1AcceptanceInteractionTests(_StoreIsolationMixin, unittest.TestCase):
+class InteractionAcceptanceTests(_StoreIsolationMixin, unittest.TestCase):
     def test_project_id_keeps_windows_path_out_of_treeview_identity(self):
         app = _build_real_app(1)
         self.addCleanup(app.destroy)
@@ -4236,7 +4236,7 @@ class StubGenerationGuiTests(_StoreIsolationMixin, unittest.TestCase):
 @unittest.skipUnless(TK_AVAILABLE, "Tk not available")
 class WorkspaceSurfaceReductionGuiTests(_StoreIsolationMixin,
                                         unittest.TestCase):
-    """RM-001: hidden Workspace GUI must not touch persisted Workspace data."""
+    """Hidden Workspace UI must not touch persisted Workspace data."""
 
     def test_app_startup_does_not_mutate_persisted_workspaces(self):
         workspace = workspaces.new_workspace("Feature X")

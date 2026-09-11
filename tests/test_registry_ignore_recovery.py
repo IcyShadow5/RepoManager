@@ -1,8 +1,7 @@
 """A committed Ignore must survive Registry recovery.
 
-Regression coverage for the V0.1.0 release blocker: backup rotation used to
-run before the authoritative os.replace commit, so bak1 held the pre-commit
-state and recovery could resurrect a successfully committed Remove/Ignore.
+Backup generations follow the authoritative registry replacement, so recovery
+must not resurrect a previous Project state.
 """
 import json
 import tempfile

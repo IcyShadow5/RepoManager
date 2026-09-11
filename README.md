@@ -44,8 +44,9 @@ deferred; running generic Python source there does not make those platforms
 supported.
 
 The intended end-user distribution is an unsigned portable Windows ZIP built
-with normal 64-bit CPython 3.14.7. Release candidates and published artifacts
-are built and verified from a fresh clone of this public repository.
+with normal 64-bit CPython 3.14.7. The release process builds and verifies
+candidates and published artifacts from a fresh clone of this public
+repository.
 
 When that artifact is available, the intended experience is:
 
@@ -154,8 +155,10 @@ See [Testing](docs/TESTING.md).
 Version 0.1.0 does not include an installer, updater, signing pipeline, cloud
 synchronization, Provider write/admin APIs, full Worktree lifecycle UI,
 coordinated multi-repository Workspace changes, Agent sessions/orchestration,
-or a general Policy/Profile/Workflow engine. Project export is not a registry
-backup or repository archive.
+or a general Policy/Profile/Workflow engine. Workspace metadata is retained for
+compatibility, but the 0.1.0 UI has no Workspace controls or repository-
+association picker. Project export is not a registry backup or repository
+archive.
 
 ## Documentation
 

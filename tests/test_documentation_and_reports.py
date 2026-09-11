@@ -7,7 +7,7 @@ from unittest import mock
 from repo_manager import intelligence, reports
 
 
-class Phase8IntelligenceTests(unittest.TestCase):
+class DocumentationAndReportsTests(unittest.TestCase):
     def test_documentation_reports_presence_without_claiming_correctness(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

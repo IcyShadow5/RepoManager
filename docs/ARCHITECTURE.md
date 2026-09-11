@@ -84,7 +84,10 @@ embedded secrets.
 
 ## Projects, Workspaces, and Worktrees
 
-The current UI supports Project curation and metadata-backed Workspace inspection. Workspaces are not coordinators for multi-repository changes, branch assignment, isolation, cleanup, or recovery.
+The current UI supports Project curation. Workspace records are loaded,
+validated, and persisted for existing data, but V0.1.0 exposes no Workspace
+controls or repository-association picker. Workspaces are not coordinators for
+multi-repository changes, branch assignment, isolation, cleanup, or recovery.
 
 Workspace records are persisted beside Projects in `repos.json`. Saving either
 collection preserves the other; invalid Workspace records are not promoted to

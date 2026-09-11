@@ -326,7 +326,7 @@ class AssociationAuthorityTests(unittest.TestCase):
 
         self.assertEqual(list(parameters), ["self", "project", "target"])
         self.assertFalse(hasattr(main_module.projects, "associate_repository"))
-        # RM-002: the V0.1.0 GUI entry point is hidden; the validated
+        # The V0.1.0 UI has no association picker; the validated
         # application-layer API remains the only association authority.
         self.assertFalse(hasattr(main_module.RepoManagerApp,
                                  "_choose_association"))

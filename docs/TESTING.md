@@ -48,8 +48,11 @@ repository contract, so this document intentionally does not hard-code them.
 - `tests/test_agents.py`, `tests/test_providers.py`, and
   `tests/test_workspaces.py` cover the explicit Agent boundary, read-only
   Provider observation, and Workspace membership/inspection semantics.
-- `tests/test_phase*_*.py` covers accepted V1 domain, Worktree, intelligence,
-  and export/report behavior retained as regression protection.
+- `tests/test_move_semantics.py`, `tests/test_project_classification.py`,
+  `tests/test_worktree_semantics.py`, `tests/test_health_evidence.py`, and
+  `tests/test_documentation_and_reports.py` cover move semantics, derived
+  Project classification, Worktree operations, Health evidence,
+  documentation/stack inspection, and metadata export/report behavior.
 - `tests/test_ui_polish.py` covers durable UI presentation helpers and guidance
   behavior without replacing live GUI verification.
 - `tests/git_repository.py` provides deterministic real-Git fixtures;

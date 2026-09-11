@@ -7,7 +7,7 @@ from unittest import mock
 from repo_manager import launchers
 
 
-class Wp04LauncherTests(unittest.TestCase):
+class LauncherBoundaryTests(unittest.TestCase):
     def test_primary_is_none_when_best_candidates_are_equally_plausible(self):
         candidates = [
             {"label": "npm run dev:web", "type": "npm", "priority": 10, "healthy": True},
