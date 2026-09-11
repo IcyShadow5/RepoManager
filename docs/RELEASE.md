@@ -13,7 +13,7 @@ verified from a fresh clone of this public repository.
 
 - 64-bit Windows 10 or 11;
 - normal 64-bit CPython 3.14.7 with Tkinter/Tcl/Tk (not free-threaded);
-- PowerShell with `Compress-Archive`;
+- PowerShell 7 (`pwsh`), which is the canonical shell for this build;
 - network access to PyPI when the isolated build environment is first created.
 
 PyInstaller and every Python package in
@@ -32,7 +32,7 @@ From the repository root:
 
 ```powershell
 $releasePython = py -3.14 -c "import sys; print(sys.executable)"
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File packaging\build_windows.ps1 -Python $releasePython -BuildVenv "$env:TEMP\RepoManager-build-3.14.7"
+pwsh -NoProfile -ExecutionPolicy Bypass -File packaging\build_windows.ps1 -Python $releasePython -BuildVenv "$env:TEMP\RepoManager-build-3.14.7"
 ```
 
 The script reads the product version from `repo_manager/version.py`, generates
@@ -61,7 +61,9 @@ runtime notices include `Python.txt` from the actual CPython runtime, Tcl and Tk
 notices read from their active libraries (including Tcl/Tk 9 zipfs), and the
 PyInstaller notice. Missing required licenses or notices fail the build before
 the ZIP is produced. The third-party runtime notices do not choose or replace
-RepoManager's own application license.
+RepoManager's own application license. ZIP entries preserve the `RepoManager/`
+root and use `/` as the separator; the build fails if a generated entry
+contains `\`.
 
 `build/`, `dist/`, and `.build-venv/` are generated and ignored. Pinned inputs
 and the adjacent manifest make a build attributable and repeatable under the

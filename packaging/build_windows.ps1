@@ -7,6 +7,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    throw "Windows release builds require PowerShell 7 (pwsh)."
+}
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 if ([string]::IsNullOrWhiteSpace($BuildVenv)) {
     $BuildVenv = Join-Path $repoRoot ".build-venv"
@@ -139,7 +142,83 @@ $runtimeMetadata = Join-Path $buildRoot "runtime-metadata.json"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $runtime = Get-Content -LiteralPath $runtimeMetadata -Raw | ConvertFrom-Json
 Copy-Item -LiteralPath $applicationLicense -Destination (Join-Path $bundlePath "LICENSE") -Force
-Compress-Archive -LiteralPath $bundlePath -DestinationPath $archivePath -Force
+Add-Type -AssemblyName System.IO.Compression
+
+$archiveStream = [System.IO.File]::Open(
+    $archivePath,
+    [System.IO.FileMode]::Create
+)
+
+try {
+    $zipArchive = [System.IO.Compression.ZipArchive]::new(
+        $archiveStream,
+        [System.IO.Compression.ZipArchiveMode]::Create
+    )
+
+    try {
+        Get-ChildItem -LiteralPath $bundlePath -Recurse -File | ForEach-Object {
+            $relativePath = [System.IO.Path]::GetRelativePath(
+                (Split-Path $bundlePath -Parent),
+                $_.FullName
+            ).Replace('\', '/')
+
+            if ($relativePath.Contains('\')) {
+                throw "Invalid ZIP entry path contains backslash: $relativePath"
+            }
+
+            $entry = $zipArchive.CreateEntry(
+                $relativePath,
+                [System.IO.Compression.CompressionLevel]::Optimal
+            )
+
+            $inputStream = $_.OpenRead()
+            $outputStream = $entry.Open()
+
+            try {
+                $inputStream.CopyTo($outputStream)
+            }
+            finally {
+                $outputStream.Dispose()
+                $inputStream.Dispose()
+            }
+        }
+    }
+    finally {
+        $zipArchive.Dispose()
+    }
+}
+finally {
+    $archiveStream.Dispose()
+}
+
+$archiveStream = [System.IO.File]::OpenRead($archivePath)
+
+try {
+    $zipArchive = [System.IO.Compression.ZipArchive]::new(
+        $archiveStream,
+        [System.IO.Compression.ZipArchiveMode]::Read
+    )
+
+    try {
+        $invalidEntries = @(
+            $zipArchive.Entries |
+                Where-Object { $_.FullName.Contains('\') } |
+                ForEach-Object { $_.FullName }
+        )
+        if ($invalidEntries.Count -gt 0) {
+            throw "ZIP archive contains entry path(s) with a backslash: $($invalidEntries -join ', ')"
+        }
+        if ($null -eq $zipArchive.GetEntry("RepoManager/RepoManager.exe")) {
+            throw "ZIP archive is missing required entry: RepoManager/RepoManager.exe"
+        }
+    }
+    finally {
+        $zipArchive.Dispose()
+    }
+}
+finally {
+    $archiveStream.Dispose()
+}
 
 $archive = Get-Item -LiteralPath $archivePath
 $hash = Get-FileHash -LiteralPath $archivePath -Algorithm SHA256

@@ -3,6 +3,7 @@ import importlib.util
 import os
 import platform
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -15,7 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "packaging" / "build_windows.ps1"
 
 
-@unittest.skipUnless(os.name == "nt", "Windows release preflight only")
+@unittest.skipUnless(
+    os.name == "nt" and shutil.which("pwsh"),
+    "Windows release preflight requires PowerShell 7 (pwsh)",
+)
 class BuildPreflightTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -24,7 +28,7 @@ class BuildPreflightTests(unittest.TestCase):
 
     def preflight(self, environment, python=None):
         return subprocess.run(
-            ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+            ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass",
              "-File", str(SCRIPT), "-Python", str(python or sys.executable),
              "-BuildVenv", str(environment), "-OutputRoot", str(self.base / "output"),
              "-CheckOnly"], capture_output=True, text=True, timeout=30,
