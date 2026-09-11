@@ -2658,8 +2658,8 @@ class IgnoredProjectsSettingsGuiTests(_StoreIsolationMixin,
                 try:
                     app.projects[0]["ignored"] = True
                     with mock.patch.object(
-                            tk.Misc, "winfo_screenheight",
-                            return_value=screen_height):
+                            main_module, "_resolve_work_area",
+                            return_value=(0, 0, 1920, screen_height)):
                         dialog, tree, restore = self._open(app)
 
                     save = self._button(dialog, "Save & Rescan")
@@ -2690,7 +2690,8 @@ class IgnoredProjectsSettingsGuiTests(_StoreIsolationMixin,
             for project in app.projects:
                 project["ignored"] = True
             with mock.patch.object(
-                    tk.Misc, "winfo_screenheight", return_value=640):
+                    main_module, "_resolve_work_area",
+                    return_value=(0, 0, 1920, 640)):
                 dialog, tree, restore = self._open(app)
             canvas = self._vertical_canvas_ancestor(tree)
             pending = list(canvas.winfo_children())
@@ -2728,7 +2729,8 @@ class IgnoredProjectsSettingsGuiTests(_StoreIsolationMixin,
             for project in app.projects:
                 project["ignored"] = True
             with mock.patch.object(
-                    tk.Misc, "winfo_screenheight", return_value=640):
+                    main_module, "_resolve_work_area",
+                    return_value=(0, 0, 1920, 640)):
                 dialog, tree, _restore = self._open(app)
             canvas = self._vertical_canvas_ancestor(tree)
             content = next(
@@ -2753,7 +2755,8 @@ class IgnoredProjectsSettingsGuiTests(_StoreIsolationMixin,
             for project in app.projects:
                 project["ignored"] = True
             with mock.patch.object(
-                    tk.Misc, "winfo_screenheight", return_value=640):
+                    main_module, "_resolve_work_area",
+                    return_value=(0, 0, 1920, 640)):
                 dialog, tree, _restore = self._open(app)
             canvas = self._vertical_canvas_ancestor(tree)
             canvas.yview_moveto(0.25)
@@ -2785,7 +2788,8 @@ class IgnoredProjectsSettingsGuiTests(_StoreIsolationMixin,
             movements = []
             for _ in range(3):
                 with mock.patch.object(
-                        tk.Misc, "winfo_screenheight", return_value=640):
+                        main_module, "_resolve_work_area",
+                        return_value=(0, 0, 1920, 640)):
                     dialog, tree, _restore = self._open(app)
                 canvas = self._vertical_canvas_ancestor(tree)
                 pending = list(canvas.winfo_children())

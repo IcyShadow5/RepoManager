@@ -1,5 +1,6 @@
 """RepoManager — scan, track and launch local git projects."""
 import copy
+import ctypes
 import logging
 import logging.handlers
 import os
@@ -10,6 +11,7 @@ import time
 import sys
 import threading
 import tkinter as tk
+from ctypes import wintypes
 from dataclasses import dataclass
 import webbrowser
 from datetime import datetime
@@ -1414,6 +1416,145 @@ def acquire_single_instance_lock():
     except OSError:
         fp.close()
         raise
+
+
+# Edge padding retained from the original dialog placement so dialogs do not
+# sit flush against monitor edges after work-area clamping.
+DIALOG_EDGE_PADDING = 16
+
+# Last-resort work area when neither Windows nor Tk reports usable bounds.
+DEFAULT_WORK_AREA = (0, 0, 1920, 1080)
+
+# Win32 flag for MonitorFromWindow: return the monitor nearest to the
+# window. Defined locally because ctypes.wintypes does not provide it.
+MONITOR_DEFAULTTONEAREST = 2
+
+
+class _MonitorInfo(ctypes.Structure):
+    """MONITORINFO (winuser.h); ctypes.wintypes does not provide it.
+
+    ``cbSize`` must be set to ``sizeof(MONITORINFO)`` before calling
+    ``GetMonitorInfoW``. The field order matches the Win32 x64 layout
+    (4-byte DWORD + two 16-byte RECTs + 4-byte DWORD).
+    """
+    _fields_ = (
+        ("cbSize", wintypes.DWORD),
+        ("rcMonitor", wintypes.RECT),
+        ("rcWork", wintypes.RECT),
+        ("dwFlags", wintypes.DWORD),
+    )
+
+
+def _windows_work_area(hwnd):
+    """Return the Win32 work area of the monitor showing ``hwnd``.
+
+    ``hwnd`` must already be a plain integer handle. Returns
+    ``(left, top, right, bottom)`` from ``rcWork`` (the usable area with the
+    taskbar and other reserved bars excluded) or ``None`` if the native lookup
+    cannot complete. Narrow exceptions: a monitor-lookup failure must never
+    prevent a dialog from opening.
+    """
+    if os.name != "nt" or not hwnd:
+        return None
+    try:
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        monitor_from_window = user32.MonitorFromWindow
+        monitor_from_window.argtypes = [wintypes.HWND, wintypes.DWORD]
+        monitor_from_window.restype = wintypes.HMONITOR
+        get_monitor_info = user32.GetMonitorInfoW
+        get_monitor_info.argtypes = [wintypes.HMONITOR,
+                                     ctypes.POINTER(_MonitorInfo)]
+        get_monitor_info.restype = wintypes.BOOL
+        monitor = monitor_from_window(hwnd, MONITOR_DEFAULTTONEAREST)
+        if not monitor:
+            return None
+        info = _MonitorInfo()
+        info.cbSize = ctypes.sizeof(info)
+        if not get_monitor_info(monitor, ctypes.byref(info)):
+            return None
+        work = info.rcWork
+        return (work.left, work.top, work.right, work.bottom)
+    except Exception:  # defensive: any ctypes/OSError must not break dialogs
+        log.debug("Win32 monitor lookup failed", exc_info=True)
+        return None
+
+
+def _resolve_work_area(widget):
+    """Resolve the usable work area of the monitor showing ``widget``.
+
+    Prefers the Windows monitor associated with the widget's HWND so dialogs
+    land on the parent's monitor even when that monitor has a negative or
+    non-zero origin; falls back to Tk's screen dimensions and finally to a
+    conservative default. Returns ``(left, top, right, bottom)``.
+    """
+    try:
+        hwnd = int(widget.winfo_id())
+    except Exception:
+        hwnd = 0
+    work = _windows_work_area(hwnd)
+    if work is not None:
+        return work
+    # Tk fallback: the primary display as Tk reports it (origin 0,0).
+    try:
+        width, height = int(widget.winfo_screenwidth()), \
+            int(widget.winfo_screenheight())
+        if width > 0 and height > 0:
+            return (0, 0, width, height)
+    except Exception:
+        pass
+    return DEFAULT_WORK_AREA
+
+
+def dialog_position(parent_rect, work_area, width, height, *,
+                    top_align=False, padding=DIALOG_EDGE_PADDING):
+    """Pure placement for a dialog inside a monitor's usable work area.
+
+    ``parent_rect`` is the parent window's ``(left, top, right, bottom)``
+    desktop rectangle and ``work_area`` the parent monitor's usable ``(left,
+    top, right, bottom)`` bounds; negative origins are valid desktop
+    coordinates on monitors left of or above the primary. Horizontal
+    placement centers the dialog over the parent window; vertical placement
+    centers it over the parent, or with ``top_align`` pins it to the work
+    area's top edge. The result is clamped into the work area, and stays
+    deterministic when the dialog is larger than the usable space (it is
+    then anchored at the work-area origin).
+    """
+    p_left, p_top, p_right, p_bottom = (int(v) for v in parent_rect)
+    w_left, w_top, w_right, w_bottom = (int(v) for v in work_area)
+    work_w = w_right - w_left
+    work_h = w_bottom - w_top
+    width = int(width)
+    height = int(height)
+    if width <= 0 or height <= 0 or work_w <= 0 or work_h <= 0:
+        # Degenerate input: no meaningful desktop geometry was reported.
+        return (0, 0)
+
+    # Parent-relative centering, preserving the original visual intent of
+    # placing the dialog over the parent window.
+    x = p_left + max(padding, (p_right - p_left - width) // 2)
+    if top_align:
+        y = w_top
+    else:
+        y = p_top + max(padding, (p_bottom - p_top - height) // 2)
+
+    # Clamp into the parent monitor's usable work area. Negative results are
+    # valid desktop coordinates on monitors left of or above the primary.
+    x = max(w_left, min(x, w_right - width))
+    if not top_align:
+        y = max(w_top, min(y, w_bottom - height))
+    return (int(x), int(y))
+
+
+def settings_dialog_height(work_area):
+    """Constrained Settings dialog height for a monitor work area.
+
+    Preserves the B2.1C behavior (700px, or the usable height minus its
+    reserved chrome on smaller displays). Available height derives from
+    ``work_bottom - work_top`` — never from the absolute value of the bottom
+    edge — so negative-origin monitors size the dialog correctly.
+    """
+    work_height = max(0, int(work_area[3]) - int(work_area[1]))
+    return min(700, max(1, work_height - 96))
 
 
 class RepoManagerApp(tk.Tk):
@@ -4359,8 +4500,15 @@ class RepoManagerApp(tk.Tk):
             pass
 
     def _prepare_dialog(self, dlg, title, geometry, *, modal=True,
-                        on_close=None, top_align=False):
-        """Apply shared theme, placement and keyboard behavior to a Toplevel."""
+                        on_close=None, top_align=False, work_area=None):
+        """Apply shared theme, placement and keyboard behavior to a Toplevel.
+
+        Placement is resolved against the monitor work area associated with
+        the parent window so dialogs land on the parent's monitor on
+        multi-monitor desktops (negative origins are valid desktop
+        coordinates). ``work_area`` lets a caller share one resolved work
+        area between sizing and placement.
+        """
         close = on_close or dlg.destroy
         dlg.title(title)
         dlg.transient(self)
@@ -4368,12 +4516,13 @@ class RepoManagerApp(tk.Tk):
         self._apply_dialog_icon(dlg)
         width, height = (int(part) for part in geometry.split("x", 1))
         self.update_idletasks()
-        x = self.winfo_rootx() + max(16, (self.winfo_width() - width) // 2)
-        y = (0 if top_align else
-             self.winfo_rooty() + max(
-                 16, (self.winfo_height() - height) // 2))
-        x = max(0, min(x, dlg.winfo_screenwidth() - width))
-        y = max(0, min(y, dlg.winfo_screenheight() - height))
+        if work_area is None:
+            work_area = _resolve_work_area(self)
+        x, y = dialog_position(
+            (self.winfo_rootx(), self.winfo_rooty(),
+             self.winfo_rootx() + self.winfo_width(),
+             self.winfo_rooty() + self.winfo_height()),
+            work_area, width, height, top_align=top_align)
         dlg.geometry(f"{width}x{height}+{x}+{y}")
         dlg.protocol("WM_DELETE_WINDOW", close)
         dlg.bind("<Escape>", lambda _e: close())
@@ -4447,10 +4596,14 @@ class RepoManagerApp(tk.Tk):
 
     def open_settings(self):
         dlg = tk.Toplevel(self)
-        settings_height = min(700, max(1, dlg.winfo_screenheight() - 96))
+        # One resolved work area drives both the constrained height and the
+        # placement so the dialog is never sized against one monitor and
+        # positioned against another.
+        work_area = _resolve_work_area(self)
+        settings_height = settings_dialog_height(work_area)
         self._prepare_dialog(
             dlg, "Settings", f"760x{settings_height}",
-            top_align=settings_height < 700)
+            top_align=settings_height < 700, work_area=work_area)
         ttk.Label(dlg, text="Settings", font=("", 15, "bold"),
                   foreground=self.pal["accent2"]).pack(
                       anchor="w", padx=16, pady=(16, 2))
