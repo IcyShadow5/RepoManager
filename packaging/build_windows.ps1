@@ -51,9 +51,9 @@ if (Test-Path -LiteralPath $buildPython) {
 } elseif (Test-Path -LiteralPath $buildVenv) {
     throw "Build environment directory exists without a Python executable. Select an unused -BuildVenv directory."
 }
-# The project source baseline is Python 3.14; the packaged V0.1.0 runtime is fixed.
+# The project source baseline is Python 3.14; the Windows release runtime is fixed.
 if ($requested.version -ne "3.14.7") {
-    throw "V0.1.0 release builds require CPython 3.14.7. Other Python versions are rejected for this reproducible build. Existing files were left untouched."
+    throw "RepoManager Windows release builds require CPython 3.14.7. Other Python versions are rejected for this reproducible build. Existing files were left untouched."
 }
 if ($CheckOnly) {
     Write-Output "RequestedPython=$requestedJson"

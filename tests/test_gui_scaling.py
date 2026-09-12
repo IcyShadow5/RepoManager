@@ -2068,7 +2068,7 @@ class CoreSurfaceVisibilityRegressionTests(_StoreIsolationMixin, unittest.TestCa
                     widget.winfo_rooty() + widget.winfo_height(),
                     app.winfo_rooty() + app.winfo_height())
 
-        # V0.1.0 exposes no Workspace controls or repository-association
+        # V0.1.1 exposes no Workspace controls or repository-association
         # picker in the UI.
         for absent in ("workspace_combo", "workspace_status", "associate_btn"):
             with self.subTest(absent=absent):

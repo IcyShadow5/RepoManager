@@ -44,7 +44,7 @@ body:
     attributes:
       label: RepoManager version or commit
       description: Provide the version or commit SHA if known.
-      placeholder: "0.1.0 or commit SHA"
+      placeholder: "0.1.1 or commit SHA"
   - type: input
     id: windows_version
     attributes:

@@ -6,7 +6,7 @@
 [![tests](https://github.com/IcyShadow5/RepoManager/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/IcyShadow5/RepoManager/actions/workflows/ci.yml?query=branch%3Amain)
 [![dependency audit](https://github.com/IcyShadow5/RepoManager/actions/workflows/dependencies.yml/badge.svg?branch=main)](https://github.com/IcyShadow5/RepoManager/actions/workflows/dependencies.yml?query=branch%3Amain)
 
-RepoManager 0.1.0 is a Windows desktop application for finding, organizing,
+RepoManager 0.1.1 is a Windows desktop application for finding, organizing,
 and inspecting local Git repositories. It keeps a separate Project registry,
 shows current repository metadata, and puts a small set of explicit actions in
 one interface without treating discovery as permission to modify a repository.
@@ -39,7 +39,7 @@ automation engine, or a sandbox for commands it launches.
 
 ## Platform and release status
 
-RepoManager 0.1.0 supports Windows 10 and Windows 11. Linux and macOS are
+RepoManager 0.1.1 supports Windows 10 and Windows 11. Linux and macOS are
 deferred; running generic Python source there does not make those platforms
 supported.
 
@@ -50,7 +50,7 @@ repository.
 
 When that artifact is available, the intended experience is:
 
-1. Download `RepoManager-0.1.0-windows-x64.zip` from the GitHub Release.
+1. Download `RepoManager-0.1.1-windows-x64.zip` from the GitHub Release.
 2. Extract the ZIP.
 3. Start `RepoManager\RepoManager.exe`.
 
@@ -63,7 +63,7 @@ reputation warning.
 ## Run from source
 
 Source execution requires Windows 10 or 11, Python 3.14 with Tkinter, and Git
-on `PATH`. The official 0.1.0 build and CI baseline is normal 64-bit CPython
+on `PATH`. The official 0.1.1 build and CI baseline is normal 64-bit CPython
 3.14.7. Python 3.11 is not a supported or CI-tested source runtime.
 
 From the repository root:
@@ -111,7 +111,7 @@ require explicit user action. The generated starter never overwrites an
 existing `run.bat`.
 
 Selecting or refreshing a Project whose chosen remote corresponds to GitHub
-starts a read-only HTTPS request to `api.github.com`. The 0.1.0 UI does not
+starts a read-only HTTPS request to `api.github.com`. The 0.1.1 UI does not
 accept or persist a GitHub token, so private repository metadata normally
 cannot be retrieved through this feature. Git Pull/Push and external launchers
 may also use the network according to Git and the launched tool's own
@@ -152,11 +152,11 @@ See [Testing](docs/TESTING.md).
 
 ## Current limitations
 
-Version 0.1.0 does not include an installer, updater, signing pipeline, cloud
+Version 0.1.1 does not include an installer, updater, signing pipeline, cloud
 synchronization, Provider write/admin APIs, full Worktree lifecycle UI,
 coordinated multi-repository Workspace changes, Agent sessions/orchestration,
 or a general Policy/Profile/Workflow engine. Workspace metadata is retained for
-compatibility, but the 0.1.0 UI has no Workspace controls or repository-
+compatibility, but the 0.1.1 UI has no Workspace controls or repository-
 association picker. Project export is not a registry backup or repository
 archive.
 

@@ -2,8 +2,8 @@
 
 ## Supported versions
 
-The 0.1.x line is the only release line intended to receive security fixes once
-V0.1.0 is published. Source snapshots and unpublished release candidates are
+The 0.1.x line is currently the only supported release line for security
+fixes. Source snapshots and unpublished release candidates are
 not supported releases. This policy must be updated if that support position
 changes.
 

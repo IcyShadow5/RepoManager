@@ -1,6 +1,6 @@
 # Contributing to RepoManager
 
-RepoManager 0.1.0 development is supported on Windows 10 and Windows 11 with
+RepoManager 0.1.1 development is supported on Windows 10 and Windows 11 with
 Python 3.14 and Git. CI and release verification use normal 64-bit CPython
 3.14.7.
 

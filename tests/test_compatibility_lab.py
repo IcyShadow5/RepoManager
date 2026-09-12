@@ -21,7 +21,7 @@ from tests.git_repository import (
 )
 
 
-# Test-scope metadata, not a support claim: V0.1.0 supports Windows only.
+# Test-scope metadata, not a support claim: V0.1.1 supports Windows only.
 ALL = frozenset({"WINDOWS", "LINUX", "MACOS"})
 
 

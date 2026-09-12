@@ -1,7 +1,7 @@
 # RepoManager — Testing
 
 RepoManager uses the standard-library `unittest` framework. The project source
-baseline is Python 3.14. Windows CI and official V0.1.0 release verification
+baseline is Python 3.14. Windows CI and official V0.1.1 release verification
 use normal 64-bit CPython 3.14.7, not a free-threaded build. The application
 and suite require no third-party Python packages.
 
@@ -16,7 +16,7 @@ py -3.14 -B -m unittest discover -s tests -v
 The portable equivalent is `python -B -m unittest discover -s tests -v` when
 `python` resolves to Python 3.14. `-B` prevents bytecode-cache noise in the
 working tree. Check `py -3.14 --version` before release verification; it must
-report 3.14.7 for the official V0.1.0 build and CI baseline.
+report 3.14.7 for the official V0.1.1 build and CI baseline.
 
 The separate `dependency audit` workflow checks hashed build/bootstrap pins
 and its own scanner environment using `pip-audit` on pull requests, relevant

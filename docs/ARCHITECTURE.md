@@ -2,7 +2,7 @@
 
 RepoManager is a single-process Windows desktop application built with Python
 3.14, the standard library, and Tkinter/ttk. It has no third-party Python
-application dependency. The intended 0.1.0 portable build bundles normal
+application dependency. The intended 0.1.1 portable build bundles normal
 64-bit CPython 3.14.7, including Tcl/Tk. The `packaging/` directory owns the
 pinned PyInstaller build inputs and release-artifact manifest contract. The
 final public-release artifact is not established by this source description.
@@ -85,7 +85,7 @@ embedded secrets.
 ## Projects, Workspaces, and Worktrees
 
 The current UI supports Project curation. Workspace records are loaded,
-validated, and persisted for existing data, but V0.1.0 exposes no Workspace
+validated, and persisted for existing data, but V0.1.1 exposes no Workspace
 controls or repository-association picker. Workspaces are not coordinators for
 multi-repository changes, branch assignment, isolation, cleanup, or recovery.
 

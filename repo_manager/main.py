@@ -5304,7 +5304,7 @@ class RepoManagerApp(tk.Tk):
 
     # ------------------------------------------------------------- Workspaces
     # Workspace metadata stays loaded, validated and persisted for existing
-    # data compatibility, but V0.1.0 exposes no Workspace GUI controls.
+    # data compatibility, but V0.1.1 exposes no Workspace GUI controls.
 
     def _build_context_ui(self):
         """Expose Agent capability in the compact context strip."""

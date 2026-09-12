@@ -1,11 +1,11 @@
 # RepoManager — Windows Release Build
 
-RepoManager 0.1.0 is intended to ship as an unsigned portable `onedir`
+RepoManager 0.1.1 is intended to ship as an unsigned portable `onedir`
 distribution for Windows. Users extract the ZIP and run
 `RepoManager\RepoManager.exe`; a separate Python installation is not required.
 Git remains an external runtime requirement and must be available on `PATH`.
 
-This document defines the build and verification contract. The final V0.1.0
+This document defines the build and verification contract. The final V0.1.1
 public artifact is considered release-ready only after it has been built and
 verified from a fresh clone of this public repository.
 
@@ -40,9 +40,9 @@ the matching Windows version resource under ignored `build/`, builds the
 windowed executable with PyInstaller, and produces:
 
 - `dist\RepoManager\` — runnable portable directory;
-- `dist\RepoManager-0.1.0-windows-x64.zip` — intended 0.1.0 distribution
+- `dist\RepoManager-0.1.1-windows-x64.zip` — intended 0.1.1 distribution
   artifact;
-- `dist\RepoManager-0.1.0-windows-x64-manifest.json` — source `HEAD`, dirty
+- `dist\RepoManager-0.1.1-windows-x64-manifest.json` — source `HEAD`, dirty
   state, Python/Tcl/Tk versions, installed build dependencies, requirement
   hashes, license hashes, PyInstaller version, archive size, and archive SHA-256.
 
@@ -90,14 +90,14 @@ from `HEAD` alone. The manifest is integrity metadata, not a signature.
 
 ## Signing and distribution boundary
 
-The intended 0.1.0 artifact is unsigned. Windows may therefore show an
+The intended 0.1.1 artifact is unsigned. Windows may therefore show an
 unknown-publisher or reputation warning. No installer, automatic updater, or
 automatic GitHub Release publication is part of this build.
 
-The portable ZIP is preferred for 0.1.0 because it keeps Tcl/Tk and other runtime
+The portable ZIP is preferred for 0.1.1 because it keeps Tcl/Tk and other runtime
 files explicit, starts without one-file extraction, requires no administrative
 installation, and leaves user data outside the distribution directory. A
-Windows installer and CI artifact job remain deferred for 0.1.0; there is no
+Windows installer and CI artifact job remain deferred for 0.1.1; there is no
 current evidence that they add enough value to justify their additional
 lifecycle surface.
 
