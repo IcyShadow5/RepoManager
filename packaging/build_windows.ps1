@@ -172,13 +172,16 @@ try {
             )
 
             $inputStream = $_.OpenRead()
-            $outputStream = $entry.Open()
-
             try {
-                $inputStream.CopyTo($outputStream)
+                $outputStream = $entry.Open()
+                try {
+                    $inputStream.CopyTo($outputStream)
+                }
+                finally {
+                    $outputStream.Dispose()
+                }
             }
             finally {
-                $outputStream.Dispose()
                 $inputStream.Dispose()
             }
         }

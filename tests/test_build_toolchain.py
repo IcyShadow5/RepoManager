@@ -89,6 +89,49 @@ class BuildPreflightTests(unittest.TestCase):
         self.assertFalse((self.base / "output").exists())
 
 
+class ZipEntryStreamOwnershipTests(unittest.TestCase):
+    """ZIP entry streams must each own a disposal boundary as they are acquired."""
+
+    INPUT_GUARD = (
+        "            $inputStream = $_.OpenRead()\n"
+        "            try {\n"
+        "                $outputStream = $entry.Open()\n"
+        "                try {\n"
+        "                    $inputStream.CopyTo($outputStream)\n"
+        "                }\n"
+        "                finally {\n"
+        "                    $outputStream.Dispose()\n"
+        "                }\n"
+        "            }\n"
+        "            finally {\n"
+        "                $inputStream.Dispose()\n"
+        "            }\n"
+    )
+
+    def setUp(self):
+        self.script = SCRIPT.read_text(encoding="utf-8-sig")
+
+    def guarded_region_end(self):
+        start = self.script.find(self.INPUT_GUARD)
+        if start == -1:
+            self.fail("build_windows.ps1 lost the nested per-entry stream ownership structure")
+        return start + len(self.INPUT_GUARD)
+
+    def test_entry_open_is_guarded_by_the_input_stream_try(self):
+        end = self.guarded_region_end()
+        self.assertEqual(self.script.count("$entry.Open()"), 1)
+        open_call = self.script.find("$entry.Open()")
+        self.assertGreater(open_call, end - len(self.INPUT_GUARD))
+        self.assertLess(open_call, end)
+
+    def test_output_disposal_cannot_mask_input_disposal(self):
+        end = self.guarded_region_end()
+        region = self.script[end - len(self.INPUT_GUARD):end]
+        self.assertGreaterEqual(region.find("$outputStream.Dispose()"), 0)
+        self.assertGreater(region.find("$inputStream.Dispose()"),
+                           region.find("$outputStream.Dispose()"))
+
+
 class RuntimeLicenseTests(unittest.TestCase):
     def test_missing_python_notice_fails_before_package_is_modified(self):
         spec = importlib.util.spec_from_file_location(
