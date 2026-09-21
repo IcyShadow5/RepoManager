@@ -16,6 +16,20 @@ explicit user interaction.
 
 Current release: **0.1.1**
 
+## Project context and my role
+
+RepoManager is a personal project built around a practical need: keeping track of
+many local repositories, their Git state and how to open them.
+
+My role covers requirements, intended behavior, technical decisions, troubleshooting,
+testing, review, documentation and release verification. Implementation is
+substantially AI-assisted. I work through the resulting system to understand its
+behavior and check it against the requirements.
+
+One example is handling moved repositories: a newly discovered path is not
+automatically treated as an existing project. Possible matches require user
+confirmation before project metadata is reassociated.
+
 ## Screenshots
 
 ### Main dashboard
