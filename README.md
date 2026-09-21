@@ -12,7 +12,7 @@ and launching local Git repositories.
 It keeps its own lightweight Project registry on top of Git, combining repository
 state with user-owned metadata such as status, focus, pinning, and notes. Repository
 discovery and inspection are read-only; actions that can modify a repository require
-explicit user interaction.
+deliberate user interaction.
 
 Current release: **0.1.1**
 
@@ -68,9 +68,9 @@ It can:
 - keep stable Project records with status, focus, pinning, notes, filtering, and sorting;
 - surface active projects in **Working on now**;
 - evaluate lightweight, read-only Repository Health checks;
-- detect supported project launchers and expose them as explicit actions;
+- detect supported project launchers and expose them as user-invoked actions;
 - open repositories in supported editors, terminals, and file explorers;
-- perform explicit fast-forward-only Pull operations;
+- perform user-initiated fast-forward-only Pull operations;
 - keep Commit and Push as separate observable steps;
 - detect possible repository moves and require confirmation before reconciliation;
 - export Project metadata and repository reports as JSON or Markdown;
@@ -97,7 +97,7 @@ Supported launcher types include:
 
 Launcher detection does not execute project code.
 
-A launcher runs only after an explicit user action.
+A launcher runs only after the user initiates the action.
 
 Configured launchers and Agent commands execute as normal local processes using the
 selected working tree as their starting directory. They are not sandboxed and may
