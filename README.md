@@ -136,3 +136,42 @@ The primary distribution is an unsigned portable Windows ZIP built with normal
 
    ```text
    RepoManager\RepoManager.exe
+   ```
+
+Git must be available on `PATH`. The portable application does not require a
+separate Python installation. The executable is unsigned, so Windows may show an
+unknown-publisher or reputation warning.
+
+## Run from source
+
+On Windows, use normal 64-bit CPython 3.14.7 with Tkinter/Tcl/Tk and Git available
+on `PATH`.
+
+```text
+git clone https://github.com/IcyShadow5/RepoManager.git
+cd RepoManager
+py -3.14 run.py
+```
+
+The application uses the Python standard library; no third-party Python application
+packages are required. Packaging has separate build dependencies.
+
+## Tests and documentation
+
+Run the test suite from the repository root:
+
+```text
+py -3.14 -B -m unittest discover -s tests -v
+```
+
+See [Testing](docs/TESTING.md) for coverage, isolation and runtime verification limits.
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Behavior and data contracts](docs/CONTRACTS.md)
+- [Windows release build](docs/RELEASE.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security reporting](SECURITY.md)
+
+## License
+
+[MIT](LICENSE).
