@@ -16,19 +16,27 @@ deliberate user interaction.
 
 Current release: **0.1.1**
 
-## Project context and my role
+## Project context and development
 
-RepoManager is a personal project built around a practical need: keeping track of
-many local repositories, their Git state and how to open them.
+RepoManager is a personal project I created around a practical need: keeping track of
+many local repositories, their Git state, current purpose, and the tools used to work
+with them.
 
-My role covers requirements, intended behavior, technical decisions, troubleshooting,
-testing, review, documentation and release verification. Implementation is
-substantially AI-assisted. I work through the resulting system to understand its
-behavior and check it against the requirements.
+I drove the project from the original idea through development, troubleshooting,
+testing, documentation, release preparation, and public release. The work has included
+defining intended behavior, investigating unexpected results, reading and changing
+relevant parts of the codebase, checking how modules interact, and verifying changes
+through tests and hands-on use.
 
-One example is handling moved repositories: a newly discovered path is not
-automatically treated as an existing project. Possible matches require user
-confirmation before project metadata is reassociated.
+The project has involved technical problems across several areas rather than one
+single feature. Examples include repository discovery and scanning behavior, filtering
+and UI behavior, Project and repository state, persistence and recovery, repository
+association, launcher behavior, Windows-specific UI details, packaging, and release
+workflows.
+
+That work has made RepoManager a practical environment for learning how a larger
+application behaves as a system: where state comes from, how it moves through the
+application, how failures surface, and how a change in one area can affect another.
 
 ## Screenshots
 
