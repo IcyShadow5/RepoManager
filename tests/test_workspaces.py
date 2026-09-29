@@ -115,5 +115,56 @@ class WorkspaceObservationHardeningTests(unittest.TestCase):
         self.assertEqual(result["status"], "READY")
 
 
+class WorkspaceExpectedHeadTests(unittest.TestCase):
+    """A pinned expected_head must be compared against the observed HEAD.
+
+    The branch-drift arm above is already covered; the HEAD-drift arm was
+    reachable but unasserted, so disabling it left the whole suite green
+    while a workspace sitting on the wrong commit reported READY.
+    """
+
+    def _inspect(self, *, pinned_head, observed_head, observed_branch="main"):
+        workspace = workspaces.new_workspace("Pinned")
+        workspaces.add_member(workspace, "repo-1", "repo",
+                              branch="main", head=pinned_head)
+        return workspaces.inspect_workspace(
+            workspace,
+            observe=lambda _path: {"branch": observed_branch,
+                                   "head": observed_head,
+                                   "dirty": 0, "worktrees": []},
+            exists=lambda _path: True,
+            repository_ids={"repo-1"},
+        )
+
+    def test_pinned_head_is_stored_on_the_member(self):
+        workspace = workspaces.new_workspace("Pinned")
+        member = workspaces.add_member(workspace, "repo-1", "repo",
+                                       branch="main", head="aaaa111")
+        self.assertEqual(member["expected_head"], "aaaa111")
+
+    def test_diverged_head_is_stale_not_ready(self):
+        result = self._inspect(pinned_head="aaaa111", observed_head="bbbb999")
+        self.assertEqual(result["members"][0]["state"], workspaces.STALE)
+        self.assertIn("expected HEAD differs from observed HEAD",
+                      result["members"][0]["evidence"])
+        self.assertEqual(result["status"], "STALE")
+
+    def test_matching_head_is_valid_and_ready(self):
+        result = self._inspect(pinned_head="aaaa111", observed_head="aaaa111")
+        self.assertEqual(result["members"][0]["state"], workspaces.VALID)
+        self.assertEqual(result["status"], "READY")
+
+    def test_absent_observed_head_does_not_match_pinned_head(self):
+        result = self._inspect(pinned_head="aaaa111", observed_head=None)
+        self.assertEqual(result["members"][0]["state"], workspaces.STALE)
+        self.assertEqual(result["status"], "STALE")
+
+    def test_branch_drift_alone_is_stale(self):
+        result = self._inspect(pinned_head="aaaa111", observed_head="aaaa111",
+                               observed_branch="feature/x")
+        self.assertEqual(result["members"][0]["state"], workspaces.STALE)
+        self.assertEqual(result["status"], "STALE")
+
+
 if __name__ == "__main__":
     unittest.main()
