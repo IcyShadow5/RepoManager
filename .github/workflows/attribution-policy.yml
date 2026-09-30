@@ -8,16 +8,40 @@ name: attribution-policy
 # This workflow runs from the BASE branch via `pull_request_target`. That is
 # the whole point: a pull request can never influence the code that judges it.
 #
-#   * the PR branch is NEVER checked out
-#   * no file from the PR is read, imported or executed
+#   * the pull request branch is NEVER checked out
+#   * no file from the pull request is read, imported or executed
 #   * commit metadata is read read-only from the GitHub API
 #   * nothing from the API is ever passed to a shell or evaluated
 #   * the token is read-only and no secret is used
 #
 # The previous revision used `pull_request` + `actions/checkout`, which meant
 # the gate executed the pull request's own copy of the policy. A pull request
-# could therefore edit the file that decides whether it passes. That is fixed
-# here and is proven by the post-merge test T5.
+# could therefore edit the file that decides whether it passes.
+#
+# ---------------------------------------------------------------------------
+# Which base commit is trusted, and why it is resolved explicitly
+# ---------------------------------------------------------------------------
+# `github.event.pull_request.base.sha` is NOT reliable as the trusted ref. For a
+# long-lived pull request -- the Dependabot bump in particular -- it is the
+# commit the pull request was *originally based on*, which can predate the
+# gate entirely. Observed here: base.sha resolved to c07e5cb1, a commit with no
+# `.github/policy/` at all, so checkout "succeeded" into a tree without the
+# policy and the job died on `python: can't open file`.
+#
+# So the ref is resolved in a dedicated step that:
+#   * uses the base BRANCH tip for `pull_request_target`. That is the canonical
+#     trusted state: the default branch is pull-request-only, force-push
+#     blocked, deletion blocked, and gated by this very check. It is also what
+#     we actually want -- the currently merged policy, not the policy as it
+#     stood when the pull request was opened.
+#   * uses the previous tip for `push`.
+#   * FAILS LOUDLY when neither is usable. It never falls back to the
+#     triggering ref, because the triggering ref for a pull request is the
+#     untrusted one.
+#
+# The post-checkout assertion then proves the trusted policy is really on disk.
+# Fail-closed was already correct here -- the gate blocked rather than passing
+# -- but it blocked with a message that said nothing about the cause.
 #
 # ---------------------------------------------------------------------------
 # Failure semantics
@@ -26,8 +50,12 @@ name: attribution-policy
 # missing commit, an empty result and an unexpected exception all fail the
 # check. There is no fallback range and no skip variable.
 #
-# `ICY_GOVERNANCE_SKIP` was removed in this revision. If this gate is wrong,
-# the gate gets fixed.
+# `pull_request_target` deliberately does not fire for merge queues. This
+# repository has no merge queue (the ruleset uses required_status_checks, not
+# the Enterprise-only `workflows` rule). If a merge queue is ever enabled, the
+# `workflows` rule plus this same base-only approach must be designed first --
+# do not add `merge_group` blindly, because that event checks out the merged
+# result and would re-introduce exactly this trust bug.
 
 on:
   pull_request_target:
@@ -35,27 +63,18 @@ on:
     branches: [main, master]
   # Detector, not a gate. `main` is pull-request-only, so a commit can only
   # arrive here via a merge that already passed the gate, or via an admin
-  # merge, a merge queue, or a manual ref update. This catches the remainder
-  # and judges the FULL introduced range rather than HEAD~1..HEAD, because
-  # judging only the tip would miss every earlier commit of a multi-commit
-  # push.
+  # merge or a manual ref update. This catches the remainder and judges the
+  # FULL introduced range rather than HEAD~1..HEAD.
   push:
     branches: [main, master]
-  # pull_request_target deliberately does not fire for merge queues. This
-  # repository has no merge queue (the ruleset uses required_status_checks,
-  # not the Enterprise-only `workflows` rule). If a merge queue is ever
-  # enabled, the `workflows` rule plus this same base-branch-only approach
-  # must be designed before it is switched on -- do not add `merge_group`
-  # blindly, because that event checks out the merged result and would
-  # re-introduce exactly the trust bug this revision removes.
 
 permissions:
   contents: read
   pull-requests: read
 
 # Only the pull request that triggered this run may be judged. A second
-# concurrent push to the same branch must not cancel a check that is already
-# in flight, because cancelling it would leave a required check unreported.
+# concurrent push must not cancel a check already in flight, because that
+# would leave a required check unreported.
 concurrency:
   group: attribution-policy-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
@@ -67,25 +86,66 @@ jobs:
     name: attribution-policy
     runs-on: ubuntu-latest
     steps:
-      # Base commit ONLY. This is the trusted policy, already merged into the
-      # canonical branch. The pull request head is never fetched. Both the
-      # engine and its test suite come from this trusted tree -- the self-test
-      # is part of the gate, so it must not be able to be swapped out.
+      - name: Resolve the trusted base ref
+        id: trusted
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          zero=0000000000000000000000000000000000000000
+          if [ "$EVENT_NAME" = "push" ]; then
+            if [ -z "$PUSH_BEFORE" ] || [ "$PUSH_BEFORE" = "$zero" ]; then
+              echo "::error::push event without a usable previous tip; refusing to guess a trusted ref"
+              exit 1
+            fi
+            echo "ref=$PUSH_BEFORE" >> "$GITHUB_OUTPUT"
+            echo "source=push:previous-tip" >> "$GITHUB_OUTPUT"
+          else
+            if [ -z "$PR_BASE_REF" ]; then
+              echo "::error::pull_request_target without a base ref; refusing to fall back to the pull request ref"
+              exit 1
+            fi
+            echo "ref=$PR_BASE_REF" >> "$GITHUB_OUTPUT"
+            echo "source=pull_request_target:base-branch-tip" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Trusted ref resolved to '$PR_BASE_REF' via ${{ steps.trusted.outputs.source }}" || true
+
       - name: Check out the trusted base commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha || github.event.before }}
+          ref: ${{ steps.trusted.outputs.ref }}
           fetch-depth: 1
           persist-credentials: false
-          # The self-test also asserts properties of THIS workflow file, so the
-          # workflow has to be part of the trusted checkout. Leaving it out made
-          # the self-test error with FileNotFoundError and failed the gate for
-          # every pull request -- a real defect, caught by the T1-T7 run.
           sparse-checkout: |
             .github/policy
             .github/tests
             .github/workflows
           sparse-checkout-cone-mode: false
+
+      - name: Assert the trusted policy is present
+        run: |
+          set -euo pipefail
+          missing=0
+          for p in \
+            .github/policy/attribution_policy.py \
+            .github/policy/hook_entry.py \
+            .github/policy/pr_gate.py \
+            .github/policy/github_api.py \
+            .github/tests/test_attribution_policy.py \
+            .github/workflows/attribution-policy.yml
+          do
+            if [ ! -f "$p" ]; then
+              echo "::error::trusted policy file missing from the checkout: $p"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::the resolved trusted ref does not contain the gate. Refusing to fall back to the pull request's copy -- that would let the pull request judge itself."
+            exit 1
+          fi
+          echo "trusted policy verified at $(git rev-parse HEAD)"
 
       - uses: actions/setup-python@v5
         with:
@@ -95,6 +155,7 @@ jobs:
         run: python .github/policy/hook_entry.py self-test
 
       - name: Judge every commit the pull request would land
+        if: github.event_name == 'pull_request_target'
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -110,22 +171,56 @@ jobs:
           AFTER_SHA: ${{ github.sha }}
         run: python .github/policy/pr_gate.py check-push
 
-  # Policy self-protection. Independent of the policy module on purpose: if
-  # the policy engine is broken or made permissive, this job still reports,
-  # so a required check is never simply absent.
+  # Policy self-protection. Independent of the policy module on purpose: if the
+  # policy engine is broken or made permissive, this job still reports, so a
+  # required check is never simply absent.
   governance-selfcheck:
     name: governance-selfcheck
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve the trusted base ref
+        id: trusted
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          zero=0000000000000000000000000000000000000000
+          if [ "$EVENT_NAME" = "push" ]; then
+            if [ -z "$PUSH_BEFORE" ] || [ "$PUSH_BEFORE" = "$zero" ]; then
+              echo "::error::push event without a usable previous tip; refusing to guess a trusted ref"
+              exit 1
+            fi
+            echo "ref=$PUSH_BEFORE" >> "$GITHUB_OUTPUT"
+          else
+            if [ -z "$PR_BASE_REF" ]; then
+              echo "::error::pull_request_target without a base ref; refusing to fall back to the pull request ref"
+              exit 1
+            fi
+            echo "ref=$PR_BASE_REF" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Check out the trusted base commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha || github.event.before }}
+          ref: ${{ steps.trusted.outputs.ref }}
           fetch-depth: 1
           persist-credentials: false
           sparse-checkout: |
             .github/policy
+            .github/workflows
           sparse-checkout-cone-mode: false
+
+      - name: Assert the trusted gate is present
+        run: |
+          set -euo pipefail
+          for p in .github/policy/pr_gate.py .github/policy/github_api.py; do
+            if [ ! -f "$p" ]; then
+              echo "::error::trusted gate file missing from the checkout: $p"
+              exit 1
+            fi
+          done
 
       - uses: actions/setup-python@v5
         with:
@@ -150,9 +245,32 @@ jobs:
       matrix:
         python-version: ["3.12", "3.13", "3.14"]
     steps:
+      - name: Resolve the trusted base ref
+        id: trusted
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          zero=0000000000000000000000000000000000000000
+          if [ "$EVENT_NAME" = "push" ]; then
+            if [ -z "$PUSH_BEFORE" ] || [ "$PUSH_BEFORE" = "$zero" ]; then
+              echo "::error::push event without a usable previous tip; refusing to guess a trusted ref"
+              exit 1
+            fi
+            echo "ref=$PUSH_BEFORE" >> "$GITHUB_OUTPUT"
+          else
+            if [ -z "$PR_BASE_REF" ]; then
+              echo "::error::pull_request_target without a base ref; refusing to fall back to the pull request ref"
+              exit 1
+            fi
+            echo "ref=$PR_BASE_REF" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha || github.event.before }}
+          ref: ${{ steps.trusted.outputs.ref }}
           fetch-depth: 1
           persist-credentials: false
 

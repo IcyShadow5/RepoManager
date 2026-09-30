@@ -600,16 +600,61 @@ class TestTrustModel(unittest.TestCase):
         with open(WORKFLOW, encoding="utf-8") as fh:
             return fh.read()
 
+    @staticmethod
+    def _code():
+        """The workflow with comment lines removed.
+
+        The file documents *why* `base.sha` is not used, so asserting the
+        string is absent from the raw text would fail on its own explanation.
+        """
+        body = TestTrustModel._body()
+        return "\n".join(
+            line for line in body.splitlines() if not line.lstrip().startswith("#")
+        )
+
     def test_uses_pull_request_target(self):
         self.assertIn("pull_request_target:", self._body())
 
     def test_does_not_use_the_bare_pull_request_trigger(self):
         self.assertNotIn("\n  pull_request:\n", self._body())
 
-    def test_checkout_is_pinned_to_the_base_commit(self):
+    def test_trusted_ref_is_the_base_branch_tip_not_a_stale_sha(self):
+        """`base.sha` is not trustworthy and is no longer used.
+
+        For a long-lived pull request it is the commit the pull request was
+        originally based on, which can predate the gate entirely. Observed on
+        the Dependabot bump: base.sha resolved to a commit with no
+        `.github/policy/` directory at all.
+        """
+        code = self._code()
+        self.assertNotIn("github.event.pull_request.base.sha", code)
+        self.assertIn("github.event.pull_request.base.ref", code)
+        self.assertNotIn("github.event.pull_request.head.sha", code)
+
+    def test_trusted_ref_is_resolved_explicitly_and_never_guessed(self):
         body = self._body()
-        self.assertIn("github.event.pull_request.base.sha", body)
-        self.assertNotIn("github.event.pull_request.head.sha", body)
+        self.assertIn("Resolve the trusted base ref", body)
+        # Every checkout must consume the resolved output, never a raw event
+        # expression that could evaluate to an empty string.
+        checkouts = re.findall(r"uses:\s*actions/checkout@\S+\n(?:.*\n)*?\s*ref:(.*)", body)
+        self.assertTrue(checkouts, "no checkout step found")
+        for ref in checkouts:
+            ref = ref.strip()
+            self.assertIn("steps.trusted.outputs.ref", ref, f"checkout ref is not the resolved one: {ref!r}")
+        # And it must refuse rather than fall back.
+        self.assertIn("refusing to fall back to the pull request", body)
+
+    def test_trusted_policy_presence_is_asserted_after_checkout(self):
+        """A checkout that silently lacks the policy must fail with a reason."""
+        body = self._body()
+        self.assertIn("Assert the trusted policy is present", body)
+        self.assertIn(".github/policy/attribution_policy.py", body)
+        self.assertIn("does not contain the gate", body)
+
+    def test_push_path_uses_the_previous_tip_and_rejects_the_zero_sha(self):
+        body = self._body()
+        self.assertIn("github.event.before", body)
+        self.assertIn("0000000000000000000000000000000000000000", body)
 
     def test_no_pull_request_ref_is_checked_out(self):
         self.assertNotIn("refs/pull/", self._body())
