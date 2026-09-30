@@ -1,25 +1,24 @@
 #!/usr/bin/env python3
 """
-GIT-GOVERNANCE-01 : hook / CI entry point.
+GIT-GOVERNANCE-FIX-02 : local hook entry point.
 
-One entry point for every enforcement surface, so the local hook, the CI
-workflow and the workstation self-test all make the identical decision.
+Used by the globally installed ``commit-msg`` and ``pre-push`` hooks, and
+available on the command line for manual triage.
 
-Usage
------
-  hook_entry.py commit-msg <message-file>
-      Check a pending commit message plus the configured author/committer.
+Commands
+--------
+  commit-msg <message-file>     check a pending commit message and identity
+  pre-push <rev> [<rev> ...]    check commits bound for a canonical branch
+  check-message                 read a message from stdin
+  self-test                     run the required policy test set
 
-  hook_entry.py pre-push <rev> [<rev> ...]
-      Check each ``<rev>`` (a commit, a ``base..head`` range, or
-      ``--not <ref>`` to mean "commits reachable from the index/HEAD that are
-      not on <ref>").
+There is no skip switch. ``ICY_GOVERNANCE_SKIP`` was removed in
+GIT-GOVERNANCE-FIX-02: production policy code must not carry a general
+environment bypass. If a hook is genuinely blocking work that it should not,
+the policy is wrong and gets fixed, not bypassed.
 
-  hook_entry.py self-test
-      Run the required policy test set.
-
-  hook_entry.py check-message [--author-name N --author-email E]
-      Read a message from stdin; useful for manual triage.
+The server-side gate lives in ``pr_gate.py`` and is deliberately a separate
+program with no shared skip surface.
 """
 
 from __future__ import annotations
@@ -37,15 +36,43 @@ def _banner() -> str:
     return f"{P.POLICY_ID} v{P.POLICY_VERSION}"
 
 
+def _make_output_safe() -> None:
+    """Never let an undecodable character turn a verdict into a crash.
+
+    A violating message can contain the very characters this policy exists to
+    catch, and a narrow console encoding would raise UnicodeEncodeError while
+    printing it -- turning a rejection into a traceback and, on some runners,
+    a non-zero exit that looks like a tool failure rather than a policy
+    verdict. Replacing unencodable characters keeps the verdict intact.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except Exception:  # pragma: no cover - not a TextIOWrapper
+            pass
+
+
 def _report(violations) -> None:
-    print(f"{_banner()}: commit REJECTED -- agent attribution detected.", file=sys.stderr)
+    print(
+        f"{_banner()}: commit REJECTED -- agent attribution detected.",
+        file=sys.stderr,
+    )
     print("", file=sys.stderr)
     for v in violations:
         print(f"  {v}", file=sys.stderr)
         print("", file=sys.stderr)
-    print("  Policy: coding agents and tools are instruments. They must not", file=sys.stderr)
-    print("  appear as author, co-author, committer, generated-by, assisted-by,", file=sys.stderr)
-    print("  created-by or via the robot marker in canonical history.", file=sys.stderr)
+    print(
+        "  Policy: coding agents and tools are instruments. They must not",
+        file=sys.stderr,
+    )
+    print(
+        "  appear as author, co-author, committer, generated-by, assisted-by,",
+        file=sys.stderr,
+    )
+    print(
+        "  created-by or via the robot marker in canonical history.",
+        file=sys.stderr,
+    )
 
 
 def _git_ident(kind: str):
@@ -62,18 +89,9 @@ def _git_ident(kind: str):
     return (name, rest.rstrip(">"))
 
 
-def _ignore_env() -> bool:
-    """Explicit, auditable escape hatch -- never set by any agent."""
-    return os.environ.get("ICY_GOVERNANCE_SKIP", "") == "1"
-
-
 def cmd_commit_msg(path: str) -> int:
     with open(path, "rb") as fh:
         raw = fh.read().decode("utf-8", "replace")
-
-    if _ignore_env():
-        print(f"{_banner()}: ICY_GOVERNANCE_SKIP=1 set, check skipped.")
-        return 0
 
     violations = list(P.check_message(raw).violations)
 
@@ -89,10 +107,6 @@ def cmd_commit_msg(path: str) -> int:
 
 
 def cmd_pre_push(revs) -> int:
-    if _ignore_env():
-        print(f"{_banner()}: ICY_GOVERNANCE_SKIP=1 set, check skipped.")
-        return 0
-
     violations = []
     for rev in revs:
         if not rev or rev == "--not":
@@ -108,9 +122,11 @@ def cmd_pre_push(revs) -> int:
                 violations += P.check_range(base, head or "HEAD").violations
             else:
                 violations += P.check_range("", rev).violations
-        except subprocess.CalledProcessError as exc:
+        except Exception as exc:  # noqa: BLE001 - deliberate: fail closed
+            # Fail closed. Previously a failed range could fall through to a
+            # narrower retry; that turned an error into a pass.
             print(
-                f"{_banner()}: could not inspect {rev!r} ({exc}).",
+                f"{_banner()}: FAILED CLOSED -- could not inspect {rev!r} ({exc!r}).",
                 file=sys.stderr,
             )
             return 1
@@ -147,11 +163,10 @@ def cmd_check_message(argv) -> int:
 def cmd_self_test() -> int:
     """Run the required policy test set.
 
-    The same entry point serves two layouts -- the governance repository
-    (``policy/`` beside ``tests/``) and a governed repository, where the
-    policy is vendored under ``.github/policy/`` beside ``.github/tests/``.
-    Rather than assume one, walk upwards and use the first directory that
-    actually contains the test module.
+    The same entry point serves the governance repository (policy beside
+    tests) and a governed repository (policy vendored under ``.github/policy/``
+    beside ``.github/tests/``). Rather than assume one, walk upwards and use
+    the first directory that actually contains the test module.
     """
     here = os.path.dirname(os.path.abspath(__file__))
     candidates = [os.path.join(here, "tests")]
@@ -183,6 +198,7 @@ def cmd_self_test() -> int:
 
 
 def main(argv) -> int:
+    _make_output_safe()
     if len(argv) < 2:
         print(__doc__, file=sys.stderr)
         return 2

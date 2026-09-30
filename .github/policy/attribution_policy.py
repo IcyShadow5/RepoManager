@@ -1,14 +1,5 @@
 """
-GIT-GOVERNANCE-01 : Global AI Attribution Enforcement Policy Engine
-=================================================================
-
-Single source of truth for the "no agent attribution in canonical history"
-policy. This module is the ONLY place where the block/allow decision is
-defined. It is consumed by:
-
-  * the global git hooks installed via ``core.hooksPath`` (local layer)
-  * the GitHub Actions workflow in each governed repository (server layer)
-  * the test-suite in ``tests/``
+GIT-GOVERNANCE-FIX-02 : hardened attribution policy engine.
 
 Owner policy (solo project): coding agents, coding tools and automations are
 instruments. They must never self-register as author, co-author, committer,
@@ -19,39 +10,89 @@ Scope is deliberately narrow. Only Codebuff / Code Buff / Freebuff / Free Buff
 and the robot marker U+1F916 are treated as forbidden agent identities. Other
 human contributors are NOT blocked.
 
-Design notes
-------------
-* Messages are parsed SEMANTICALLY, not grepped. Subject, body and the git
-  trailer block are separated, and trailer syntax (``Key: value`` and
-  ``Key # value``) is understood.
-* Merely mentioning ``Freebuff`` in a subject such as ``fix Freebuff
-  integration`` is legitimate technical content and is allowed. Only an
-  *attribution structure* is rejected.
-* Quoted text and fenced code blocks are recognised as data, so
-  ``test parser against "Generated with Codebuff"`` is allowed while the real
-  trailer form is rejected.
+--------------------------------------------------------------------------
+What this module deliberately does NOT do
+--------------------------------------------------------------------------
+Homoglyphs are not claimed to be solved. The normalisation below is limited to
+three mechanisms, each of which is covered by a test:
+
+  * NFKC compatibility decomposition  (fullwidth / compatibility forms)
+  * removal of Unicode category Cf    (zero-width, soft hyphen, BOM, marks)
+  * removal of Unicode category Mn    (combining marks, an additional tested
+                                       evasion vector, safe because the
+                                       blocked tokens are pure ASCII)
+
+A Cyrillic "о" substituted for the Latin "o" is therefore still a different
+token and is NOT detected. Claiming otherwise would be untrue. Closing that
+class of attack needs a curated confusable map, which is a separate piece of
+work and would carry its own false-positive risk.
 """
 
 from __future__ import annotations
 
 import re
 import subprocess
+import unicodedata
 from dataclasses import dataclass
 from typing import List, Optional, Sequence, Set, Tuple
 
-POLICY_ID = "GIT-GOVERNANCE-01"
-POLICY_VERSION = "1.0.0"
+POLICY_ID = "GIT-GOVERNANCE-FIX-02"
+POLICY_VERSION = "2.0.0"
+
+# --------------------------------------------------------------------------
+# Identity normalisation  (FIX-02 section 6)
+# --------------------------------------------------------------------------
+
+#: Format-control characters. Invisible, and never legitimate inside an
+#: identity token. ZWSP/ZWNJ/ZWJ/WORD-JOINER/SOFT-HYPHEN/BOM/LRM all live
+#: here, and NFKC does not remove them -- so removal has to be explicit.
+_STRIP_CATEGORIES = frozenset({"Cf"})
+
+#: Nonspacing combining marks. Not required by the mission; added because they
+#: are a real and cheap evasion vector and cannot cause a false positive on the
+#: ASCII-only tokens this policy matches.
+_STRIP_CATEGORIES_EXTRA = frozenset({"Mn"})
+
+_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def normalise_identity(text: str) -> str:
+    """Normalise a string before any agent-identity comparison.
+
+    Order matters: compatibility decomposition first, then removal of
+    invisible/combining characters, then whitespace collapse, then casefold.
+
+    >>> normalise_identity("Code\\u200bbuff")
+    'codebuff'
+    >>> normalise_identity("Code\\u00adbuff")
+    'codebuff'
+    >>> normalise_identity("\\uff23\\uff4f\\uff44\\uff45\\uff42\\uff55\\uff46\\uff46")
+    'codebuff'
+    """
+    if not text:
+        return ""
+    s = unicodedata.normalize("NFKC", text)
+    s = "".join(
+        ch
+        for ch in s
+        if unicodedata.category(ch) not in _STRIP_CATEGORIES
+        and unicodedata.category(ch) not in _STRIP_CATEGORIES_EXTRA
+    )
+    s = _WHITESPACE_RE.sub(" ", s)
+    return s.casefold().strip()
+
 
 # --------------------------------------------------------------------------
 # Forbidden agent identities
 # --------------------------------------------------------------------------
 
-#: Forbidden agent *names*. Case-insensitive, tolerant of separators, so
-#: ``codebuff``, ``Code Buff``, ``code-buff`` and ``CODE_BUFF`` all match.
-AGENT_NAME_RE = re.compile(r"(?:code[\s_\-]?buff|free[\s_\-]?buff)", re.IGNORECASE)
+#: Forbidden agent *names*, matched against the normalised form so that case,
+#: separator and invisible-character variants all collapse onto one token.
+AGENT_NAME_TOKENS = ("codebuff", "freebuff")
+_AGENT_NAME_RE = re.compile(r"(?:code[\s_\-]?buff|free[\s_\-]?buff)")
 
-#: Forbidden *attribution email domains*. Only domains actually observed in
-#: real history are listed -- no speculative domains are invented.
+#: Forbidden email domains. Only domains actually observed in real history are
+#: listed -- no speculative domains are invented.
 AGENT_EMAIL_DOMAINS = ("codebuff.com",)
 
 #: Exact agent email addresses observed in history.
@@ -61,9 +102,8 @@ AGENT_EMAILS = ("noreply@codebuff.com",)
 ROBOT_MARKER = "\U0001F916"
 
 #: Git trailer keys that constitute an attribution *structure*. Normalised
-#: (lower-case, separators collapsed) before comparison, so
-#: ``Co-Authored-By``/``Coauthored by``/``co_authored_by`` all collapse onto
-#: ``co-authored-by``.
+#: before comparison so that ``Co-Authored-By``/``Coauthored by``/
+#: ``co_authored_by`` all collapse onto one key.
 ATTRIBUTION_TRAILER_KEYS = frozenset(
     {
         "co-authored-by",
@@ -115,8 +155,8 @@ ATTRIBUTION_TRAILER_KEYS = frozenset(
 )
 
 #: Trailer keys that are legitimate git practice and must never be treated as
-#: attribution. ``Signed-off-by``/``Reviewed-by``/``Acked-by`` are normal
-#: human trailers; blocking them would be a false positive.
+#: attribution. ``Signed-off-by``/``Reviewed-by``/``Acked-by`` are normal human
+#: trailers; blocking them would be a false positive.
 ALLOWED_TRAILER_KEYS = frozenset(
     {
         "signed-off-by",
@@ -137,43 +177,43 @@ ALLOWED_TRAILER_KEYS = frozenset(
     }
 )
 
-#: Free-form phrase introducing agent attribution in body text.
-_GENERATED_PHRASE_RE = re.compile(
-    r"(?:\A|[^A-Za-z])(?:generated|created|produced|built|written|authored)"
-    r"\s+(?:with|by|using)\b",
-    re.IGNORECASE,
-)
-
 _SEPARATOR_RE = re.compile(r"[\s_]+")
 # Git treats only single-token `Key: value` lines as trailers, so a prose
-# sentence containing a colon ("this is a note: it explains something") is
-# NOT a trailer. Recognition stays git-faithful.
+# sentence containing a colon is NOT a trailer. Recognition stays git-faithful.
 _TRAILER_LINE_RE = re.compile(
     r"^\s*(?P<key>[A-Za-z][A-Za-z0-9_.\-]{1,60})\s*(?::|#)\s*(?P<value>.+?)\s*$"
 )
-# Broader key syntax, used to catch attribution keys that git itself would
-# not recognise (e.g. "CO AUTHORED BY: ..."). Safe because the normalised key
-# must equal an exact entry in ATTRIBUTION_TRAILER_KEYS.
+# Broader key syntax, used to catch attribution keys that git itself would not
+# recognise (e.g. "CO AUTHORED BY: ..."). Safe because the normalised key must
+# equal an exact entry in ATTRIBUTION_TRAILER_KEYS.
 _LOOSE_KEY_LINE_RE = re.compile(
     r"^\s*(?P<key>[A-Za-z][A-Za-z0-9 _.\-]{1,60}?)\s*[:=]\s*(?P<value>.+?)\s*$"
 )
 _FENCE_RE = re.compile(r"^\s{0,3}(?P<fence>`{3,}|~{3,})")
 _QUOTE_RE = re.compile(r"^\s*>+\s?")
-# A whole line that is nothing but an attribution banner.
-_BANNER_RE = re.compile(
-    r"^\s*" + re.escape(ROBOT_MARKER) + r"\s*"
-    r"(?:(?:generated|created|produced|built|written)\s+(?:with|by)\s*)?"
-    r"(?:code[\s_\-]?buff|free[\s_\-]?buff)\s*" + re.escape(ROBOT_MARKER) + r"?\s*$",
-    re.IGNORECASE,
-)
-# A whole line that is nothing but a "generated with/by <agent>" banner.
+
+# --------------------------------------------------------------------------
+# Structured attribution shapes  (FIX-02 section 8)
+# --------------------------------------------------------------------------
+#
+# Attribution is recognised as a STRUCTURE, never as a phrase occurring
+# somewhere in prose. Each pattern below must match a whole line. That is what
+# allows documentation like
+#
+#     We reject lines like Generated with Codebuff here.
+#
+# to be committed while a real attribution line is still rejected.
+
+_ROBOT = re.escape(ROBOT_MARKER)
+_AGENT = r"(?:code[\s_\-]?buff|free[\s_\-]?buff)"
+_GEN_VERB = r"(?:generated|created|produced|built|written)"
+
+#: A line that is only the marker, optionally with an agent name.
+_BANNER_RE = re.compile(rf"^\s*{_ROBOT}\s*{_AGENT}\s*{_ROBOT}?$", re.IGNORECASE)
+
+#: A line that is only "<marker> [generated with/by] <agent> [<marker>]".
 _GENERATED_BANNER_RE = re.compile(
-    r"^\s*(?:"
-    + re.escape(ROBOT_MARKER)
-    + r"\s*)?(?:generated|created|produced|built|written)\s+(?:with|by)\s+"
-    r"(?:code[\s_\-]?buff|free[\s_\-]?buff)\s*"
-    + re.escape(ROBOT_MARKER)
-    + r"?\s*$",
+    rf"^\s*{_ROBOT}?\s*{_GEN_VERB}\s+(?:with|by)\s+{_AGENT}\s*{_ROBOT}?$",
     re.IGNORECASE,
 )
 
@@ -189,31 +229,51 @@ def normalise_key(key: str) -> str:
     ``"Co-Authored-By "`` -> ``"co-authored-by"``
     ``"co_authored_by"``   -> ``"co-authored-by"``
     """
-    k = (key or "").strip().lower()
+    k = normalise_identity(key)
     k = _SEPARATOR_RE.sub("-", k)
+    k = k.replace("_", "-")
     k = re.sub(r"-{2,}", "-", k)
     return k.strip("-")
 
 
 def is_agent_name(text: str) -> bool:
-    """True when *text* contains a forbidden agent name token."""
-    return bool(AGENT_NAME_RE.search(text or ""))
+    """True when *text* contains a forbidden agent name token.
+
+    Matching runs on the normalised form, so ``Code<ZWSP>buff``,
+    ``Code<SOFT HYPHEN>buff`` and fullwidth forms all match.
+    """
+    return bool(_AGENT_NAME_RE.search(normalise_identity(text)))
 
 
 def is_agent_email(email: str) -> bool:
-    """True when *email* is a known agent address or agent domain."""
-    e = (email or "").strip().lower()
-    if not e:
+    """True when *email* is a known agent address or agent domain.
+
+    Domain matching is label-aware: ``codebuff.com`` and any real subdomain
+    such as ``mail.codebuff.com`` match, while ``notcodebuff.com`` does not
+    (it is a different registrable domain, not a subdomain).
+    """
+    e = normalise_identity(email)
+    if not e or "@" not in e:
         return False
     if e in AGENT_EMAILS:
         return True
-    domain = e.rpartition("@")[2]
-    return bool(domain) and domain in AGENT_EMAIL_DOMAINS
+    domain = e.rpartition("@")[2].strip(".")
+    if not domain:
+        return False
+    for bad in AGENT_EMAIL_DOMAINS:
+        d = normalise_identity(bad)
+        if domain == d or domain.endswith("." + d):
+            return True
+    return False
 
 
 def is_agent_identity(name: str, email: str) -> bool:
     """True when the name/email pair identifies a coding agent."""
     return is_agent_email(email) or is_agent_name(name)
+
+
+def contains_robot_marker(text: str) -> bool:
+    return ROBOT_MARKER in (text or "")
 
 
 # --------------------------------------------------------------------------
@@ -259,6 +319,11 @@ def split_message(message: str) -> Tuple[str, List[str], List[str]]:
     A message consisting of nothing but a single trailer line is treated as a
     trailer, so ``Co-Authored-By: Codebuff <noreply@codebuff.com>`` alone is
     still rejected rather than mistaken for a subject.
+
+    Structural matching runs on the *normalised* form of each line, so a
+    trailer key or a banner hidden behind zero-width characters is still
+    recognised. The original lines are what gets returned, so a violation is
+    always reported with the text the author actually wrote.
     """
     text = (message or "").replace("\r\n", "\n").replace("\r", "\n")
     lines = text.split("\n")
@@ -267,11 +332,13 @@ def split_message(message: str) -> Tuple[str, List[str], List[str]]:
     if not lines:
         return "", [], []
 
+    norm = [normalise_identity(ln) for ln in lines]
+
     subject = lines[0]
     rest = lines[1:]
+    rest_norm = norm[1:]
 
-    # Degenerate case: the whole message is one trailer-shaped line.
-    if not any(ln.strip() for ln in rest) and _TRAILER_LINE_RE.match(subject):
+    if not any(ln.strip() for ln in rest) and _TRAILER_LINE_RE.match(norm[0]):
         return "", [], [subject]
 
     end = len(rest) - 1
@@ -283,9 +350,13 @@ def split_message(message: str) -> Tuple[str, List[str], List[str]]:
     start += 1
 
     if start <= end:
-        candidate = rest[start : end + 1]
+        candidate = rest_norm[start : end + 1]
         if candidate and all(_TRAILER_LINE_RE.match(ln) for ln in candidate):
-            trailers = [ln for ln in candidate if _TRAILER_LINE_RE.match(ln)]
+            trailers = [
+                original
+                for original, n in zip(rest[start : end + 1], candidate)
+                if _TRAILER_LINE_RE.match(n)
+            ]
             return subject, rest[:start], trailers
 
     return subject, rest, []
@@ -313,8 +384,13 @@ def _fenced_line_numbers(lines: Sequence[str]) -> Set[int]:
 
 
 def _check_trailer(line: str, line_no: int) -> List[Violation]:
-    """Evaluate a single trailer line semantically."""
-    m = _TRAILER_LINE_RE.match(line)
+    """Evaluate a single trailer line semantically.
+
+    Matching runs on the normalised line so a trailer key hidden behind
+    zero-width characters is still recognised. The reported line stays the
+    original text.
+    """
+    m = _TRAILER_LINE_RE.match(normalise_identity(line))
     if not m:
         return []
     key = normalise_key(m.group("key"))
@@ -342,7 +418,7 @@ def _check_trailer(line: str, line_no: int) -> List[Violation]:
         reasons.append("agent name")
     if is_agent_email(value):
         reasons.append("agent email")
-    if ROBOT_MARKER in value:
+    if contains_robot_marker(value):
         reasons.append("robot marker")
     if not reasons:
         return []
@@ -359,20 +435,20 @@ def _check_trailer(line: str, line_no: int) -> List[Violation]:
 def _check_loose_attribution_key(line: str, line_no: int) -> List[Violation]:
     """Catch attribution keys git itself would not treat as trailers.
 
-    ``CO AUTHORED BY: Codebuff`` is a single-token-less key, so the strict
+    ``CO AUTHORED BY: Codebuff`` has no single token key, so the strict
     trailer parser ignores it. It is still an attribution attempt, so it is
     rejected -- but only when the normalised key is an *exact* attribution key
     and the value names an agent, which keeps prose such as
     ``this is a note: it explains something`` out of the net.
     """
-    m = _LOOSE_KEY_LINE_RE.match(line)
+    m = _LOOSE_KEY_LINE_RE.match(normalise_identity(line))
     if not m:
         return []
     key = normalise_key(m.group("key"))
     if key not in ATTRIBUTION_TRAILER_KEYS:
         return []
     value = m.group("value")
-    if not (is_agent_name(value) or is_agent_email(value) or ROBOT_MARKER in value):
+    if not (is_agent_name(value) or is_agent_email(value) or contains_robot_marker(value)):
         return []
     return [
         Violation(
@@ -385,8 +461,14 @@ def _check_loose_attribution_key(line: str, line_no: int) -> List[Violation]:
 
 
 def _check_banner(line: str, line_no: int) -> Optional[Violation]:
-    """Reject a line that is nothing but an agent attribution banner."""
-    stripped = line.strip()
+    """Reject a line that is nothing but an agent attribution banner.
+
+    The patterns are whole-line anchored and matched against the *normalised*
+    line, so a banner cannot hide a zero-width character inside the agent
+    name. A sentence that merely mentions the phrase is prose, not
+    attribution, and is deliberately allowed.
+    """
+    stripped = normalise_identity(line)
     if not stripped:
         return None
     if _BANNER_RE.match(stripped):
@@ -415,7 +497,7 @@ def check_message(message: str) -> CheckResult:
 
     def line_no_for(raw: str) -> int:
         for i, ln in enumerate(all_lines):
-            if ln is raw or ln == raw:
+            if ln == raw:
                 return i + 1
         return 0
 
@@ -425,23 +507,17 @@ def check_message(message: str) -> CheckResult:
     for line in trailers:
         violations.extend(_check_trailer(line, line_no_for(line)))
 
-    # -- 2. the subject line, when it is *only* an attribution banner ------
-    # A subject that merely mentions the product is legitimate; a subject that
-    # is nothing but a generated-by banner is not.
+    # -- 2. subject, when it is *only* an attribution banner ---------------
     if subject:
         banner = _check_banner(subject, line_no_for(subject))
         if banner:
             violations.append(banner)
 
-    # -- 3. free-form body attribution -------------------------------------
-    # The subject is exempt from prose scanning so that
-    # 'test parser against "Generated with Codebuff"' stays allowed.
+    # -- 3. body: structured attribution only ------------------------------
     for line in body:
-        idx = line_no_for(line) - 1
-        if idx in fenced:
+        if line_no_for(line) - 1 in fenced:
             continue
-        stripped = line.strip()
-        if not stripped or _QUOTE_RE.match(line):
+        if _QUOTE_RE.match(line):
             continue
 
         banner = _check_banner(line, line_no_for(line))
@@ -449,22 +525,7 @@ def check_message(message: str) -> CheckResult:
             violations.append(banner)
             continue
 
-        loose = _check_loose_attribution_key(line, line_no_for(line))
-        if loose:
-            violations.extend(loose)
-            continue
-
-        if not _GENERATED_PHRASE_RE.search(stripped):
-            continue
-        if is_agent_name(stripped) or ROBOT_MARKER in stripped:
-            violations.append(
-                Violation(
-                    "BODY_GENERATED_ATTRIBUTION",
-                    line_no_for(line),
-                    line,
-                    "body line attributes generation to a coding agent",
-                )
-            )
+        violations.extend(_check_loose_attribution_key(line, line_no_for(line)))
 
     return CheckResult(violations)
 
@@ -535,23 +596,23 @@ def check_range(base: str, head: str = "HEAD") -> CheckResult:
 #
 # GitHub's ruleset rule matches the whole message with RE2 semantics and has
 # no notion of git trailers, so this pattern is deliberately conservative: it
-# fires only on lines that are unambiguously attribution, which is what keeps
-# ``fix Freebuff integration`` out of the net.
+# fires only on lines that are unambiguously attribution. Every alternative is
+# anchored to the start of a line, which is what keeps prose such as
+# "We reject lines like Generated with Codebuff here." out of the net.
 #
 # RE2 constraints honoured here:
 #   * inline flags appear once, at the very start (``(?im)``)
 #   * no lookahead / lookbehind / backreferences
 #   * no ``\U`` escape; the robot marker is written ``\x{1F916}``
-#   * text anchors are ``\A``/``\z``; ``$`` would match at every line end
+#   * text anchors are ``\z``; ``$`` would match at every line end
 #
-# The trailer form is anchored to the end of the message (``\z``) on purpose.
-# Real attribution lives in the trailing trailer block, so anchoring there
-# keeps a documentation commit that quotes the trailer inside a fenced code
-# block out of the net. Exact trailer-vs-quoted-data discrimination is then
-# left to the Required Policy Check, which parses the message properly.
+# Note: a RE2 pattern operates on raw bytes and cannot perform NFKC or
+# invisible-character stripping. Zero-width and soft-hyphen variants are
+# therefore handled by the semantic engine only. This is a documented limit of
+# the regex layer, not an oversight.
 #
-# The same string is stored in ``policy/patterns.json``; the test-suite
-# asserts the two can never drift apart.
+# The same string is stored in ``patterns.json``; the test-suite asserts the
+# two can never drift apart.
 
 RE2_COMMIT_MESSAGE_PATTERN = (
     r"(?im)"
@@ -559,11 +620,12 @@ RE2_COMMIT_MESSAGE_PATTERN = (
     r"^[ \t]*(?:co[-_]?authored[-_]?by|co[-_]?author|co[-_]?generated[-_]?by"
     r"|generated[\s_-]+(?:by|with)|assisted[\s_-]+(?:by|with)"
     r"|created[\s_-]+by|written[\s_-]+by|authored[\s_-]+by"
-    r"|built[\s_-]+by|made[\s_-]+by|produced[\s_-]+by|powered[\s_-]+by"
+    r"|built[\s_-]+by|made[-_]?by|produced[-_]?by|powered[-_]?by"
     r"|pair[\s_-]+(?:authored|programmed)[\s_-]+by"
     r"|agent|tool|ai[-_]?author|llm[-_]?author)"
     r"[ \t]*[:=][ \t]*[^\n]*"
-    r"(?:code[\s_-]?buff|free[\s_-]?buff|noreply@codebuff\.com)"
+    r"(?:code[\s_-]?buff|free[\s_-]?buff)"
+    r"(?:[ \t]*@[ \t]*[A-Za-z0-9.\-]*codebuff\.com)?"
     r"[^\n]*(?:\n[ \t]*[A-Za-z][A-Za-z0-9_.\-]{1,60}[ \t]*[:=][^\n]*)*\n?\z"
     # -- form 2: robot marker used as an attribution banner ---------------
     r"|^[ \t]*\x{1F916}[ \t]*(?:(?:generated|created|produced|built|written)"
