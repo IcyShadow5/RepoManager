@@ -586,6 +586,17 @@ class TestTrustModel(unittest.TestCase):
 
     @staticmethod
     def _body():
+        # A missing workflow file is a packaging problem, not a policy result.
+        # Reporting it as a bare FileNotFoundError once cost a full T1-T7
+        # verification round, because every trust-model test errored at once
+        # and the required check failed for an unrelated reason.
+        if not os.path.isfile(WORKFLOW):
+            raise AssertionError(
+                f"the workflow file is not in this checkout: {WORKFLOW}\n"
+                "The self-test asserts properties of the workflow, so the job "
+                "that runs it must check out .github/workflows as well as "
+                ".github/policy and .github/tests."
+            )
         with open(WORKFLOW, encoding="utf-8") as fh:
             return fh.read()
 

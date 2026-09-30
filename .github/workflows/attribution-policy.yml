@@ -77,9 +77,14 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha || github.event.before }}
           fetch-depth: 1
           persist-credentials: false
+          # The self-test also asserts properties of THIS workflow file, so the
+          # workflow has to be part of the trusted checkout. Leaving it out made
+          # the self-test error with FileNotFoundError and failed the gate for
+          # every pull request -- a real defect, caught by the T1-T7 run.
           sparse-checkout: |
             .github/policy
             .github/tests
+            .github/workflows
           sparse-checkout-cone-mode: false
 
       - uses: actions/setup-python@v5
