@@ -1,62 +1,159 @@
 name: attribution-policy
 
-# GIT-GOVERNANCE-01 : server-side commit-policy check.
+# GIT-GOVERNANCE-FIX-02 : server-side commit-policy gate.
 #
-# This is the authoritative layer. It is agent-independent: it runs on
-# GitHub's infrastructure, reads the commits that are trying to enter the
-# canonical branch, and no local flag -- including `--no-verify` -- can
-# suppress it. The local `commit-msg` hook is only the first line of defence.
+# ---------------------------------------------------------------------------
+# Trust model
+# ---------------------------------------------------------------------------
+# This workflow runs from the BASE branch via `pull_request_target`. That is
+# the whole point: a pull request can never influence the code that judges it.
 #
-# The policy module is vendored from the governance repository
-# (IcyShadow5/workstation-governance) rather than fetched at run time, so a
-# compromised network or a moved upstream cannot silently change what this
-# gate enforces.
+#   * the PR branch is NEVER checked out
+#   * no file from the PR is read, imported or executed
+#   * commit metadata is read read-only from the GitHub API
+#   * nothing from the API is ever passed to a shell or evaluated
+#   * the token is read-only and no secret is used
+#
+# The previous revision used `pull_request` + `actions/checkout`, which meant
+# the gate executed the pull request's own copy of the policy. A pull request
+# could therefore edit the file that decides whether it passes. That is fixed
+# here and is proven by the post-merge test T5.
+#
+# ---------------------------------------------------------------------------
+# Failure semantics
+# ---------------------------------------------------------------------------
+# Fail closed. A policy violation, an API error, a malformed response, a
+# missing commit, an empty result and an unexpected exception all fail the
+# check. There is no fallback range and no skip variable.
+#
+# `ICY_GOVERNANCE_SKIP` was removed in this revision. If this gate is wrong,
+# the gate gets fixed.
 
 on:
-  pull_request:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: [main, master]
+  # Detector, not a gate. `main` is pull-request-only, so a commit can only
+  # arrive here via a merge that already passed the gate, or via an admin
+  # merge, a merge queue, or a manual ref update. This catches the remainder
+  # and judges the FULL introduced range rather than HEAD~1..HEAD, because
+  # judging only the tip would miss every earlier commit of a multi-commit
+  # push.
   push:
     branches: [main, master]
-  merge_group:
-    branches: [main, master]
+  # pull_request_target deliberately does not fire for merge queues. This
+  # repository has no merge queue (the ruleset uses required_status_checks,
+  # not the Enterprise-only `workflows` rule). If a merge queue is ever
+  # enabled, the `workflows` rule plus this same base-branch-only approach
+  # must be designed before it is switched on -- do not add `merge_group`
+  # blindly, because that event checks out the merged result and would
+  # re-introduce exactly the trust bug this revision removes.
 
 permissions:
   contents: read
+  pull-requests: read
+
+# Only the pull request that triggered this run may be judged. A second
+# concurrent push to the same branch must not cancel a check that is already
+# in flight, because cancelling it would leave a required check unreported.
+concurrency:
+  group: attribution-policy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  # The required check. Its name is referenced by the repository ruleset and
+  # must not change without updating that ruleset.
   attribution-policy:
     name: attribution-policy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Base commit ONLY. This is the trusted policy, already merged into the
+      # canonical branch. The pull request head is never fetched. Both the
+      # engine and its test suite come from this trusted tree -- the self-test
+      # is part of the gate, so it must not be able to be swapped out.
+      - name: Check out the trusted base commit
+        uses: actions/checkout@v4
         with:
-          # Full history: the check must see every commit entering the branch,
-          # not just the tip.
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.base.sha || github.event.before }}
+          fetch-depth: 1
           persist-credentials: false
+          sparse-checkout: |
+            .github/policy
+            .github/tests
+          sparse-checkout-cone-mode: false
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Run policy self-test
+      - name: Run policy self-test against the trusted policy
         run: python .github/policy/hook_entry.py self-test
 
-      - name: Check commits entering the canonical branch
+      - name: Judge every commit the pull request would land
         env:
-          # The merge base of the PR is the only correct comparison point.
-          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          set -euo pipefail
-          if [ "$EVENT_NAME" = "merge_group" ]; then
-            python .github/policy/hook_entry.py pre-push "refs/heads/${GITHUB_REF_NAME}..${GITHUB_SHA}"
-            exit 0
-          fi
-          if [ -n "$BASE_SHA" ] && [ "$BASE_SHA" != "$HEAD_SHA" ]; then
-            python .github/policy/hook_entry.py pre-push "$BASE_SHA..$HEAD_SHA"
-          else
-            python .github/policy/hook_entry.py pre-push "$HEAD_SHA~1..$HEAD_SHA" \
-              || python .github/policy/hook_entry.py pre-push "$HEAD_SHA"
-          fi
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python .github/policy/pr_gate.py check-pr
+
+      - name: Judge the commits introduced by a direct push
+        if: github.event_name == 'push'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: python .github/policy/pr_gate.py check-push
+
+  # Policy self-protection. Independent of the policy module on purpose: if
+  # the policy engine is broken or made permissive, this job still reports,
+  # so a required check is never simply absent.
+  governance-selfcheck:
+    name: governance-selfcheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the trusted base commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.before }}
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            .github/policy
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Report pull requests that modify the gate itself
+        if: github.event_name == 'pull_request_target'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python .github/policy/pr_gate.py check-governed-paths
+
+  # Proves the policy works on every interpreter the project claims to
+  # support. Not required, and deliberately named so it cannot be confused
+  # with the required check above.
+  runtime-compat:
+    name: runtime-compat
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.before }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Policy self-test on ${{ matrix.python-version }}
+        run: python .github/policy/hook_entry.py self-test
