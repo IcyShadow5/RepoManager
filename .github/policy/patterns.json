@@ -1,0 +1,14 @@
+{
+  "policy_id": "GIT-GOVERNANCE-01",
+  "policy_version": "1.0.0",
+  "flavour": "RE2",
+  "operator": "regex",
+  "negate": false,
+  "description": "GitHub ruleset commit_message_pattern. negate=false means the rule FAILS when the pattern matches, i.e. MUST NOT MATCH.",
+  "availability": "commit_message_pattern is a GitHub Enterprise Cloud feature. On GitHub Free/Pro/Team the API rejects it with HTTP 422 \"Invalid rule 'commit_message_pattern'\", so this pattern is held ready for when the plan provides it.",
+  "commit_message_pattern": "(?im)^[ \\t]*(?:co[-_]?authored[-_]?by|co[-_]?author|co[-_]?generated[-_]?by|generated[\\s_-]+(?:by|with)|assisted[\\s_-]+(?:by|with)|created[\\s_-]+by|written[\\s_-]+by|authored[\\s_-]+by|built[\\s_-]+by|made[\\s_-]+by|produced[\\s_-]+by|powered[\\s_-]+by|pair[\\s_-]+(?:authored|programmed)[\\s_-]+by|agent|tool|ai[-_]?author|llm[-_]?author)[ \\t]*[:=][ \\t]*[^\\n]*(?:code[\\s_-]?buff|free[\\s_-]?buff|noreply@codebuff\\.com)[^\\n]*(?:\\n[ \\t]*[A-Za-z][A-Za-z0-9_.\\-]{1,60}[ \\t]*[:=][^\\n]*)*\\n?\\z|^[ \\t]*\\x{1F916}[ \\t]*(?:(?:generated|created|produced|built|written)[\\s_-]+(?:by|with)[ \\t]*)?(?:code[\\s_-]?buff|free[\\s_-]?buff)|^[ \\t]*(?:generated|created|produced|built|written)[\\s_-]+(?:by|with)[ \\t]+(?:code[\\s_-]?buff|free[\\s_-]?buff)\\b[ \\t]*\\x{1F916}?",
+  "author_email_pattern": "(?i)^.*@codebuff\\.com$",
+  "committer_email_pattern": "(?i)^.*@codebuff\\.com$",
+  "author_name_pattern": "(?i)(?:code[\\s_-]?buff|free[\\s_-]?buff)",
+  "committer_name_pattern": "(?i)(?:code[\\s_-]?buff|free[\\s_-]?buff)"
+}

@@ -1,0 +1,62 @@
+name: attribution-policy
+
+# GIT-GOVERNANCE-01 : server-side commit-policy check.
+#
+# This is the authoritative layer. It is agent-independent: it runs on
+# GitHub's infrastructure, reads the commits that are trying to enter the
+# canonical branch, and no local flag -- including `--no-verify` -- can
+# suppress it. The local `commit-msg` hook is only the first line of defence.
+#
+# The policy module is vendored from the governance repository
+# (IcyShadow5/workstation-governance) rather than fetched at run time, so a
+# compromised network or a moved upstream cannot silently change what this
+# gate enforces.
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  merge_group:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  attribution-policy:
+    name: attribution-policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the check must see every commit entering the branch,
+          # not just the tip.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run policy self-test
+        run: python .github/policy/hook_entry.py self-test
+
+      - name: Check commits entering the canonical branch
+        env:
+          # The merge base of the PR is the only correct comparison point.
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "merge_group" ]; then
+            python .github/policy/hook_entry.py pre-push "refs/heads/${GITHUB_REF_NAME}..${GITHUB_SHA}"
+            exit 0
+          fi
+          if [ -n "$BASE_SHA" ] && [ "$BASE_SHA" != "$HEAD_SHA" ]; then
+            python .github/policy/hook_entry.py pre-push "$BASE_SHA..$HEAD_SHA"
+          else
+            python .github/policy/hook_entry.py pre-push "$HEAD_SHA~1..$HEAD_SHA" \
+              || python .github/policy/hook_entry.py pre-push "$HEAD_SHA"
+          fi
