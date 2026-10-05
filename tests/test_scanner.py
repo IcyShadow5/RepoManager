@@ -81,8 +81,8 @@ class MergeScanTests(unittest.TestCase):
 
         for scanned_path in variations:
             with self.subTest(scanned_path=scanned_path), mock.patch.object(
-                    scanner, "collect_metadata",
-                    side_effect=lambda path: scanner.empty_meta(path)):
+                    scanner, "collect_metadata_observation",
+                    side_effect=lambda path: (scanner.empty_meta(path), None)):
                 merged, _problems = scanner.merge_scan(
                     [dict(existing)], [scanned_path])
 
@@ -97,8 +97,8 @@ class MergeScanTests(unittest.TestCase):
             "last_seen": "2099-01-01T00:00:00Z",
         }
         with mock.patch.object(
-                scanner, "collect_metadata",
-                side_effect=lambda path: scanner.empty_meta(path)):
+                scanner, "collect_metadata_observation",
+                side_effect=lambda path: (scanner.empty_meta(path), None)):
             merged, _problems = scanner.merge_scan(
                 [existing], [r"D:\Repo-2"])
 
@@ -421,14 +421,14 @@ class MergeScanHardeningTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             a = make_real_repo(Path(tmp), "A")
             b = make_real_repo(Path(tmp), "B")
-            real = scanner.collect_metadata
+            real = scanner.collect_metadata_observation
 
             def flaky(path):
                 if path.endswith("A"):
                     raise RuntimeError("simulated crash")
                 return real(path)
 
-            with mock.patch.object(scanner, "collect_metadata",
+            with mock.patch.object(scanner, "collect_metadata_observation",
                                    side_effect=flaky):
                 projects, problems = scanner.merge_scan([], [str(a), str(b)])
             # the failed repo degrades to a problem entry; B is unaffected

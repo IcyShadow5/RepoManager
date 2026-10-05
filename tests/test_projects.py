@@ -1,7 +1,9 @@
 import unittest
 from unittest import mock
 
-from repo_manager.projects import (apply_curation, association_candidates,
+from repo_manager.projects import (apply_curation,
+                                   _apply_repository_association,
+                                   association_candidates,
                                    ensure_project_id,
                                    build_project_export,
                                    build_repository_report,
@@ -190,6 +192,23 @@ class ProjectAssociationTests(unittest.TestCase):
         valid, reason = validate_association_target([self.current, broken], self.current, broken)
         self.assertFalse(valid)
         self.assertTrue(reason)
+
+    def test_valid_association_preserves_project_identity_and_metadata(self):
+        _apply_repository_association(self.current, self.other)
+        self.assertEqual(self.current["project_id"], "project-1")
+        self.assertEqual(self.current["path"], "D:/other")
+        self.assertEqual(self.current["status"], "active")
+        self.assertEqual(self.current["focus"], "keep this")
+        self.assertTrue(self.current["pinned"])
+
+    def test_association_preserves_curated_name_and_clears_observations(self):
+        self.current.update({"dirty": 3, "branch": "old", "remote": "old/repo"})
+        _apply_repository_association(self.current, self.other)
+        self.assertEqual(self.current["name"], "Project")
+        self.assertEqual(self.current["path"], "D:/other")
+        self.assertNotIn("dirty", self.current)
+        self.assertNotIn("branch", self.current)
+        self.assertNotIn("remote", self.current)
 
 class ProjectVisibilityTests(unittest.TestCase):
     def test_empty_filter_matches_every_project(self):

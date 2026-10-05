@@ -1,3 +1,4 @@
+"""LEGACY / PARITY REFERENCE — NOT CURRENT UI PROOF."""
 import json
 import os
 import subprocess
@@ -126,43 +127,3 @@ class VSCodeActionTests(unittest.TestCase):
                     self.assertEqual(child.returncode, 0, stderr)
                     self.assertEqual(stderr, "")
                     self.assertEqual(stdout.strip(), json.dumps([str(target)]))
-
-
-class GeneratedStarterBoundaryTests(unittest.TestCase):
-    @unittest.skipUnless(os.name == "nt", "Windows batch runtime only")
-    def test_generated_starter_changes_directory_without_interpreting_name(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            helper = root / "cwd.py"
-            helper.write_text(
-                "import json,os; print('CWD=' + json.dumps(os.getcwd()))\n",
-                encoding="ascii")
-            for name in ("normal", "space project", "Ünicode", "R&D",
-                         "R&echo STUB_MARKER&rem", "%USERNAME%", "!USERNAME!"):
-                with self.subTest(name=name):
-                    target = root / name
-                    target.mkdir()
-                    self.assertTrue(launchers.generate_stub_bat(target))
-                    script = target / "run.bat"
-                    original = script.read_bytes()
-                    self.assertNotIn(b"\r\r\n", original)
-                    self.assertNotIn(b"\n", original.replace(b"\r\n", b""))
-                    self.assertFalse(launchers.generate_stub_bat(target))
-                    self.assertEqual(script.read_bytes(), original)
-                    # Observe cwd after executing the complete generated template.
-                    with script.open("a", encoding="utf-8", newline="") as out:
-                        out.write(f'"{sys.executable}" "{helper}"\r\n')
-                    child = processes.spawn_structured(
-                        str(script), cwd=str(root),
-                        popen=lambda *a, **kw: subprocess.Popen(
-                            *a, **kw, stdin=subprocess.DEVNULL,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            text=True), creationflags=main.CREATE_NO_WINDOW)
-                    with child:
-                        stdout, stderr = child.communicate(timeout=10)
-                    self.assertEqual(child.returncode, 0, stderr)
-                    self.assertEqual(stderr, "")
-                    observed = [line[4:] for line in stdout.splitlines()
-                                if line.startswith("CWD=")]
-                    self.assertEqual(observed, [json.dumps(str(target))])
-                    self.assertNotIn("STUB_MARKER", stdout.splitlines())

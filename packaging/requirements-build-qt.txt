@@ -1,0 +1,5 @@
+# Complete Qt Windows x64 runtime wheel closure; PyPI 6.11.2 wheel hashes.
+PySide6==6.11.2 --hash=sha256:3201d67e3c10be2eaedd3910ff0f02351eca7e88c95a291cde5e7f2f55ef207f
+PySide6_Essentials==6.11.2 --hash=sha256:c8a29def77032773a30879f7f24415b5395ad08592d147c170824ef4c735dfc1
+PySide6_Addons==6.11.2 --hash=sha256:f449ea4431da20e7b86752cca8d166f93434516fe417f981c27e5f8e1b554407
+shiboken6==6.11.2 --hash=sha256:6ab0eba1c904455df621f9a6df3ca2bb896bab8670572d2bc4e37804ae91f19a

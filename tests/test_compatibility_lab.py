@@ -24,6 +24,48 @@ from tests.git_repository import (
 # Test-scope metadata, not a support claim: V0.1.1 supports Windows only.
 ALL = frozenset({"WINDOWS", "LINUX", "MACOS"})
 
+# R2.5B: bounded readiness for transient unobserved reads. A prior
+# contention reproduction showed a healthy attached fixture whose single
+# `git rev-parse HEAD` observation was starved past the product 10 s budget
+# (head unobserved, broken False), while an immediate manual read returned
+# the SHA. Retry ONLY while required evidence was not actually observed; an
+# observed value is asserted immediately with no further attempts.
+OBSERVATION_ATTEMPTS = 3
+
+# R2.5B-FIX-1: branch and HEAD are independent Git subprocesses, so HEAD can
+# be observed while branch is transiently unobserved (and vice versa).
+# Readiness therefore requires BOTH required fields actually observed.
+REQUIRED_ATTACHED_FIELDS = frozenset({"head", "branch"})
+
+
+def observe_attached_head(testcase, repository, expected_head,
+                          expected_branch="main",
+                          attempts=OBSERVATION_ATTEMPTS):
+    """Return attached metadata once HEAD and branch are genuinely observed.
+
+    Contradiction-first: every actually observed required field is asserted
+    immediately, so a wrong SHA or wrong branch fails loudly even when the
+    other field is still unobserved — a known contradiction is never
+    retried into PASS. Only incomplete-but-uncontradicted observations are
+    retried, within `attempts` total calls and no sleeps.
+    """
+    meta, observed = None, frozenset()
+    for _ in range(attempts):
+        meta, observed = scanner.collect_metadata_observation(repository)
+        observed_set = set(observed)
+        if "head" in observed_set:
+            testcase.assertEqual(meta["head"], expected_head)
+        if "branch" in observed_set:
+            testcase.assertEqual(meta["branch"], expected_branch)
+        if REQUIRED_ATTACHED_FIELDS <= observed_set:
+            testcase.assertFalse(meta["broken"])
+            return meta
+    testcase.fail(
+        "attached HEAD/branch were never fully observed after "
+        f"{attempts} attempts: repository={repository} "
+        f"expected_head={expected_head} expected_branch={expected_branch} "
+        f"last_meta={meta} last_observed={sorted(observed)}")
+
 
 @unittest.skipUnless(GIT_EXE, "Git executable is not available")
 class RepositoryCompatibilityLabTests(unittest.TestCase):
@@ -67,12 +109,14 @@ class RepositoryCompatibilityLabTests(unittest.TestCase):
             detach_head(detached)
             unborn = init_repository(root / "unborn")
 
-            attached_meta = scanner.collect_metadata(attached)
+            expected_head = git(attached, "rev-parse", "HEAD")
+            attached_meta = observe_attached_head(self, attached,
+                                                  expected_head)
             detached_meta = scanner.collect_metadata(detached)
             unborn_meta = scanner.collect_metadata(unborn)
 
             self.assertEqual(attached_meta["branch"], "main")
-            self.assertIsNotNone(attached_meta["head"])
+            self.assertEqual(attached_meta["head"], expected_head)
             self.assertIsNone(detached_meta["branch"])
             self.assertIsNotNone(detached_meta["head"])
             self.assertEqual(unborn_meta["branch"], "main")

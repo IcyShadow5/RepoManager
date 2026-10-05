@@ -1,21 +1,33 @@
 # RepoManager — Architecture
 
-RepoManager is a single-process Windows desktop application built with Python
-3.14, the standard library, and Tkinter/ttk. It has no third-party Python
-application dependency. The intended 0.1.1 portable build bundles normal
-64-bit CPython 3.14.7, including Tcl/Tk. The `packaging/` directory owns the
+RepoManager is a Windows desktop application built with Python 3.14 and
+PySide6/QML. The Qt portable candidate bundles normal 64-bit CPython 3.14.7
+and the reviewed Qt runtime, excluding Tkinter/Tcl/Tk. The `packaging/` directory owns the
 pinned PyInstaller build inputs and release-artifact manifest contract. The
 final public-release artifact is not established by this source description.
 
 ```text
-run.py → repo_manager.main.main() → single-instance lock → logging → RepoManagerApp
+run.py → run_qt.main() → QApplication / single-instance lock / logging
+       → QML → RepoManagerBridge / GitController → RepositorySession
+       → scanner / Git / Health / launchers / Agents → store
+
+Reference only: run_classic.py → repo_manager.main.main() → RepoManagerApp (Tk)
 ```
 
 ## Modules
 
 | Module | Responsibility |
 |---|---|
-| `repo_manager/main.py` | Tk UI, orchestration, worker threads, settings, notes, launcher controls, Git actions, move/problem dialogs, and status presentation |
+| `repo_manager/qt_bridge.py`, `qt_git.py`, `qml/` | Current Qt controllers/models, Git confirmations and QML presentation |
+| `repo_manager/repository_service.py` | Shared application service, target validation, inventory acceptance and persistence |
+| `repo_manager/scan_control.py`, `scan_state.py` | Cooperative scan cancellation/progress and complete-inventory state |
+| `repo_manager/health_preferences.py`, `health_presentation.py` | Stable-ID advisory suppression, transparent scoring and presentation |
+| `repo_manager/main.py` | Legacy/reference Tk orchestration; not imported by the Qt runtime |
+| `repo_manager/git_operations.py` | Bounded Git service, NUL status parsing, independent commit/staging/network approvals and rechecks |
+| `repo_manager/git_dialogs.py` | Resizable asynchronous Changes, network preview, History, and Remote views |
+| `repo_manager/project_actions.py` | Stable UI targets and cached action capabilities (never write authority) |
+| `repo_manager/git_actions_ui.py` | Target-bound menu/sidebar actions and guarded worker ownership |
+| `repo_manager/move_review.py` | Manual pair approval and responsive issues/move review; no inferred absorption IDs |
 | `repo_manager/scanner.py` | Bounded repository discovery, Git metadata and fingerprint collection, registry merge/retention, and advisory move matching |
 | `repo_manager/store.py` | JSON registry/settings, notes, validation, atomic writes, backups, corruption quarantine, recovery, and note moves |
 | `repo_manager/projects.py` | Project identity, curation, association checks and updates, visibility, ordering, and Working-on-now selection |
@@ -30,7 +42,9 @@ run.py → repo_manager.main.main() → single-instance lock → logging → Rep
 | `repo_manager/theme.py` | Dark/light palettes and Tk/ttk styling |
 | `repo_manager/version.py` | Release version and source-revision identity |
 
-`main.py` connects the UI to the domain, persistence, scanner, Health, launcher, and Git operations. The smaller modules keep domain and persistence rules testable without constructing the full UI.
+The Qt bridge and RepositorySession connect the UI to existing domain services.
+Legacy Tk adapters remain only for parity reference. Domain and persistence
+rules are tested independently of either presentation.
 
 `projects.py` composes bounded understanding/report data from
 `intelligence.py` and `reports.py`. `health.py` also consumes documentation
@@ -57,11 +71,16 @@ configured roots
   → bounded parallel Git metadata collection
   → exact-path registry merge and retention
   → advisory move matching
-  → UI queue
+  → Qt signal delivery
   → UI update and persistence
 ```
 
 Discovery recognizes `.git` directories and files, does not follow symlinks, respects depth and skip rules, and skips unreadable directories. A failure while reading one repository does not abort the whole scan. Normalized remotes and root commits are used only as move-matching clues. A user must confirm a suggested move before the registry or its notes change.
+
+Qt scans use a background coordinator with four bounded metadata workers and
+cooperative cancellation. Cancelled results never replace the last complete
+inventory. Close during scan requires an explicit choice. A filesystem call
+that does not return cannot be promised instantaneous cancellation.
 
 ## Health flow
 
@@ -84,22 +103,19 @@ embedded secrets.
 
 ## Projects, Workspaces, and Worktrees
 
-The current UI supports Project curation. Workspace records are loaded,
-validated, and persisted for existing data, but V0.1.1 exposes no Workspace
-controls or repository-association picker. Workspaces are not coordinators for
-multi-repository changes, branch assignment, isolation, cleanup, or recovery.
+The current UI supports Project curation. Workspace persistence/metadata may exist internally, but v0.1.1 exposes no Workspace controls or repository-association picker. Workspaces are not coordinators for multi-repository changes, branch assignment, isolation, cleanup, or recovery.
 
 Workspace records are persisted beside Projects in `repos.json`. Saving either
 collection preserves the other; invalid Workspace records are not promoted to
 valid state implicitly.
 
-Git remains responsible for Worktree relationships. RepoManager can observe Worktrees, recognize `.git` files, and perform narrow explicit create/remove operations with checks for identity, collisions, dirty state, authorization, and postconditions. It does not provide automatic cleanup, lifecycle history, or a full coordinated Worktree service.
+Git remains responsible for Worktree relationships. RepoManager observes Worktrees, recognizes `.git` files, and displays Worktree state. Narrow create/remove domain functions exist internally with checks for identity, collisions, dirty state, authorization, and postconditions, and are covered by tests, but no create/remove UI workflow is currently exposed. It does not provide automatic cleanup, lifecycle history, or a full coordinated Worktree service.
 
 Changing a Project’s associated repository updates RepoManager metadata only. It does not move files, run Git, change branches or remotes, or delete anything.
 
 ## Background work and mutations
 
-Scanning, metadata collection, and Git operations run away from Tk event handlers and return through a queue. Detecting a launcher never runs it; configured launcher and Agent commands run only after explicit user action. Pull is fast-forward-only. Commit & Push previews and rechecks state before running separate reported steps.
+Scanning, metadata collection, and Git operations run away from Tk event handlers and return through a queue. Detecting a launcher never runs it; configured launcher and Agent commands run only after explicit user action. Pull is fast-forward-only. Independent Commit defaults to staged-only and never contacts a remote; stage-all is explicit. Push/Fetch/Pull preview destinations and recheck live remote configuration and branch/HEAD before execution. Changes, History and Remotes are bounded observations; diff disables external diff/textconv execution. Index/ref writes use the existing physical-repository guard and tracked queue callbacks. External editors/Git processes remain outside that in-process lock.
 
 Registry writes are serialized within the primary process, flush a temporary file, and replace the target atomically. Backups rotate, invalid data is quarantined, and valid backups can be used for recovery. The single-instance process boundary is not a distributed multi-writer protocol.
 

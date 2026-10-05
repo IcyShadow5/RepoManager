@@ -32,3 +32,4 @@ Thumbs.db
 *.tmp
 *.tmp.*
 *~
+.archify/

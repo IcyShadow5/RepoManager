@@ -1,3 +1,4 @@
+"""LEGACY / PARITY REFERENCE — NOT CURRENT UI PROOF."""
 """B2.4 — multi-monitor dialog geometry and fallback behavior.
 
 Covers the parent-monitor work-area resolution and the pure
@@ -15,7 +16,7 @@ import tkinter as tk
 from unittest import mock
 
 from repo_manager import main as main_module
-from tests.test_gui_scaling import _build_real_app
+from tests.legacy.test_gui_scaling import _build_real_app
 
 
 def _tk_available():

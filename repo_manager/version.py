@@ -1,6 +1,12 @@
 """RepoManager release identity."""
 
-VERSION = "0.1.1"
+VERSION = "0.1.2"
+
+
+def is_prerelease() -> bool:
+    """Keep controlled runtime probes unavailable in stable releases."""
+    import re
+    return bool(re.fullmatch(r"\d+\.\d+\.\d+-(?:dev|rc\.[1-9]\d*)", VERSION))
 
 
 def source_revision() -> str:

@@ -7,6 +7,7 @@ import os
 import queue
 import shutil
 import subprocess
+from .git_environment import git_environment
 import time
 import sys
 import threading
@@ -14,17 +15,61 @@ import tkinter as tk
 from ctypes import wintypes
 from dataclasses import dataclass
 import webbrowser
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from . import agents, health, launchers, processes, projects, providers, reports, scanner, store, theme, workspaces, version
-from .projects import project_location_key, repository_path_key
-
-try:
-    import msvcrt  # Windows single-instance lock
-except ImportError:  # non-Windows: no lock support
-    msvcrt = None
+from .project_presentation import location_label
+from .help_content import HELP_TOPICS
+from . import agents, git_availability, health, instance_lock, launchers, processes, projects, providers, reports, scanner, store, theme, workspaces, version
+from . import move_review, project_actions, scan_state
+from .relocation import (
+    group_move_suggestions,
+    select_strong_suggestions,
+    run_batch_moves,
+    filter_superseded_rows,
+    perform_confirmed_move,
+    MoveOutcome,
+    MOVE_OK,
+    MOVE_COLLISION,
+    MOVE_MISSING_OLD,
+    MOVE_DUPLICATE,
+    MOVE_STALE_TARGET,
+    MOVE_ROLLED_BACK_REGISTRY,
+    MOVE_ROLLED_BACK_NOTE,
+    MOVE_ROLLBACK_FAILED,
+    ERROR_INVALID_INPUT,
+    ERROR_IDENTITY_MISMATCH,
+    ERROR_TARGET_MISSING,
+    ERROR_STALE_TARGET,
+    ERROR_FILESYSTEM_FAILURE,
+    ERROR_PERSISTENCE_FAILURE,
+    ERROR_UNKNOWN_FAILURE,
+    move_outcome,
+    _counterpart_is_disposable,
+    detach_pending_for_keep_both,
+    _perform_confirmed_move)
+from .git_actions_ui import GitActionsMixin
+from .health_presentation import (
+    health_headline,
+    HEALTH_GROUP_ORDER,
+    HEALTH_GROUPS_EXPANDED,
+    health_finding_group,
+    health_rule_display_name,
+    health_detail_summary,
+    _HEALTH_STATUS_PENALTIES,
+    _HEALTH_SCORE_BANDS,
+    _HEALTH_SCORE_LABELS,
+    health_finding_penalty,
+    health_stale_penalty,
+    repository_health_score,
+    repository_health_band_label,
+    health_dashboard_counts)
+from .git_targets import (GitMutationGuard, git_target_is_current,
+                          git_target_snapshot, repository_marker_identity,
+                          git_target_is_authorized, git_mutation_target_is_authorized)
+from .projects import (project_id as _project_id,
+                         project_location_key, repository_path_key)
 
 REFRESH_MS = 200
 QUEUE_DRAIN_MAX_EVENTS = 32
@@ -41,8 +86,6 @@ MODIFIER_KEYS = {
 
 log = logging.getLogger("repomanager")
 
-_instance_lock_fp = None
-
 # A stable explicit identity keeps source runs grouped as RepoManager instead
 # of inheriting the generic Python launcher identity in the Windows taskbar.
 WINDOWS_APP_USER_MODEL_ID = "RepoManager.RepoManager"
@@ -55,61 +98,20 @@ ICON_CANDIDATES = ("appicon.ico", "app.ico")
 # separator drag from making identity or state information disappear.
 TABLE_COLUMNS = (
     ("name", "Name", 180, 130, 420, True),
-    ("classification", "Class", 120, 100, 220, False),
-    ("status", "Status", 90, 75, 150, False),
-    ("branch", "Branch", 120, 90, 260, True),
+    ("classification", "Class", 100, 100, 220, False),
+    ("status", "Status", 120, 90, 180, False),
+    ("branch", "Branch", 110, 90, 260, True),
     ("dirty", "Dirty", 55, 50, 90, False),
     ("sync", "±", 60, 55, 90, False),
     ("worktrees", "Trees", 55, 50, 90, False),
-    ("last_commit", "Last commit", 100, 85, 150, False),
-    ("path", "Path", 340, 220, 760, True),
+    ("last_commit", "Last commit", 95, 85, 150, False),
+    ("path", "Location", 205, 200, 760, True),
 )
 TABLE_COLUMN_ORDER = tuple(item[0] for item in TABLE_COLUMNS)
 TABLE_COLUMN_DEFAULTS = {item[0]: item[2] for item in TABLE_COLUMNS}
 TABLE_COLUMN_LIMITS = {item[0]: (item[3], item[4])
                        for item in TABLE_COLUMNS}
 
-HELP_TOPICS = {
-    "guide": (
-        "Start here",
-        "Select a Project in the repository table to inspect its state, "
-        "Health, Provider evidence and available launchers. Use Filter to "
-        "narrow the table, F5 to rescan, and the right-click menu for all "
-        "context actions. RepoManager observes before it acts: repository "
-        "discovery, Health and Provider checks are read-only."
-    ),
-    "health": (
-        "Health and status",
-        "Health summarizes current evidence. PASS means no issue was found "
-        "by the checks that ran; WARN means attention is useful; FAIL means a "
-        "serious invalid state was observed; UNKNOWN means evidence is "
-        "missing or unavailable. Scanner-based evidence can be stale until "
-        "the next rescan. Project lifecycle status (Idea, Active, Paused, "
-        "Archived) is your curation and is separate from Health."
-    ),
-    "workspace": (
-        "Agents",
-        "An Agent is an explicitly launched local command for the selected "
-        "repository. Ready means both its executable and the selected target "
-        "were rechecked. After exit, Target rechecked means RepoManager "
-        "observed Git state again; it does not approve the Agent's work."
-    ),
-    "provider": (
-        "Providers and launchers",
-        "A Git remote is only a URL. Git host / Provider correspondence is "
-        "inferred locally from that URL; online details are a separate "
-        "read-only observation. Neither proves ownership, authentication, or "
-        "write access. Launchers are detected local start commands and run "
-        "only after you explicitly choose one."
-    ),
-    "shortcuts": (
-        "Keyboard and layout",
-        "Ctrl+F focuses Filter. F5 rescans. Enter runs the primary launcher "
-        "for the focused table. F1 opens this guide. Escape clears Filter or "
-        "closes dialogs. Drag table-header separators to resize columns; use "
-        "Settings > Appearance to restore safe defaults."
-    ),
-}
 
 
 def clamp_column_widths(widths=None):
@@ -157,211 +159,35 @@ def custom_launcher_validation_state(message):
     return "visible" if isinstance(message, str) and message else "hidden"
 
 
-def health_headline(status):
-    """Human-facing Health headline without weakening the evidence status."""
-    return {
-        health.PASS: "Healthy — no blocking problem found",
-        health.WARN: "Needs attention — review the warnings",
-        health.FAIL: "Problems found — action recommended",
-        health.UNKNOWN: "Unknown — evidence is incomplete",
-        health.NOT_APPLICABLE: "Not applicable to this Project",
-    }.get(status, f"{status or 'UNKNOWN'} — review available evidence")
 
 
-HEALTH_GROUP_ORDER = (
-    "Action Needed", "Needs Attention", "Informational",
-    "Not Applicable", "Passed Checks", "Disabled", "Other",
-)
 
 
-HEALTH_GROUPS_EXPANDED = {
-    "Action Needed", "Needs Attention", "Informational",
-}
 
 
-def health_finding_group(finding):
-    """Return the presentation group for one finding.
-
-    Grouping is presentation-only and exhaustive: every finding falls into
-    exactly one group, so a future valid status/importance combination is
-    never silently dropped from Health Details.
-    """
-    status = finding.status if hasattr(finding, "status") else None
-    importance = (finding.importance
-                  if hasattr(finding, "importance") else health.REQUIRED)
-    if importance == health.DISABLED:
-        return "Disabled"
-    if importance == health.INFORMATIONAL:
-        return "Informational"
-    if status in (health.FAIL, health.UNKNOWN):
-        return "Action Needed"
-    if status == health.WARN:
-        return "Needs Attention"
-    if status == health.NOT_APPLICABLE:
-        return "Not Applicable"
-    if status == health.PASS:
-        return "Passed Checks"
-    return "Other"
 
 
-def health_rule_display_name(rule):
-    """Presentation label for a raw rule identifier."""
-    text = str(rule or "").strip()
-    if not text:
-        return "Check"
-    cleaned = text.replace("_", " ").strip()
-    return cleaned[0].upper() + cleaned[1:] if cleaned else "Check"
 
 
-def health_detail_summary(result):
-    """Return the Health Details header lines for a completed result."""
-    summary = result.summary
-    material = tuple(f for f in result.findings
-                     if f.importance not in (health.DISABLED,
-                                             health.INFORMATIONAL))
-    parts = [f"{summary.finding_count} checks"]
-    for status, label in ((health.WARN, "warning"),
-                          (health.FAIL, "problem"),
-                          (health.UNKNOWN, "incomplete")):
-        count = sum(f.status == status for f in material)
-        if count:
-            plural = label + ("s" if count != 1 else "")
-            parts.append(f"{count} {plural}")
-    stale = sum(f.freshness == health.STALE for f in result.findings)
-    if stale:
-        parts.append(f"{stale} stale")
-    return (health_headline(result.status),
-            " · ".join(parts),
-            f"Evaluated {result.evaluated_at}")
 
 
 # Presentation-only 0-100 Repository Health score. The score refines
 # the authoritative Health status; it never overrides it. Penalties are kept
 # in a single transparent table so the arithmetic is independently testable.
-_HEALTH_STATUS_PENALTIES = {
-    health.REQUIRED: {health.WARN: 10, health.UNKNOWN: 18, health.FAIL: 30},
-    health.RECOMMENDED: {health.WARN: 7, health.UNKNOWN: 12, health.FAIL: 18},
-    health.INFORMATIONAL: {health.WARN: 1, health.UNKNOWN: 2, health.FAIL: 4},
-}
 
 
-_HEALTH_SCORE_BANDS = {
-    health.PASS: (80, 100),
-    health.WARN: (60, 79),
-    health.UNKNOWN: (40, 59),
-    health.FAIL: (0, 39),
-}
 
 
-_HEALTH_SCORE_LABELS = {
-    health.PASS: "Healthy",
-    health.WARN: "Needs attention",
-    health.UNKNOWN: "Evidence incomplete",
-    health.FAIL: "Problems found",
-    health.NOT_APPLICABLE: "Not enough applicable evidence",
-}
 
 
-def health_finding_penalty(finding):
-    """Presentation-only point penalty for one finding (0 when none applies).
-
-    PASS, NOT_APPLICABLE and DISABLED findings never cost points. Unknown
-    future importance values are treated conservatively like REQUIRED only
-    through their status; unknown statuses cost nothing.
-    """
-    importance = getattr(finding, "importance", health.REQUIRED)
-    if importance == health.DISABLED:
-        return 0
-    status = getattr(finding, "status", health.UNKNOWN)
-    if status in (health.PASS, health.NOT_APPLICABLE):
-        return 0
-    by_status = _HEALTH_STATUS_PENALTIES.get(
-        importance, _HEALTH_STATUS_PENALTIES[health.REQUIRED])
-    return by_status.get(status, 0)
 
 
-def health_stale_penalty(findings):
-    """Stale-evidence point penalty for a collection of findings.
-
-    Only materially relevant stale findings count (informational and disabled
-    findings are not double-punished) and the total is capped at 5 so stale
-    evidence can never dominate the score.
-    """
-    count = sum(
-        1 for f in findings
-        if getattr(f, "freshness", health.CURRENT) == health.STALE
-        and getattr(f, "importance", health.REQUIRED)
-        not in (health.DISABLED, health.INFORMATIONAL))
-    return min(5, count)
 
 
-def repository_health_score(result):
-    """Return a deterministic 0-100 presentation score for a HealthResult.
-
-    The raw 100 minus per-finding penalties is constrained to the band of the
-    authoritative ``result.status`` (PASS 80-100, WARN 60-79, UNKNOWN 40-59,
-    FAIL 0-39). Returns ``None`` when there is not enough applicable evidence
-    (only NOT_APPLICABLE/DISABLED findings, or an empty result) so the UI can
-    show a dash instead of inventing a numeric confidence score.
-    """
-    if result is None:
-        return None
-    applicable = tuple(
-        f for f in result.findings
-        if getattr(f, "importance", health.REQUIRED) != health.DISABLED
-        and getattr(f, "status", health.UNKNOWN)
-        in (health.PASS, health.WARN, health.FAIL, health.UNKNOWN))
-    if not applicable:
-        return None
-    total = sum(health_finding_penalty(f) for f in applicable)
-    raw = 100 - total - health_stale_penalty(result.findings)
-    band = _HEALTH_SCORE_BANDS.get(result.status)
-    if band is None:
-        return None
-    return max(band[0], min(band[1], raw))
 
 
-def repository_health_band_label(result):
-    """Restrained language label shown with the score."""
-    if result is None:
-        return _HEALTH_SCORE_LABELS[health.NOT_APPLICABLE]
-    if repository_health_score(result) is None:
-        return _HEALTH_SCORE_LABELS[health.NOT_APPLICABLE]
-    return _HEALTH_SCORE_LABELS.get(result.status,
-                                    health_headline(result.status))
 
 
-def health_dashboard_counts(result):
-    """Counters for the Health dashboard, derived from existing findings.
-
-    Chosen, documented rule: primary counters (passed/warnings/problems/
-    unknown) reflect enabled non-informational findings so informational
-    observations never masquerade as hard failures; ``informational`` counts
-    every enabled informational finding (matching the All-checks Informational
-    group); ``stale`` counts every enabled stale finding and stays a muted
-    evidence marker, never a failure.
-    """
-    counts = {"passed": 0, "warnings": 0, "problems": 0,
-              "unknown": 0, "stale": 0, "informational": 0}
-    for finding in result.findings:
-        importance = getattr(finding, "importance", health.REQUIRED)
-        if importance == health.DISABLED:
-            continue
-        if finding.freshness == health.STALE:
-            counts["stale"] += 1
-        if importance == health.INFORMATIONAL:
-            counts["informational"] += 1
-            continue
-        status = finding.status
-        if status == health.PASS:
-            counts["passed"] += 1
-        elif status == health.WARN:
-            counts["warnings"] += 1
-        elif status == health.FAIL:
-            counts["problems"] += 1
-        elif status == health.UNKNOWN:
-            counts["unknown"] += 1
-    return counts
 
 
 def package_root():
@@ -385,30 +211,7 @@ def resolve_icon_path(base=None, names=None):
     return None
 
 
-CONTEXT_MENU_LAYOUT = (
-    # Current-work action
-    ("command", "Work on this (pin + Active)", "_toggle_working_on_this"),
-    "-sep-",
-    # Local launchers
-    ("command", "Open in Explorer", "open_explorer"),
-    ("command", "Open in VS Code", "open_vscode"),
-    ("command", "Open Terminal", "open_terminal"),
-    ("command", "Open Agent", "open_agent"),
-    "-sep-",
-    # metadata / curation group
-    ("cascade", "Set status", None),
-    ("command", "Pin / Unpin", "_toggle_pinned"),
-    ("command", "Remove from RepoManager\u2026", "_remove_from_repomanager"),
-    "-sep-",
-    # read-only information group
-    ("command", "Open on GitHub", "open_remote"),
-    ("command", "Copy path", "_copy_path"),
-    ("command", "Copy GitHub URL", "_copy_remote_url"),
-    "-sep-",
-    # mutating Git actions (kept separated + last)
-    ("command", "Commit & Push\u2026", "git_commit_push"),
-    ("command", "Pull", "git_pull"),
-)
+CONTEXT_MENU_LAYOUT = project_actions.LAYOUT
 
 
 def working_action_label(status):
@@ -687,18 +490,17 @@ def safe_remote_web_url(remote):
 
 
 def row_tag(p, available=True):
-    """Row color tag; stale dominates, else archived > no-remote > dirty."""
+    """Emphasize actionable state without treating local-only repos as warnings."""
     if not available or p.get("broken") or p.get("status_available") is False:
         return "stale"
     if p.get("status") == "archived":
         return "archived"
-    if not p.get("remote"):
-        return "noremote"
     if p.get("dirty"):
         return "dirty"
     if p.get("ahead") or p.get("behind"):
         return "sync"
     return ""
+
 
 
 def guarded_worker(queue, fn, *, error_kind="error", error_payload=None):
@@ -738,20 +540,6 @@ def coalesce_worker_errors(messages):
     return head
 
 
-def commit_steps_for(msg, porcelain_now, remote="origin"):
-    """Plan commit and push steps from a fresh status check.
-
-    A failed or empty status check authorizes no mutation. The preview is
-    only a snapshot: ``git add -A`` stages all changes present when it runs,
-    including changes made since the preview or the status re-check.
-    """
-    if porcelain_now is None or not porcelain_now.strip():
-        return []
-    return [("add", ("add", "-A")),
-            ("commit", ("commit", "-m", msg)),
-            ("push", ("push", "-u", remote, "HEAD"))]
-
-
 def select_push_remote(remote_names, upstream=None):
     """Choose a safe push remote or None when the target is ambiguous."""
     names = [str(name).strip() for name in (remote_names or [])
@@ -768,101 +556,6 @@ def select_push_remote(remote_names, upstream=None):
     return None
 
 
-def git_target_is_current(project_records, target):
-    """True when a preview target still names the same Project and path."""
-    target_id = projects.project_id(target)
-    target_path = target.get("path")
-    for project in project_records:
-        same_project = (projects.project_id(project) == target_id
-                        if target_id else project is target)
-        if same_project:
-            return project.get("path") == target_path
-    return False
-
-
-def git_target_snapshot(project):
-    """Capture the logical identity and path authorized for a Git mutation."""
-    project_id = projects.project_id(project)
-    return {
-        "project_id": project_id,
-        "path": project.get("path"),
-        "_record": project if project_id is None else None,
-        "repository_marker": repository_marker_identity(project.get("path")),
-    }
-
-
-def repository_marker_identity(path):
-    """Stable local identity for the repository metadata directory."""
-    if not isinstance(path, str) or not path.strip():
-        return None
-    marker = Path(path) / ".git"
-    try:
-        if marker.is_file():
-            first = marker.read_text(
-                encoding="utf-8", errors="replace").splitlines()[0]
-            if not first.casefold().startswith("gitdir:"):
-                return None
-            git_dir = Path(first.split(":", 1)[1].strip())
-            if not git_dir.is_absolute():
-                git_dir = marker.parent / git_dir
-            git_dir = git_dir.resolve()
-            if git_dir.parent.name.casefold() == "worktrees":
-                git_dir = git_dir.parent.parent
-        elif marker.is_dir():
-            git_dir = marker.resolve()
-        else:
-            return None
-        stat = git_dir.stat()
-        return (os.path.normcase(str(git_dir)), stat.st_dev, stat.st_ino)
-    except (OSError, UnicodeError, IndexError):
-        return None
-
-
-def git_target_is_authorized(project_records, snapshot):
-    """Revalidate a mutation target immediately before invoking Git.
-
-    A missing stable ID is intentionally not enough to authorize a stale
-    dictionary snapshot: legacy records must still be the same live object.
-    """
-    path = snapshot.get("path") if isinstance(snapshot, dict) else None
-    if not isinstance(path, str) or not path.strip():
-        return False
-    target_id = snapshot.get("project_id")
-    for project in project_records:
-        if target_id:
-            if projects.project_id(project) == target_id and project.get("path") == path:
-                return True
-        elif project is snapshot.get("_record") and project.get("path") == path:
-            return True
-    return False
-
-
-def git_mutation_target_is_authorized(project_records, snapshot):
-    """Require both live Project association and repository identity."""
-    marker = snapshot.get("repository_marker") \
-        if isinstance(snapshot, dict) else None
-    return (marker is not None
-            and git_target_is_authorized(project_records, snapshot)
-            and repository_marker_identity(snapshot.get("path")) == marker)
-
-
-class GitMutationGuard:
-    """Serialize mutating Git operations per physical repository."""
-
-    def __init__(self):
-        self._lock = threading.Lock()
-        self._active = set()
-
-    def acquire(self, key):
-        with self._lock:
-            if key in self._active:
-                return False
-            self._active.add(key)
-            return True
-
-    def release(self, key):
-        with self._lock:
-            self._active.discard(key)
 
 
 def parse_upstream(value):
@@ -902,77 +595,12 @@ def git_step_outcome(results):
     return GIT_SUCCESS, results[-1][2]
 
 
-SCANNER_OBSERVATION_FIELDS = {
-    "branch", "head", "dirty", "staged", "unstaged", "untracked",
-    "ahead", "behind", "upstream", "remotes", "remote_names", "remote_name",
-    "remote_reachable", "last_commit_date", "last_commit_msg", "remote",
-    "broken", "repository_observed", "fingerprint", "worktrees", "last_seen",
-    "status_available", "upstream_state", "sync_available", "worktrees_available",
-}
+SCANNER_OBSERVATION_FIELDS = scan_state.SCANNER_OBSERVATION_FIELDS
 
 
 def reconcile_scan_result(merged, live_projects):
-    """Apply scanner observations without overwriting newer Project state."""
-    def location_key(project):
-        return (projects.project_location_key(project)
-                or projects.project_id(project))
-
-    def can_use_path_fallback(scanned, current):
-        """Allow path compatibility only when one record lacks identity."""
-        scanned_id = projects.project_id(scanned)
-        current_id = projects.project_id(current)
-        return not (scanned_id and current_id and scanned_id != current_id)
-
-    live_by_id = {}
-    for project in live_projects:
-        project_id = projects.project_id(project)
-        if project_id:
-            live_by_id.setdefault(project_id, project)
-    live_by_row = {}
-    for project in live_projects:
-        key = location_key(project)
-        if key not in live_by_row:
-            live_by_row[key] = project
-    matched = set()
-    result = []
-    for scanned in merged:
-        current = live_by_id.get(projects.project_id(scanned))
-        if current is None:
-            candidate = live_by_row.get(location_key(scanned))
-            if candidate is not None:
-                if can_use_path_fallback(scanned, candidate):
-                    current = candidate
-                else:
-                    # The live collection authoritatively owns this location.
-                    # A stale scan row with another identity must neither
-                    # inherit its curation nor survive as a duplicate path
-                    # that registry validation would later drop ambiguously.
-                    continue
-        if current is None:
-            result.append(scanned)
-            continue
-        marker = id(current)
-        if marker in matched:
-            continue
-        matched.add(marker)
-        if location_key(current) != location_key(scanned):
-            result.append(dict(current))
-            continue
-        combined = dict(scanned)
-        combined.update({key: value for key, value in current.items()
-                         if key not in SCANNER_OBSERVATION_FIELDS})
-        # The live Project is authoritative for explicit ignore/restore state.
-        # An in-flight scan may have captured the opposite value (or no value)
-        # before the user's later state change; never let that stale payload
-        # reactivate or re-ignore the current Project.
-        if "ignored" in current:
-            combined["ignored"] = current["ignored"]
-        else:
-            combined.pop("ignored", None)
-        result.append(combined)
-    result.extend(dict(project) for project in live_projects
-                  if id(project) not in matched)
-    return result
+    """Compatibility entry point for shared scan reconciliation."""
+    return scan_state.reconcile_scan_result(merged, live_projects)
 
 
 def evaluate_git_steps(results):
@@ -1035,45 +663,10 @@ def attention_summary(problems, move_count=0):
     return "Attention: " + " · ".join(parts) if parts else ""
 
 
-def group_move_suggestions(suggestions):
-    """Split move suggestions into deterministically ordered categories."""
-    def key(s):
-        return (str(s.get("old_path") or s.get("old_paths", [""])[0]).lower(),
-                str(s.get("new_path") or "").lower())
-    groups = {"strong": [], "ambiguous": [], "possible": []}
-    for s in sorted(suggestions, key=key):
-        cat = s.get("category")
-        groups[cat if cat in groups else "possible"].append(s)
-    return groups
 
 
-def select_strong_suggestions(suggestions):
-    """Only strong matches qualify for batch acceptance."""
-    return [s for s in group_move_suggestions(suggestions)["strong"]]
 
 
-def run_batch_moves(suggestions, projects, now_iso,
-                    save_projects, move_note, *, path_exists=None,
-                    target_identity=None):
-    """Accept every strong suggestion through the same move transaction.
-
-    Deterministic order; each suggestion is independent — one failure does
-    not affect the others. Returns (accepted_entries, failures) where
-    failures is a list of (suggestion, outcome). ``path_exists`` (a fresh
-    filesystem check) is forwarded to the revalidation guard of every move.
-    """
-    accepted, failures = [], []
-    for s in select_strong_suggestions(suggestions):
-        kwargs = {"path_exists": path_exists}
-        if target_identity is not None:
-            kwargs["target_identity"] = target_identity
-        outcome, entry = perform_confirmed_move(
-            projects, s, now_iso, save_projects, move_note, **kwargs)
-        if outcome in ("migrated", "collision"):
-            accepted.append((s, entry, outcome))
-        else:
-            failures.append((s, outcome))
-    return accepted, failures
 
 
 class StatusLine:
@@ -1102,202 +695,21 @@ class StatusLine:
         return True
 
 
-def filter_superseded_rows(rows, moved_away, result_gen):
-    """Drop rows resurrecting working copies moved away after result_gen.
-
-    A scan that started before a user-confirmed move carries the pre-move
-    path in its snapshot. Applying its result unguarded would resurrect
-    the old row; this filter makes the confirmed move authoritative.
-    """
-    gone = {p for (g, p) in moved_away if g > result_gen}
-    if not gone:
-        return rows
-    return [r for r in rows
-            if str(r.get("path", "")).lower() not in gone]
 
 
-def perform_confirmed_move(projects, suggestion, now_iso,
-                           save_projects, move_note, *,
-                           path_exists=None,
-                           target_identity=None):
-    """Execute a confirmed move only after the approved target is rechecked.
-
-    The suggestion is the user's approval boundary. Immediately before the
-    registry mutation, the old location must still be absent and the new
-    location must still be present. An optional ``target_identity`` callback
-    can provide a current repository identity for the discovered target; when
-    supplied, it must match the suggestion's approved ``identity`` value.
-
-    Registry and note changes retain the existing rollback transaction. The
-    return value remains the legacy ``(outcome, entry)`` tuple for callers,
-    while ``move_outcome(...)`` exposes the same result with a semantic error
-    category and evidence for new consumers.
-    """
-    outcome = _perform_confirmed_move(
-        projects, suggestion, now_iso, save_projects, move_note,
-        path_exists=path_exists, target_identity=target_identity)
-    return outcome.status, outcome.entry
 
 
-@dataclass(frozen=True)
-class MoveOutcome:
-    """Concrete semantic result for the current confirmed-move operation."""
-
-    status: str
-    error_category: str | None
-    evidence: tuple[str, ...]
-    entry: dict | None = None
 
 
-MOVE_OK = "migrated"
-MOVE_COLLISION = "collision"
-MOVE_MISSING_OLD = "missing_old"
-MOVE_DUPLICATE = "duplicate"
-MOVE_STALE_TARGET = "stale_target"
-MOVE_ROLLED_BACK_REGISTRY = "rolled_back_registry"
-MOVE_ROLLED_BACK_NOTE = "rolled_back_note"
-MOVE_ROLLBACK_FAILED = "rollback_failed"
-
-ERROR_INVALID_INPUT = "INVALID_INPUT"
-ERROR_IDENTITY_MISMATCH = "IDENTITY_MISMATCH"
-ERROR_TARGET_MISSING = "TARGET_MISSING"
-ERROR_STALE_TARGET = "STALE_TARGET"
-ERROR_FILESYSTEM_FAILURE = "FILESYSTEM_FAILURE"
-ERROR_PERSISTENCE_FAILURE = "PERSISTENCE_FAILURE"
-ERROR_UNKNOWN_FAILURE = "UNKNOWN_FAILURE"
 
 
-def move_outcome(projects, suggestion, now_iso, save_projects, move_note, *,
-                path_exists=None, target_identity=None):
-    """Return the structured semantic result for a confirmed move."""
-    return _perform_confirmed_move(
-        projects, suggestion, now_iso, save_projects, move_note,
-        path_exists=path_exists, target_identity=target_identity)
 
 
-def _perform_confirmed_move(projects, suggestion, now_iso,
-                             save_projects, move_note, *,
-                             path_exists, target_identity):
-    old_path = suggestion.get("old_path")
-    new_path = suggestion.get("new_path")
-    if not isinstance(old_path, str) or not isinstance(new_path, str):
-        return MoveOutcome(MOVE_STALE_TARGET, ERROR_INVALID_INPUT,
-                           ("move suggestion lacks valid paths",))
-    entry = next((p for p in projects if isinstance(p, dict)
-                  and str(p.get("path", "")).lower() == old_path.lower()),
-                 None)
-    if entry is None:
-        return MoveOutcome(MOVE_MISSING_OLD, ERROR_TARGET_MISSING,
-                           ("approved old registry entry is missing",))
-    new_path_key = repository_path_key(new_path)
-    if any(p is not entry
-           and project_location_key(p) == new_path_key
-           for p in projects):
-        return MoveOutcome(MOVE_DUPLICATE, ERROR_IDENTITY_MISMATCH,
-                           ("new path already has a registry entry",))
 
-    if path_exists is not None:
-        try:
-            old_exists = bool(path_exists(old_path))
-            new_exists = bool(path_exists(new_path))
-        except Exception as exc:
-            return MoveOutcome(MOVE_STALE_TARGET, ERROR_FILESYSTEM_FAILURE,
-                               (f"target revalidation failed: {exc}",))
-        if old_exists or not new_exists:
-            return MoveOutcome(MOVE_STALE_TARGET, ERROR_STALE_TARGET,
-                               (f"old_exists={old_exists}",
-                                f"new_exists={new_exists}"))
 
-    approved_identity = suggestion.get("identity")
-    if target_identity is not None and approved_identity is not None:
-        try:
-            current_identity = target_identity(new_path)
-        except Exception as exc:
-            return MoveOutcome(MOVE_STALE_TARGET, ERROR_FILESYSTEM_FAILURE,
-                               (f"identity revalidation failed: {exc}",))
-        if current_identity != approved_identity:
-            return MoveOutcome(MOVE_STALE_TARGET, ERROR_IDENTITY_MISMATCH,
-                               (f"approved_identity={approved_identity}",
-                                f"current_identity={current_identity}"))
 
-    snapshot = dict(entry)
-    old_name = entry["name"]
-    new_name = Path(new_path).name
-    entry["moved_from"] = old_path
-    entry["path"] = new_path
-    entry["name"] = new_name
-    entry["last_seen"] = now_iso
 
-    stable_project_id = entry.get("project_id")
-    if not isinstance(stable_project_id, str) or not stable_project_id.strip():
-        stable_project_id = None
-    if stable_project_id:
-        try:
-            result = move_note(
-                old_name, old_path, new_name, new_path, stable_project_id)
-        except Exception:
-            log.exception("stable note migration failed during confirmed move")
-            entry.clear()
-            entry.update(snapshot)
-            return MoveOutcome(
-                MOVE_ROLLED_BACK_NOTE, ERROR_FILESYSTEM_FAILURE,
-                ("stable note migration failed before registry mutation",))
-        try:
-            save_projects()
-        except Exception as save_exc:
-            log.exception("registry save failed during confirmed move")
-            entry.clear()
-            entry.update(snapshot)
-            if result in ("moved", "collision"):
-                return MoveOutcome(
-                    MOVE_ROLLBACK_FAILED, ERROR_PERSISTENCE_FAILURE,
-                    ("registry save failed after stable note migration; "
-                     "note rollback was not available",
-                     f"compensation state is uncertain: {save_exc}"), entry)
-            return MoveOutcome(
-                MOVE_ROLLED_BACK_REGISTRY, ERROR_PERSISTENCE_FAILURE,
-                ("registry save failed; stable note was unchanged",))
-        if result == "collision":
-            return MoveOutcome(
-                MOVE_COLLISION, None,
-                ("note destination collision preserved without overwrite",),
-                entry)
-        return MoveOutcome(MOVE_OK, None,
-                           ("registry and stable note move completed",), entry)
 
-    try:
-        save_projects()
-    except Exception:
-        log.exception("registry save failed during confirmed move")
-        entry.clear()
-        entry.update(snapshot)
-        return MoveOutcome(MOVE_ROLLED_BACK_REGISTRY,
-                           ERROR_PERSISTENCE_FAILURE,
-                           ("registry save failed; in-memory entry restored",))
-    try:
-        result = move_note(old_name, old_path, new_name, new_path)
-    except Exception as note_exc:
-        log.exception("note migration failed during confirmed move")
-        entry.clear()
-        entry.update(snapshot)
-        try:
-            save_projects()
-        except Exception as compensation_exc:
-            log.critical("could not restore registry after note failure")
-            return MoveOutcome(
-                MOVE_ROLLBACK_FAILED, ERROR_PERSISTENCE_FAILURE,
-                ("note migration failed; registry rollback could not be "
-                 "confirmed", f"compensation save failed: {compensation_exc}",
-                 f"note failure: {note_exc}"), entry)
-        return MoveOutcome(MOVE_ROLLED_BACK_NOTE,
-                           ERROR_FILESYSTEM_FAILURE,
-                           ("note migration failed; registry rollback "
-                            "confirmed",))
-    if result == "collision":
-        return MoveOutcome(MOVE_COLLISION, None,
-                           ("note destination collision preserved without overwrite",),
-                           entry)
-    return MoveOutcome(MOVE_OK, None, ("registry and note move completed",), entry)
 
 
 def is_visible(p, flt):
@@ -1310,19 +722,30 @@ def sorted_projects(items, sort_col=None, sort_desc=False):
     return projects.sorted_projects(items, sort_col, sort_desc)
 
 
-def apply_metadata_refresh(project_records, metadata_records):
-    """Apply scanner observations without changing Project identity/curation."""
+def apply_metadata_refresh(project_records, metadata_records,
+                           observed_records=None):
+    """Apply scanner observations without changing Project identity/curation.
+
+    Only successfully observed fields replace cached values: valid absences
+    (detached ``branch=None``, explicit no-upstream ``NONE``, unborn
+    ``head=None``, empty remotes) clear stale state, while failed
+    observations preserve it. ``observed_records`` parallels
+    ``metadata_records`` (frozenset/set per record, or None for legacy
+    fully-observed callers); validity is transient and never persisted.
+    """
     by_path = {record["path"]: record for record in metadata_records}
-    protected = {
-        "path", "name", "project_id", "folder_path", "status", "focus",
-        "pinned", "added_at",
-    }
+    by_observed = None
+    if observed_records is not None:
+        by_observed = {}
+        for record, observed in zip(metadata_records, observed_records):
+            by_observed[record["path"]] = observed
     for project in project_records:
         metadata = by_path.get(project.get("path"))
         if metadata is None:
             continue
-        project.update({key: value for key, value in metadata.items()
-                        if key not in protected})
+        observed = (by_observed.get(project.get("path"))
+                    if by_observed is not None else None)
+        scanner.apply_observed_fields(project, metadata, observed)
 
 
 def enable_dpi_awareness():
@@ -1392,30 +815,52 @@ def setup_logging():
     threading.excepthook = thread_excepthook
 
 
-def acquire_single_instance_lock():
-    """Best-effort single-instance guard via an OS-released file lock.
+def parse_full_scan_at(value):
+    """Parse an explicit full-inventory-scan timestamp, else None.
 
-    The handle must stay open for the whole process lifetime: closing the
-    file releases the OS lock immediately.
+    Only the strict registry timestamp shape (``%Y-%m-%dT%H:%M:%SZ``) is
+    accepted; anything else (missing, wrong type, malformed) means the last
+    successful full scan time is unknown rather than guessed.
     """
-    global _instance_lock_fp
-    if msvcrt is None:
-        return True
-    fp = open(store.APP_DIR / "repo_manager.lock", "w")
+    if not isinstance(value, str) or not value.strip():
+        return None
     try:
-        msvcrt.locking(fp.fileno(), msvcrt.LK_NBLCK, 1)
-    except OSError:
-        fp.close()
-        return False
+        return datetime.strptime(
+            value.strip(), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
+def format_inventory_age(scanned_at, now=None):
+    """Return the small dashboard freshness line for a full-scan timestamp.
+
+    ``scanned_at`` is an aware UTC datetime or None. Buckets are coarse and
+    deterministic so tests can pin them; the caller decides separately
+    whether a scan is currently running ("Inventory: refreshing…").
+    """
+    if scanned_at is None:
+        return "Inventory scan: unknown"
+    current = now if now is not None else datetime.now(timezone.utc)
     try:
-        fp.seek(0)
-        fp.write(str(os.getpid()))
-        fp.flush()
-        _instance_lock_fp = fp
-        return True
-    except OSError:
-        fp.close()
-        raise
+        age = (current - scanned_at).total_seconds()
+    except (TypeError, AttributeError):
+        return "Inventory scan: unknown"
+    if age < 0:
+        return "Inventory scanned: just now"
+    if age < 60:
+        return "Inventory scanned: just now"
+    if age < 3600:
+        minutes = int(age // 60)
+        return f"Inventory scanned: {minutes} min ago"
+    if age < 172800:
+        hours = int(age // 3600)
+        return f"Inventory scanned: {hours} hr ago"
+    return f"Inventory scanned: {int(age // 86400)} days ago"
+
+
+def acquire_single_instance_lock():
+    """Use the lock shared by both presentations."""
+    return instance_lock.acquire()
 
 
 # Edge padding retained from the original dialog placement so dialogs do not
@@ -1557,7 +1002,7 @@ def settings_dialog_height(work_area):
     return min(700, max(1, work_height - 96))
 
 
-class RepoManagerApp(tk.Tk):
+class RepoManagerApp(GitActionsMixin, tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"RepoManager {version.VERSION}")
@@ -1594,6 +1039,9 @@ class RepoManagerApp(tk.Tk):
         self._move_suggestions = []
         self._scan_gen = 0
         self._moved_away = []  # [(gen, old_path_lower)] awaiting in-flight scans
+        self._pending_rescan = False  # at most one coalesced trailing scan
+        self._last_full_scan_at = parse_full_scan_at(
+            self.settings.get(self.FULL_SCAN_AT_KEY))
         self._current = None
         self._loading_detail = False
         self._note_target = None
@@ -1614,9 +1062,11 @@ class RepoManagerApp(tk.Tk):
         if isinstance(self.settings.get("sort"), list) and self.settings["sort"]:
             self._sort_col, self._sort_desc = self.settings["sort"]
 
-        self.pal = theme.apply(self, self.settings.get("theme", "dark"))
+        self.pal = theme.apply(self, self.settings.get("theme", "light"))
 
         self._build_ui()
+        self._git_gate_enabled = True
+        self._check_git_availability()
         self._notify_registry_report()
         self._notify_settings_report()
         self._apply_row_colors()
@@ -1627,10 +1077,17 @@ class RepoManagerApp(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         if self._registry_blocked():
             self.scan_btn.configure(text="Retry registry (F5)")
-        elif self.projects:
-            self._refresh_metadata_async()
         else:
-            self.start_scan()
+            # Cached inventory is already painted above; ALWAYS run the full
+            # discovery pipeline in the background — also for a populated
+            # registry. The previous metadata-only startup refresh could
+            # neither discover new repositories nor advance scan-derived
+            # last_seen timestamps, so a week-old inventory looked current.
+            # The full scan collects the same Git metadata via merge_scan,
+            # so no second metadata pass is needed.
+            if self._git_availability.available:
+                self.start_scan()
+        self._refresh_inventory_status()
 
     def _apply_icon(self):
         """Set the canonical application icon, trying candidates in order.
@@ -1771,7 +1228,7 @@ class RepoManagerApp(tk.Tk):
         top = ttk.Frame(self)
         top.pack(fill="x", padx=10, pady=(10, 4))
 
-        ttk.Label(top, text="RepoManager", font=("", 13, "bold"),
+        ttk.Label(top, text="RepoManager", font=("Segoe UI", 16, "bold"),
                   foreground=self.pal["accent2"]).grid(
                       row=0, column=0, sticky="w", padx=(0, 18))
         ttk.Label(top, text="Filter", style="Muted.TLabel").grid(
@@ -1797,13 +1254,36 @@ class RepoManagerApp(tk.Tk):
         self.status_var = tk.StringVar(value=f"{len(self.projects)} projects")
         self._status = StatusLine(self.status_var)
         ttk.Label(top, textvariable=self.status_var,
-                  style="Muted.TLabel").grid(row=1, column=0, columnspan=7,
+                  style="Muted.TLabel").grid(row=1, column=0, columnspan=6,
                                               sticky="w", pady=(5, 0))
 
         self.problems_lbl = ttk.Label(top, text="", style="Muted.TLabel",
                                       cursor="hand2")
         self.problems_lbl.grid(row=1, column=6, sticky="e", pady=(5, 0))
         self.problems_lbl.bind("<Button-1>", lambda e: self._show_problems())
+
+        self.inventory_status = ttk.Label(top, text="", style="Muted.TLabel")
+        self.inventory_status.grid(row=2, column=0, columnspan=7,
+                                   sticky="w")
+
+        self.git_notice = ttk.Frame(self, style="Surface.TFrame", padding=12)
+        ttk.Label(self.git_notice, text="Git is required",
+                  style="Surface.TLabel", font=("Segoe UI", 11, "bold"),
+                  foreground=self.pal["warning"]).pack(anchor="w")
+        self.git_notice_detail = ttk.Label(
+            self.git_notice, style="Surface.TLabel", wraplength=850,
+            justify="left")
+        self.git_notice_detail.pack(anchor="w", pady=(4, 8))
+        git_actions = ttk.Frame(self.git_notice, style="Surface.TFrame")
+        git_actions.pack(anchor="w")
+        ttk.Button(git_actions, text="Install Git",
+                   command=self._open_git_install,
+                   style="Primary.TButton").pack(side="left")
+        ttk.Button(git_actions, text="Check again",
+                   command=self._check_git_again).pack(side="left", padx=(8, 0))
+        ttk.Button(git_actions, text="Why is Git required?",
+                   command=lambda: self.open_help("git"),
+                   style="Link.TButton").pack(side="left", padx=(8, 0))
 
         self._build_context_ui()
 
@@ -1818,7 +1298,7 @@ class RepoManagerApp(tk.Tk):
         now_wrap = ttk.Frame(now_frame)
         now_wrap.pack(fill="both", expand=True)
         self.now_tree = ttk.Treeview(
-            now_wrap, columns=now_cols, show="tree headings", height=4,
+            now_wrap, columns=now_cols, show="tree headings", height=1,
             selectmode="browse")
         self.now_tree.column("#0", width=200, minwidth=130, stretch=True)
         for c, h in zip(now_cols, now_heads):
@@ -1880,6 +1360,7 @@ class RepoManagerApp(tk.Tk):
         self.tree.bind("<Double-1>", self._on_double_click)
         self.tree.bind("<ButtonRelease-1>", self._on_tree_column_release,
                        add="+")
+        self._now_frame = now_frame
         for t in (self.now_tree, self.tree):
             t.bind("<Motion>", self._on_tree_motion, add="+")
             t.bind("<Leave>", self._hide_tooltip, add="+")
@@ -1911,7 +1392,7 @@ class RepoManagerApp(tk.Tk):
         self._bind_descendant_mousewheel(
             self.detail_body, self._on_detail_mousewheel)
         pane.bind("<Configure>", self._clamp_panes, add="+")
-        pane.bind("<ButtonRelease-1>", self._clamp_panes, add="+")
+        pane.bind("<ButtonRelease-1>", self._on_now_pane_release, add="+")
         lower.bind("<Configure>", self._clamp_panes, add="+")
         lower.bind("<ButtonRelease-1>", self._clamp_panes, add="+")
 
@@ -1922,6 +1403,8 @@ class RepoManagerApp(tk.Tk):
         for tree in (self.tree, self.now_tree):
             tree.bind("<Return>", self._launch_primary)
             tree.bind("<KP_Enter>", self._launch_primary)
+            tree.bind("<Shift-F10>", self._keyboard_context_menu)
+            tree.bind("<Menu>", self._keyboard_context_menu)
         # Escape clears the filter when the filter box has focus.
         self.filter_entry.bind(
             "<Escape>", lambda e: (self.filter_var.set(""),
@@ -1997,6 +1480,10 @@ class RepoManagerApp(tk.Tk):
         """Route wheel input within the contextual panel without trapping it."""
         return self._route_nested_mousewheel(event, self.detail_canvas)
 
+    def _on_now_pane_release(self, event):
+        self.__dict__["_now_user_expanded"] = self._outer_pane.sashpos(0) > 90
+        self._clamp_panes(event)
+
     def _clamp_panes(self, _event=None, *, initial=False):
         """Keep both primary panes usable after aggressive separator drags."""
         try:
@@ -2005,7 +1492,11 @@ class RepoManagerApp(tk.Tk):
                 position = self._outer_pane.sashpos(0)
                 if initial:
                     position = 130
-                target = max(100, min(position, max(100, height - 340)))
+                empty_now = self.now_tree.get_children() in ((), ("__won-empty__",))
+                minimum = 70 if empty_now else 100
+                target = max(minimum, min(position, max(minimum, height - 340)))
+                if empty_now and not self.__dict__.get("_now_user_expanded", False):
+                    target = minimum
                 if target != self._outer_pane.sashpos(0):
                     self._outer_pane.sashpos(0, target)
 
@@ -2145,11 +1636,11 @@ class RepoManagerApp(tk.Tk):
     # ------------------------------------------------------------- theming
     def _theme_btn_text(self):
         """The button shows the theme a click switches to."""
-        dark = self.settings.get("theme", "dark") == "dark"
+        dark = self.settings.get("theme", "light") == "dark"
         return "Ice Light" if dark else "Dark"
 
     def toggle_theme(self):
-        new_name = ("light" if self.settings.get("theme", "dark") == "dark"
+        new_name = ("light" if self.settings.get("theme", "light") == "dark"
                     else "dark")
         updated = {**self.settings, "theme": new_name}
         try:
@@ -2191,7 +1682,6 @@ class RepoManagerApp(tk.Tk):
         for tree in (self.tree, self.now_tree):
             tree.tag_configure("dirty", background=p["row_dirty_bg"],
                                foreground=p["row_dirty_fg"])
-            tree.tag_configure("noremote", foreground=p["row_norem_fg"])
             tree.tag_configure("sync", foreground=p["row_sync_fg"])
             tree.tag_configure("archived", foreground=p["row_arch_fg"])
             tree.tag_configure("stale", foreground=p["row_arch_fg"],
@@ -2256,7 +1746,9 @@ class RepoManagerApp(tk.Tk):
             sync,
             trees,
             p.get("last_commit_date") or "",
-            p.get("path") or p.get("folder_path") or "(no folder)",
+            location_label(
+                p.get("path") or p.get("folder_path"),
+                self.settings.get("roots", [])),
         ), "tags": (row_tag(p, self._avail.get(p.get("path") or p.get("folder_path") or "")),)}
 
     def _now_row_state(self, p):
@@ -2316,6 +1808,7 @@ class RepoManagerApp(tk.Tk):
         # --- Working on now tree -------------------------------------------
         # Workflow membership is independent from the table search filter.
         now_items = working_on_now_rows(unique.values(), exists=self._avail.get)
+        self.now_tree.configure(height=max(1, min(len(now_items), 4)))
         now_desired = ([project_row_id(p) for p in now_items] if now_items
                        else ["__won-empty__"])
         now_by_path = {project_row_id(p): p for p in now_items}
@@ -2330,6 +1823,7 @@ class RepoManagerApp(tk.Tk):
                 and project_row_id(self._current) == prev_main[0]):
             self._clear_detail()
 
+        self._clamp_panes()
         parts = [f"{len(ordered)} shown / {len(unique)} projects"]
         if self._scanning:
             parts.append("scanning\u2026")
@@ -2367,6 +1861,7 @@ class RepoManagerApp(tk.Tk):
         for p in self.projects:
             unique.setdefault(project_row_id(p), p)
         now_items = working_on_now_rows(unique.values(), exists=self._avail.get)
+        self.now_tree.configure(height=max(1, min(len(now_items), 4)))
         now_desired = ([project_row_id(p) for p in now_items] if now_items
                        else ["__won-empty__"])
         now_by_path = {project_row_id(p): p for p in now_items}
@@ -2376,6 +1871,7 @@ class RepoManagerApp(tk.Tk):
         prev_now = tuple(self.now_tree.selection())
         if prev_now and prev_now[0] in self.now_tree.get_children():
             self.now_tree.selection_set(prev_now)
+        self._clamp_panes()
 
     # ------------------------------------------------------------- detail
     def _on_select(self, event=None):
@@ -2454,6 +1950,7 @@ class RepoManagerApp(tk.Tk):
         self.d_status.set(proj.get("status") or "idea")
         self.d_pinned.set(bool(proj.get("pinned")))
         self._refresh_working_action_label()
+        self._render_git_summary(proj)
         self.d_focus.delete(0, "end")
         self.d_focus.insert(0, proj.get("focus") or "")
         folder = proj.get("path") or proj.get("folder_path") or ""
@@ -2847,6 +2344,8 @@ class RepoManagerApp(tk.Tk):
             if index == 0:
                 self.d_work_action_btn = button
 
+        git_box = self._build_git_summary(parent)
+
         notes = self.d_notes_section = ttk.Labelframe(
             parent, text=" Notes ", padding=8)
         notes.pack(fill="x", pady=(0, 8))
@@ -2912,7 +2411,7 @@ class RepoManagerApp(tk.Tk):
 
         # Keep the common decision path above notes, provider evidence and
         # exports without discarding any of those secondary surfaces.
-        for section in (curation, actions, health_box, launch_box, notes,
+        for section in (git_box, actions, curation, health_box, launch_box, notes,
                         provider_box, export_box):
             section.pack_forget()
             section.pack(fill="x", pady=(0, 8))
@@ -3604,29 +3103,11 @@ class RepoManagerApp(tk.Tk):
 
     # -------------------------------------------------------- context menu
     def _build_context_menu(self):
-        p = self.pal
-        m = tk.Menu(self, tearoff=0, font=("", 9))
-        theme.style_tk_widget(m, p, "menu")
-        selected = self._selected_project()
-        current = selected or getattr(self, "_current", None)
+        current = self._selected_project()
         layout = context_menu_layout(
             current.get("status") if current else None,
             ignored=projects.is_ignored(current) if current else False)
-        for item in layout:
-            if item == "-sep-":
-                m.add_separator()
-            elif item[0] == "cascade":
-                status_menu = tk.Menu(m, tearoff=0)
-                theme.style_tk_widget(status_menu, p, "menu")
-                for s in STATUSES:
-                    status_menu.add_command(
-                        label=s.capitalize(),
-                        command=lambda s=s: self._set_status(s))
-                m.add_cascade(label=item[1], menu=status_menu)
-            else:
-                _, label, method_name = item
-                m.add_command(label=label, command=getattr(self, method_name))
-        self._ctx_menu = m
+        self._ctx_menu = self._action_menu(layout, current)
 
     def _show_context_menu(self, event):
         tree = event.widget
@@ -3638,6 +3119,9 @@ class RepoManagerApp(tk.Tk):
             tree.selection_set(row)
             tree.focus(row)
         tree.focus_set()
+        selected = self._selected_project()
+        if selected is not None:
+            self._show_detail(project_row_id(selected))
         old_menu = getattr(self, "_ctx_menu", None)
         if old_menu is not None:
             try:
@@ -3731,7 +3215,7 @@ class RepoManagerApp(tk.Tk):
                     parent=dlg,
                 )
                 self._status.set(
-                    "Project was not removed · registry save failed",
+                    "Project was not removed \u00b7 registry save failed",
                     important=True,
                 )
                 return
@@ -3752,7 +3236,7 @@ class RepoManagerApp(tk.Tk):
                 self._clear_detail()
             self._populate_trees()
             self._status.set(
-                "Project removed from RepoManager · restore later in Settings",
+                "Project removed from RepoManager \u00b7 restore later in Settings",
                 important=True,
             )
 
@@ -3845,6 +3329,7 @@ class RepoManagerApp(tk.Tk):
                     ["git", "-C", path, *args],
                     capture_output=True, text=True, timeout=120,
                     encoding="utf-8", errors="replace",
+                    env=git_environment(read_only=not mutation),
                     creationflags=CREATE_NO_WINDOW,
                 )
                 outcome = GIT_SUCCESS if r.returncode == 0 else GIT_FAILED
@@ -3886,330 +3371,11 @@ class RepoManagerApp(tk.Tk):
         if outcome != GIT_SUCCESS:
             title = f"git {verb}"
             messagebox.showwarning(title, out or outcome) if outcome == GIT_PARTIAL else messagebox.showerror(title, out or outcome)
-        if (verb in ("commit & push", "pull", "push")
-                and outcome in (GIT_SUCCESS, GIT_PARTIAL,
+        if (verb in ("commit", "stage", "unstage", "fetch", "pull", "push")
+                and outcome in (GIT_SUCCESS, GIT_PARTIAL, GIT_FAILED,
                                 GIT_OUTCOME_UNKNOWN)
                 and not self.__dict__.get("_close_after_git", False)):
-            self._refresh_metadata_async()
-
-    def git_commit_push(self):
-        p = self._selected_project()
-        if not p or not projects.is_repository_backed(p):
-            self._status.set("This action requires an associated Git repository",
-                             important=True)
-            return
-        self._flush_note_save()
-        target = git_target_snapshot(p)
-
-        def preview_done(outcome, out):
-            if outcome != GIT_SUCCESS:
-                self._git_report(p, outcome, out, "status")
-                return
-            target_project = next((project for project in self.projects
-                                  if git_target_is_authorized([project], target)),
-                                 None)
-            if target_project is None:
-                self._git_report(p, GIT_CANCELLED,
-                                 "Project association changed while the preview was loading",
-                                 "status")
-                return
-            self._show_commit_preview(target, out.splitlines())
-
-        self._status.set(
-            f"{projects.project_display_name(p)}: collecting changes…")
-        self._git_async(target, preview_done, "status", "--porcelain")
-
-    def _show_commit_preview(self, p, files):
-        if isinstance(p, dict) and set(p) >= {"project_id", "path", "_record"}:
-            p = next((project for project in self.projects
-                      if git_target_is_authorized([project], p)), None)
-        if p is None:
-            return
-        if not files:
-            if messagebox.askyesno(
-                    "Commit & Push",
-                    f"'{projects.project_display_name(p)}' has no changes "
-                    "to commit.\n"
-                    "Push existing commits anyway?"):
-                self._do_push(p)
-            return
-        dlg = tk.Toplevel(self)
-        self._prepare_dialog(
-            dlg, f"Commit & Push — {projects.project_display_name(p)}",
-            "580x480")
-
-        ttk.Label(dlg, text=(
-            f"Snapshot: {len(files)} changed file(s) in:\n{p['path']}\n"
-            "Commit & Push stages all current changes, including changes "
-            "made after this preview."), wraplength=550).pack(
-                anchor="w", padx=10, pady=(10, 4))
-        lst = tk.Listbox(dlg, height=14)
-        theme.style_tk_widget(lst, self.pal, "list")
-        lst.pack(fill="both", expand=True, padx=10)
-        for f in files:
-            lst.insert("end", f)
-
-        ttk.Label(dlg, text="Commit message:").pack(anchor="w", padx=10,
-                                                    pady=(6, 0))
-        msg_entry = ttk.Entry(dlg)
-        msg_entry.insert(0, "Update")
-        msg_entry.pack(fill="x", padx=10, pady=(0, 8))
-
-        def confirm():
-            msg = msg_entry.get().strip() or "Update"
-            if not git_target_is_current(self.projects, p):
-                messagebox.showerror(
-                    "Commit & Push",
-                    "The Project association changed after this preview. "
-                    "No Git write was started.", parent=dlg)
-                return
-            dlg.destroy()
-            self._do_commit_push(p, msg)
-
-        btns = ttk.Frame(dlg)
-        btns.pack(fill="x", padx=10, pady=(0, 10))
-        ttk.Button(btns, text="Commit & Push", command=confirm,
-                   style="Primary.TButton").pack(side="right")
-        ttk.Button(btns, text="Cancel", command=dlg.destroy).pack(
-            side="right", padx=(0, 6))
-        msg_entry.bind("<Return>", lambda e: confirm())
-        msg_entry.focus_set()
-
-    def _do_commit_push(self, p, msg):
-        if not git_target_is_current(self.projects, p):
-            self._git_report(
-                p, GIT_CANCELLED, "Project association changed; no Git write started",
-                "commit & push")
-            return
-
-        target = git_target_snapshot(p)
-
-        def done(outcome, out):
-            current = next((project for project in self.projects
-                            if git_target_is_authorized([project], target)),
-                           None)
-            if current is None:
-                self._status.set(
-                    "Commit & Push completed for a target that is no longer "
-                    "associated; inspect the repository directly.",
-                    important=True)
-                return
-            self._git_report(current, outcome, out, "commit & push")
-
-        done = self._track_git_worker(done)
-
-        def work():
-            guard = self.__dict__.setdefault(
-                "_git_mutation_guard", GitMutationGuard())
-            mutation_key = target.get("repository_marker")
-            if (mutation_key is None or not guard.acquire(mutation_key)):
-                self._scan_queue.put(("done", (done, GIT_CANCELLED,
-                                                 "Another Git mutation is active or the repository identity is unavailable")))
-                return
-            path = target["path"]
-            try:
-                if not git_mutation_target_is_authorized(
-                        self.projects, target):
-                    self._scan_queue.put((
-                        "done", (done, GIT_CANCELLED,
-                                 "Project association or repository identity changed; no Git write started")))
-                    return
-                try:
-                    remotes = subprocess.run(
-                        ["git", "-C", path, "remote"],
-                        capture_output=True, text=True, timeout=120,
-                        encoding="utf-8", errors="replace",
-                        creationflags=CREATE_NO_WINDOW,
-                    )
-                except (OSError, subprocess.TimeoutExpired) as exc:
-                    self._scan_queue.put(("done", (done, GIT_OUTCOME_UNKNOWN, str(exc))))
-                    return
-                remote_names = remotes.stdout.splitlines() \
-                    if remotes.returncode == 0 else []
-                remote = select_push_remote(
-                    remote_names, p.get("upstream"))
-                if remote is None:
-                    self._scan_queue.put((
-                        "done", (done, GIT_FAILED,
-                                 "No unambiguous Git push remote is configured")))
-                    return
-                remote_url_result = subprocess.run(
-                    ["git", "-C", path, "remote", "get-url", "--push",
-                     remote], capture_output=True, text=True, timeout=120,
-                    encoding="utf-8", errors="replace",
-                    creationflags=CREATE_NO_WINDOW)
-                push_url = (remote_url_result.stdout or "").strip()
-                if remote_url_result.returncode != 0 or not push_url:
-                    self._scan_queue.put((
-                        "done", (done, GIT_FAILED,
-                                 "The selected push remote has no available push URL")))
-                    return
-                try:
-                    r = subprocess.run(
-                        ["git", "-C", path, "status", "--porcelain"],
-                        capture_output=True, text=True, timeout=120,
-                        encoding="utf-8", errors="replace",
-                        creationflags=CREATE_NO_WINDOW,
-                    )
-                    if r.returncode != 0:
-                        self._scan_queue.put((
-                            "done", (done, GIT_FAILED,
-                                     "Working-tree status could not be rechecked")))
-                        return
-                    porcelain_now = (r.stdout or "").strip()
-                except (OSError, subprocess.TimeoutExpired) as exc:
-                    self._scan_queue.put((
-                        "done", (done, GIT_OUTCOME_UNKNOWN,
-                                 f"Working-tree status recheck failed: {exc}")))
-                    return
-                steps = commit_steps_for(msg, porcelain_now, remote)
-                if not steps:
-                    self._scan_queue.put((
-                        "done",
-                        (done, GIT_FAILED,
-                         "Nothing to commit \u2014 working tree clean"),
-                    ))
-                    return
-                results = []
-                for label, args in steps:
-                    try:
-                        if label == "push":
-                            current_url = subprocess.run(
-                                ["git", "-C", path, "remote", "get-url",
-                                 "--push", remote], capture_output=True,
-                                text=True, timeout=120, encoding="utf-8",
-                                errors="replace",
-                                creationflags=CREATE_NO_WINDOW)
-                            if (current_url.returncode != 0
-                                    or (current_url.stdout or "").strip()
-                                    != push_url):
-                                results.append((
-                                    label, 1,
-                                    "push remote changed before execution",
-                                    None))
-                                break
-                        r = subprocess.run(
-                            ["git", "-C", path, *args],
-                            capture_output=True, text=True, timeout=120,
-                            encoding="utf-8", errors="replace",
-                            creationflags=CREATE_NO_WINDOW,
-                        )
-                        results.append(
-                            (label, r.returncode,
-                             r.stdout or r.stderr or "", None))
-                        if r.returncode != 0:
-                            break  # prerequisite mutation failed; do not continue
-                    except subprocess.TimeoutExpired as e:
-                        results.append((label, 1, str(e), GIT_OUTCOME_UNKNOWN))
-                        break  # later steps cannot safely execute
-                    except OSError as e:
-                        results.append((label, 1, str(e), GIT_OUTCOME_UNKNOWN))
-                        break
-                outcome, out = git_step_outcome(results)
-            except Exception:
-                log.exception("commit & push failed unexpectedly")
-                outcome, out = GIT_FAILED, "internal error — see repo_manager.log"
-            finally:
-                guard.release(mutation_key)
-            self._scan_queue.put(("done", (done, outcome, out)))
-
-        self._status.set(
-            f"{projects.project_display_name(p)}: committing & pushing…")
-        try:
-            threading.Thread(target=work, daemon=True).start()
-        except (OSError, RuntimeError) as exc:
-            # The callback is already tracked; queue the terminal failure so
-            # shutdown and the normal UI reporter observe it exactly once.
-            self._scan_queue.put(("done", (done, GIT_FAILED, str(exc))))
-
-    def _do_push(self, p):
-        target = git_target_snapshot(p)
-
-        def done(outcome, out):
-            current = next((project for project in self.projects
-                            if git_target_is_authorized([project], target)),
-                           None)
-            if current is None:
-                self._status.set(
-                    "Push completed for a target that is no longer associated; "
-                    "inspect the repository directly.", important=True)
-                return
-            self._git_report(current, outcome, out, "push")
-
-        def remotes_done(outcome, out):
-            if outcome != GIT_SUCCESS:
-                done(outcome, out)
-                return
-            if not git_target_is_current(self.projects, target):
-                done(GIT_CANCELLED, "Project association changed; no push started")
-                return
-            current = next((project for project in self.projects
-                            if git_target_is_authorized([project], target)), None)
-            if current is None:
-                done(GIT_CANCELLED, "Project association changed; no push started")
-                return
-            remote = select_push_remote(out.splitlines(), current.get("upstream"))
-            if remote is None:
-                done(GIT_FAILED, "No unambiguous Git push remote is configured")
-                return
-
-            def url_done(url_outcome, url):
-                if url_outcome != GIT_SUCCESS or not url.strip():
-                    done(GIT_FAILED,
-                         "The selected push remote has no available push URL")
-                    return
-                if not git_target_is_current(self.projects, target):
-                    done(GIT_CANCELLED,
-                         "Project association changed; no push started")
-                    return
-                self._git_async(target, done, "push", "-u", remote, "HEAD",
-                                mutation=True)
-
-            self._git_async(target, url_done, "remote", "get-url", "--push",
-                            remote)
-
-        self._status.set(f"{projects.project_display_name(p)}: pushing…")
-        self._git_async(target, remotes_done, "remote")
-
-    def git_pull(self):
-        p = self._selected_project()
-        if not p or not projects.is_repository_backed(p):
-            self._status.set("This action requires an associated Git repository",
-                             important=True)
-            return
-
-        target = git_target_snapshot(p)
-
-        def done(outcome, out):
-            current = next((project for project in self.projects
-                            if git_target_is_authorized([project], target)),
-                           None)
-            if current is None:
-                self._status.set(
-                    "Pull completed for a target that is no longer associated; "
-                    "inspect the repository directly.", important=True)
-                return
-            self._git_report(current, outcome, out, "pull")
-
-        def upstream_done(outcome, out):
-            if outcome != GIT_SUCCESS:
-                done(outcome, out)
-                return
-            parsed = parse_upstream(out)
-            if parsed is None:
-                done(GIT_FAILED, "No unambiguous upstream is configured")
-                return
-            if not git_target_is_current(self.projects, target):
-                done(GIT_CANCELLED,
-                     "Project association changed; no pull started")
-                return
-            remote, branch = parsed
-            self._git_async(target, done, "pull", "--ff-only", remote, branch,
-                            mutation=True)
-
-        self._status.set(f"{projects.project_display_name(p)}: pulling…")
-        self._git_async(target, upstream_done, "rev-parse", "--abbrev-ref",
-                        "@{upstream}")
+            self._refresh_metadata_async(target_project=proj)
 
     def _web_url(self, proj):
         """Normalized HTTPS URL for a recognized stored remote, or ``None``."""
@@ -4252,11 +3418,70 @@ class RepoManagerApp(tk.Tk):
         self._status.set(f"copied: {url}")
 
     # ------------------------------------------------------------- scanning
+    # Explicit full-inventory-scan freshness.
+    #
+    # ``last_seen`` on a Project record means the repository was observed
+    # during discovery/reconciliation (``merge_scan``), never merely that a
+    # Git metadata command ran against its old known path. The dashboard-wide
+    # freshness below is a separately-named concept: the completion time of
+    # the most recent successful FULL inventory scan. It is persisted in
+    # settings (unknown keys survive settings round-trips) so it survives
+    # restart, and it is recorded only when a scan result is reconciled and
+    # persisted — never for metadata-only refreshes or failed scans.
+    FULL_SCAN_AT_KEY = "last_full_scan_at"
+    FULL_SCAN_AT_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+    def _check_git_availability(self):
+        previous = self.__dict__.get("_git_availability")
+        self._git_availability = git_availability.check_git()
+        state = self._git_availability
+        if state.available:
+            self.git_notice.pack_forget()
+            if previous is not None and not previous.available:
+                self._status.set("Git is available · scanning configured folders",
+                                 important=True)
+            return True
+        reason = {
+            "not_found": "Git was not found on this process PATH.",
+            "launch_failed": "Git was found but could not be started.",
+            "unusable": "Git started but did not respond successfully.",
+        }[state.status]
+        self.git_notice_detail.configure(
+            text=(f"RepoManager uses Git to inspect and manage local repositories. "
+                  f"{reason} Install Git for Windows with Git on PATH, then "
+                  "use Check again. If it still fails, restart RepoManager."))
+        if not self.git_notice.winfo_manager():
+            self.git_notice.pack(fill="x", padx=10, pady=(2, 4),
+                                 before=self._outer_pane)
+        self._status.set(reason, important=True)
+        return False
+
+    def _check_git_again(self):
+        if self._check_git_availability() and not self._scanning:
+            self.start_scan()
+
+    def _open_git_install(self):
+        if not webbrowser.open("https://git-scm.com/install/windows"):
+            self._status.set("Browser could not be opened", important=True)
+
     def start_scan(self):
-        if self.__dict__.get("_closing", False) or self._scanning:
+        if self.__dict__.get("_closing", False):
             return
         if self._registry_blocked():
             self._retry_registry()
+            return
+        if (self.__dict__.get("_git_gate_enabled", False)
+                and not self._check_git_availability()):
+            return
+        if self._scanning:
+            # Coalesce: a user-requested scan while one is already active
+            # records at most ONE trailing rescan instead of being silently
+            # discarded. The trailing scan starts once when the active scan
+            # finishes; closing cancels it. No concurrent generations.
+            self.__dict__["_pending_rescan"] = True
+            status_line = self.__dict__.get("_status")
+            if status_line is not None:
+                status_line.set("Rescan queued — runs after the current scan")
             return
         self._flush_note_save()
         self._flush_project_save()
@@ -4264,6 +3489,7 @@ class RepoManagerApp(tk.Tk):
         self.scan_btn.state(["disabled"])
         self.scan_btn.configure(text="Scanning…")
         self._status.set("Scanning configured folders")
+        self._refresh_inventory_status(scanning=True)
         self._populate_trees()
 
         s = dict(self.settings)
@@ -4293,14 +3519,58 @@ class RepoManagerApp(tk.Tk):
                 }),
             daemon=True).start()
 
-    def _refresh_metadata_async(self):
+    def _refresh_inventory_status(self, scanning=None):
+        """Update the small dashboard freshness line, if it exists.
+
+        Shows "Inventory: refreshing…" while a scan is active, otherwise the
+        age of the most recent successful FULL inventory scan. Mock-harness
+        application objects without the label are tolerated.
+        """
+        label = self.__dict__.get("inventory_status")
+        if label is None:
+            return
+        if scanning is None:
+            scanning = bool(self.__dict__.get("_scanning", False))
+        if scanning:
+            label.configure(text="Inventory: refreshing…")
+            return
+        label.configure(text=format_inventory_age(
+            self.__dict__.get("_last_full_scan_at")))
+
+    def _record_successful_full_scan(self):
+        """Stamp the explicit full-inventory-scan time after a completed scan.
+
+        Called only when a scan result was reconciled and persisted (never
+        for metadata-only refreshes, blocked/skipped results, or failed
+        scans). The stamp is kept in memory and persisted best-effort in
+        settings; a settings failure is logged and must never break scan
+        completion.
+        """
+        stamp = scanner.utc_now_iso()
+        self.__dict__["_last_full_scan_at"] = parse_full_scan_at(stamp)
+        settings = self.__dict__.get("settings")
+        if isinstance(settings, dict):
+            settings[self.FULL_SCAN_AT_KEY] = stamp
+            try:
+                store.save_settings(settings)
+            except Exception:
+                log.exception("full-scan freshness timestamp was not saved")
+        self._refresh_inventory_status()
+
+    def _refresh_metadata_async(self, target_project=None):
         """Re-collect git metadata without a full disk walk.
 
         The worker captures logical Project IDs and exact paths. Results are
         applied only to the refresh generation and live association that
         authorized them; reassociation, deletion, or a newer refresh wins.
         """
-        if self._registry_blocked() or self._scanning:
+        if self._registry_blocked():
+            return
+        if self._scanning:
+            if target_project is not None:
+                targets = self.__dict__.setdefault("_pending_metadata_targets", {})
+                captured = project_actions.Target.capture(target_project)
+                targets[(captured.project_id, captured.location)] = captured
             return
         self._scanning = True
         metadata_gen = self.__dict__.get("_metadata_gen", 0) + 1
@@ -4310,6 +3580,11 @@ class RepoManagerApp(tk.Tk):
             for p in list(self.projects)
             if projects.is_repository_backed(p)
             and isinstance(p.get("path"), str)
+            and (target_project is None
+                 or p.get("path") == target_project.get("path")
+                 or (repository_marker_identity(p.get("path")) is not None
+                     and repository_marker_identity(p.get("path"))
+                     == repository_marker_identity(target_project.get("path"))))
         ]
         scan_btn = self.__dict__.get("scan_btn")
         if scan_btn is not None:
@@ -4323,11 +3598,12 @@ class RepoManagerApp(tk.Tk):
             def collect(item):
                 project_id, path = item
                 try:
-                    metadata = scanner.collect_metadata(path)
-                    return project_id, path, metadata, None
+                    metadata, observed = scanner.collect_metadata_observation(
+                        path)
+                    return project_id, path, metadata, observed, None
                 except Exception as exc:
                     log.exception("metadata collection failed for %s", path)
-                    return project_id, path, None, exc
+                    return project_id, path, None, None, exc
 
             with scanner.ThreadPool(processes=scanner.MAX_WORKERS) as pool:
                 results = pool.map(collect, snapshot)
@@ -4370,6 +3646,11 @@ class RepoManagerApp(tk.Tk):
                     continue
                 if kind == "result":
                     scan_done = True
+                    if (self.__dict__.get("_git_gate_enabled", False)
+                            and not self._check_git_availability()):
+                        # Git may have disappeared while the worker ran. Do not
+                        # persist a partial inventory as a successful scan.
+                        continue
                     merged, problems = payload, rest[0] if rest else []
                     result_gen = rest[1] if len(rest) > 1 \
                         else self._scan_gen
@@ -4380,6 +3661,7 @@ class RepoManagerApp(tk.Tk):
                     self._avail.invalidate()
                     self._persist_projects(merged)
                     self.projects = merged
+                    self._record_successful_full_scan()
                     self._problems = [p for p in (problems or [])
                                       if not p.get("kind") == "move"]
                     self._move_suggestions = [p for p in (problems or [])
@@ -4407,7 +3689,21 @@ class RepoManagerApp(tk.Tk):
                         continue
                     scan_done = True
                     applied = []
-                    for project_id, path, metadata, error in results:
+                    applied_observed = []
+                    for entry in results:
+                        # New 5-tuple carries transient validity; legacy
+                        # 4-tuple callers/tests are treated as fully observed.
+                        if isinstance(entry, (tuple, list)) and len(entry) == 5:
+                            project_id, path, metadata, observed, error = entry
+                        elif isinstance(entry, (tuple, list)) and len(entry) == 4:
+                            project_id, path, metadata, error = entry
+                            observed = None
+                        else:
+                            log.error(
+                                "discarding malformed metadata result: %r",
+                                entry)
+                            errors.append("malformed metadata result")
+                            continue
                         if error is not None or metadata is None:
                             errors.append(f"metadata refresh failed for {path}")
                             continue
@@ -4416,14 +3712,17 @@ class RepoManagerApp(tk.Tk):
                                         and p.get("path") == path), None)
                         if current is not None:
                             applied.append(metadata)
+                            applied_observed.append(observed)
                     if applied:
                         updated = [dict(project) for project in self.projects]
-                        apply_metadata_refresh(updated, applied)
+                        apply_metadata_refresh(
+                            updated, applied, applied_observed)
                         self._persist_projects(updated)
                         # Persist the prospective state first, then update the
                         # existing objects so open detail/UI references remain
                         # valid without ever getting ahead of durable state.
-                        apply_metadata_refresh(self.projects, applied)
+                        apply_metadata_refresh(
+                            self.projects, applied, applied_observed)
                         current = self.__dict__.get("_current")
                         current_path = (current.get("path")
                                         if current is not None else None)
@@ -4474,9 +3773,25 @@ class RepoManagerApp(tk.Tk):
             queue_has_more = False
         if scan_done:
             self._scanning = False
+            pending_targets = self.__dict__.pop("_pending_metadata_targets", {})
+            if pending_targets:
+                def refresh_pending():
+                    for target in pending_targets.values():
+                        current = target.resolve(self.projects)
+                        if current is not None:
+                            self._refresh_metadata_async(target_project=current)
+                self._schedule_after_idle(refresh_pending)
             self.scan_btn.state(["!disabled"])
             self.scan_btn.configure(text="Rescan (F5)")
             self._populate_coalesced()
+            self._refresh_inventory_status()
+            if (self.__dict__.pop("_pending_rescan", False)
+                    and not self.__dict__.get("_closing", False)):
+                # Exactly one coalesced trailing scan for all F5 presses that
+                # arrived while busy. start_scan re-arms the guards itself;
+                # fall through so errors still surface and the drain loop is
+                # rescheduled for the trailing scan's events.
+                self.start_scan()
         if errors:
             msg = coalesce_worker_errors(errors)
             status_line = self.__dict__.get("_status")
@@ -4870,7 +4185,7 @@ class RepoManagerApp(tk.Tk):
 
         ttk.Label(appearance_tab, text="Theme",
                   font=("", 11, "bold")).pack(anchor="w")
-        theme_name = ("Dark" if self.settings.get("theme", "dark") == "dark"
+        theme_name = ("Dark" if self.settings.get("theme", "light") == "dark"
                       else "Ice Light")
         ttk.Label(
             appearance_tab,
@@ -5313,6 +4628,26 @@ class RepoManagerApp(tk.Tk):
         frame.pack(fill="x", padx=10, pady=(0, 6))
         frame.columnconfigure(0, weight=1)
         self._build_agent_ui(frame)
+        self._automation_expanded = False
+        self.automation_toggle = ttk.Button(
+            frame, text="Show details", command=self._toggle_automation_details)
+        self.automation_toggle.grid(row=0, column=1, sticky="e", padx=(8, 0))
+        self.agent_preflight.pack_forget()
+        self.run_status.pack_forget()
+
+    def _toggle_automation_details(self):
+        self._automation_expanded = not self._automation_expanded
+        self._sync_automation_details()
+
+    def _sync_automation_details(self):
+        expanded = self._automation_expanded or self._latest_active_agent_run() is not None
+        if expanded:
+            self.agent_preflight.pack(anchor="w", fill="x", pady=(3, 0))
+            self.run_status.pack(anchor="w", fill="x", pady=(2, 0))
+        else:
+            self.agent_preflight.pack_forget()
+            self.run_status.pack_forget()
+        self.automation_toggle.configure(text="Hide details" if expanded else "Show details")
 
     # --------------------------------------------------------------- Agents
     def _build_agent_ui(self, parent):
@@ -5323,7 +4658,9 @@ class RepoManagerApp(tk.Tk):
         ttk.Label(heading, text="Agent", style="Surface.TLabel",
                   font=("", 9, "bold")).pack(side="left", padx=(0, 6))
         self.agent_status = ttk.Label(heading, style="SurfaceMuted.TLabel")
-        self.agent_status.pack(side="left", fill="x", expand=True)
+        self.agent_status.pack(side="left")
+        ttk.Frame(heading, style="Surface.TFrame").pack(
+            side="left", fill="x", expand=True)
         self.agent_launch_btn = ttk.Button(
             heading, text="Start Agent", command=self._launch_agent, width=11)
         self.agent_launch_btn.pack(side="left", padx=(6, 4))
@@ -5359,6 +4696,8 @@ class RepoManagerApp(tk.Tk):
         self.agent_launch_btn.state(["!disabled"] if ready else ["disabled"])
         running = self._latest_active_agent_run()
         self.agent_stop_btn.state(["!disabled"] if running else ["disabled"])
+        if "automation_toggle" in self.__dict__:
+            self._sync_automation_details()
 
     def _latest_active_agent_run(self):
         for run in reversed(self.runs):
@@ -5459,7 +4798,8 @@ class RepoManagerApp(tk.Tk):
             return
         if state in (agents.EXITED, agents.TERMINATED, agents.FAILED_TO_START):
             self._agent_processes.pop(run.get("run_id"), None)
-            agents.verify_post_run(run, observe=scanner.collect_metadata)
+            agents.verify_post_run(
+                run, observe=scanner.collect_metadata_observation)
             verification = run.get('verification', agents.NOT_RUN)
             verification_text = {
                 agents.TARGET_RECHECKED: "Target rechecked",
@@ -5493,6 +4833,9 @@ class RepoManagerApp(tk.Tk):
         The other tree is deliberately ignored: its selection may be mirrored or
         stale and must never become an implicit action target.
         """
+        override = self.__dict__.get("_action_target")
+        if override is not None:
+            return override.resolve(self.projects)
         if not hasattr(self, "tree") or not hasattr(self, "now_tree"):
             return None
         tree = self.now_tree if self._active_tree == "now" else self.tree
@@ -5722,6 +5065,7 @@ class RepoManagerApp(tk.Tk):
             )
             return
         self._closing = True
+        self.__dict__["_pending_rescan"] = False
         self._cancel_after_jobs()
         self._cancel_tip_job()
         self._cancel_project_save()
@@ -5735,113 +5079,13 @@ class RepoManagerApp(tk.Tk):
     def _show_problems(self):
         if not self._problems and not self._move_suggestions:
             return
-        dlg = tk.Toplevel(self)
-        self._prepare_dialog(dlg, "Problems & possible moves", "780x560")
-        ttk.Button(dlg, text="Close (dismiss \u2014 suggestions reappear "
-                             "on next scan)",
-                   command=dlg.destroy).pack(pady=(8, 4))
-        outer = ttk.Frame(dlg)
-        outer.pack(fill="both", expand=True, padx=10, pady=(4, 10))
-        canvas = tk.Canvas(outer, bg=self.pal["bg"],
-                           highlightthickness=0)
-        sb = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
-        self._problems_body = tk.Frame(canvas, bg=self.pal["bg"])
-        self._problems_body.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=self._problems_body,
-                             anchor="nw", width=700)
-        canvas.configure(yscrollcommand=sb.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        sb.pack(side="right", fill="y")
-        dlg.bind("<MouseWheel>", lambda e: canvas.yview_scroll(
-            -1 * (e.delta // 120), "units"))
-        self._render_problems_body()
+        self._move_review = move_review.ReviewWindow(self)
+        return self._move_review
 
     def _render_problems_body(self):
-        body = getattr(self, "_problems_body", None)
-        if body is None or not body.winfo_exists():
-            return
-        for w in body.winfo_children():
-            w.destroy()
-        wrap = 620
-        problem_groups = group_problems(self._problems)
-        if problem_groups["repository"]:
-            ttk.Label(body, text="Repository problems",
-                      style=theme.semantic_style("ERROR")).pack(
-                          anchor="w", pady=(2, 4))
-            lst = tk.Listbox(
-                body, height=min(5, len(problem_groups["repository"])))
-            theme.style_tk_widget(lst, self.pal, "list")
-            lst.pack(fill="x")
-            for prob in problem_groups["repository"]:
-                lst.insert("end",
-                           f"{prob['path']}  \u2014  {prob['reason']}")
-
-        if problem_groups["scan_root"]:
-            ttk.Label(body, text="Scan issues",
-                      style=theme.semantic_style("WARN")).pack(
-                          anchor="w", pady=(12, 4))
-            lst = tk.Listbox(
-                body, height=min(5, len(problem_groups["scan_root"])))
-            theme.style_tk_widget(lst, self.pal, "list")
-            lst.pack(fill="x")
-            for prob in problem_groups["scan_root"]:
-                lst.insert("end",
-                           f"{prob['path']}  \u2014  {prob['reason']}")
-
-        if self._move_suggestions:
-            groups = group_move_suggestions(self._move_suggestions)
-            strong, ambiguous = (groups["strong"], groups["ambiguous"])
-            ttk.Label(body, text="Possible moves",
-                      style=theme.semantic_style("WARN")).pack(
-                          anchor="w", pady=(12, 4))
-            if strong:
-                n = len(strong)
-                ttk.Button(body, text=f"Accept {n} strong move"
-                                      f"{'' if n == 1 else 's'}",
-                           command=self._accept_moves_batch).pack(
-                    anchor="w", pady=(0, 6))
-            for section, items in (("Strong matches", strong),
-                                   ("Ambiguous \u2014 choose manually",
-                                    ambiguous),
-                                   ("Other matches", groups["possible"])):
-                if not items:
-                    continue
-                section_style = (theme.semantic_style("WARN")
-                                 if section.startswith("Ambiguous")
-                                 else theme.semantic_style("UNKNOWN"))
-                ttk.Label(body, text=section,
-                          style=section_style).pack(anchor="w", pady=(8, 2))
-                for sug in items:
-                    row = tk.Frame(body, bg=self.pal["panel"], bd=1,
-                                   relief="solid")
-                    row.pack(fill="x", pady=3)
-                    head = f"{sug['name']}  ({sug['category']})"
-                    old = sug.get("old_path") or \
-                        " / ".join(sug.get("old_paths") or [])
-                    new = sug.get("new_path") or \
-                        " / ".join(sug.get("new_paths") or [])
-                    detail = (f"was: {old}\nnow: {new}\n"
-                              + "\n".join(sug.get("evidence") or []))
-                    tk.Label(row, text=f"{head}\n{detail}",
-                             bg=self.pal["panel"], fg=self.pal["text"],
-                             anchor="w", justify="left",
-                             wraplength=wrap).pack(
-                        side="left", fill="both", expand=True,
-                        padx=8, pady=6)
-                    btns = tk.Frame(row, bg=self.pal["panel"])
-                    btns.pack(side="right", padx=6)
-                    is_amb = sug["category"] == "ambiguous" \
-                        or "old_paths" in sug
-                    if not is_amb:
-                        ttk.Button(btns, text="Use new path",
-                                   command=lambda s=sug:
-                                   self._accept_move(s)).pack(
-                            pady=(4, 2), fill="x")
-                    ttk.Button(btns, text="Keep both",
-                               command=lambda s=sug:
-                               self._keep_both_move(s)).pack(fill="x")
+        review = self.__dict__.get("_move_review")
+        if review is not None:
+            review.refresh()
 
     def _accept_moves_batch(self):
         """Batch-accept all strong suggestions via the same transaction."""
@@ -5938,8 +5182,8 @@ class RepoManagerApp(tk.Tk):
             old_path = suggestion["old_path"]
             self._scan_gen += 1
             self._moved_away.append((self._scan_gen, old_path.lower()))
-            self._move_suggestions = [s for s in self._move_suggestions
-                                      if s is not suggestion]
+            self._move_suggestions = move_review.retire_accepted_pair(
+                self._move_suggestions, suggestion)
             log.info("confirmed move: %s -> %s",
                      old_path, entry["path"])
             self._status.set(
@@ -5955,6 +5199,11 @@ class RepoManagerApp(tk.Tk):
             list(suggestion.get("old_paths") or [])
         news = [suggestion.get("new_path")] + \
             list(suggestion.get("new_paths") or [])
+        # R2.6C-FIX-01: suppression must be durable BEFORE pending
+        # provenance is detached. Registry and settings are separate
+        # files, so the only safe order persists the suppression first:
+        # there is then never a durable state with neither the exact
+        # suppression nor the pending_move relation.
         supp = list(self.settings.get("move_suppressions", []))
         for o in olds:
             for n in news:
@@ -5971,6 +5220,22 @@ class RepoManagerApp(tk.Tk):
             return
         self.settings.clear()
         self.settings.update(updated)
+        # Only now detach pending provenance and persist registry cleanup.
+        # If the registry save fails, the suppression is already durable
+        # (safe redundancy: suppression wins on the next scan) and the
+        # detached relation is restored in memory.
+        detached = detach_pending_for_keep_both(self.projects, suggestion)
+        try:
+            self._persist_projects()
+        except OSError as exc:
+            for record, previous in detached:
+                record["pending_move"] = previous
+            messagebox.showerror(
+                "RepoManager",
+                "Move suppression was saved, but registry cleanup failed "
+                f"and will complete on the next scan: {exc}",
+                parent=self)
+            return
         self._move_suggestions = [s for s in self._move_suggestions
                                   if s is not suggestion]
         self._status.set("kept both repositories")

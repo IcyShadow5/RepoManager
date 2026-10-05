@@ -1,15 +1,64 @@
+<img src="assets/repomanager.svg" alt="RepoManager icon" width="52" align="right">
+
 # RepoManager
 
-[![MIT License](https://img.shields.io/github/license/IcyShadow5/RepoManager?label=license)](LICENSE)
-[![CPython 3.14.7](https://img.shields.io/badge/CPython-3.14.7-3776AB?logo=python&logoColor=white)](#run-from-source)
-[![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white)](#platform-and-release-status)
-[![tests](https://github.com/IcyShadow5/RepoManager/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/IcyShadow5/RepoManager/actions/workflows/ci.yml?query=branch%3Amain)
-[![dependency audit](https://github.com/IcyShadow5/RepoManager/actions/workflows/dependencies.yml/badge.svg?branch=main)](https://github.com/IcyShadow5/RepoManager/actions/workflows/dependencies.yml?query=branch%3Amain)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![CPython 3.14.7](https://img.shields.io/badge/CPython-3.14.7-3776AB)](#run-from-source)
+[![Windows 10/11 x64](https://img.shields.io/badge/Windows-10%2F11%20x64-0078D4)](#platform-and-release-status)
+[![Tests](https://github.com/IcyShadow5/RepoManager/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/IcyShadow5/RepoManager/actions/workflows/ci.yml)
+[![Dependency audit](https://github.com/IcyShadow5/RepoManager/actions/workflows/dependencies.yml/badge.svg?branch=main)](https://github.com/IcyShadow5/RepoManager/actions/workflows/dependencies.yml)
 
-RepoManager 0.1.1 is a Windows desktop application for finding, organizing,
-and inspecting local Git repositories. It keeps a separate Project registry,
-shows current repository metadata, and puts a small set of explicit actions in
-one interface without treating discovery as permission to modify a repository.
+**Current public release:** [![Latest stable release](https://img.shields.io/github/v/release/IcyShadow5/RepoManager?label=release&cacheSeconds=300)](https://github.com/IcyShadow5/RepoManager/releases/latest)
+
+A Windows desktop tool for finding, organizing and inspecting local Git
+repositories. See your working trees, review changes, keep project context and
+open the tools you already use — from one PySide6/QML interface.
+
+[**Download the Windows portable ZIP**](https://github.com/IcyShadow5/RepoManager/releases/latest)
+· [Getting started](#finding-your-repositories)
+· [Documentation](#documentation)
+· [Report an issue](https://github.com/IcyShadow5/RepoManager/issues/new/choose)
+
+![RepoManager 0.1.2 — repository inventory, working context and selected project details in Dark mode](assets/screenshots/overview-dark.png)
+
+*Actual v0.1.2 interface with controlled demo repositories. No private repository
+or personal filesystem information is shown.*
+
+The source snapshot is **0.1.2**. The release badge and download link above track
+the latest published stable release; building this source does not publish it.
+RepoManager keeps a separate Project registry and explicit repository actions:
+discovery is not permission to modify a repository.
+
+## v0.1.2 release scope
+
+The standalone Python backend now uses **PySide6 + QML** by default. This is
+not RepoManager 2.0 or IC Platform. The release includes cooperative scan
+cancellation and close confirmation, repository search/selection/curation/notes,
+Git Changes/diff/stage/unstage and confirmed Git actions, Health advisory
+ignore/restore with transparent scoring, Quick Run and the full Run tab,
+local Agent target selection/managed stop, Git onboarding, and reviewable
+Feedback. Dark is the default; Light remains available.
+
+Classic Tkinter is a source-only parity reference and is excluded from the Qt
+portable package. Guarded portable QA options are prerelease-only diagnostics,
+not user CLI features. Custom themes, Agent history, cloud services, monetization,
+Linux/macOS support and automatic self-update are deferred.
+
+## Screenshots
+
+<details>
+<summary>Changes and diff preview</summary>
+
+![RepoManager 0.1.2 — actual Changes dialog with modified and untracked files and a selected diff](assets/screenshots/changes-dark.png)
+
+</details>
+
+<details>
+<summary>Light mode</summary>
+
+![RepoManager 0.1.2 — repository inventory and selected details in Light mode](assets/screenshots/overview-light.png)
+
+</details>
 
 ## Why use it?
 
@@ -28,7 +77,10 @@ Key capabilities include:
 - lightweight read-only Repository Health findings;
 - detection and explicit launch of supported editor, terminal, batch,
   PowerShell, npm, Godot, Python, Roblox, WSL, and Git Bash commands;
-- explicit fast-forward-only Pull and separate Commit & Push steps;
+- independent local Commit and confirmed Push, fast-forward-only Pull, and
+  explicit Fetch;
+- bounded Changes/Diff with per-file Stage/Unstage, recent History, and
+  read-only Remote inspection (new since v0.1.1);
 - advisory repository-move reconciliation that requires confirmation;
 - metadata-only Project export and repository reports in JSON or Markdown;
 - local Provider correspondence, plus a read-only GitHub metadata lookup when
@@ -39,19 +91,16 @@ automation engine, or a sandbox for commands it launches.
 
 ## Platform and release status
 
-RepoManager 0.1.1 supports Windows 10 and Windows 11. Linux and macOS are
+RepoManager v0.1.2 targets Windows 10 22H2 and Windows 11 x64. Linux and macOS are
 deferred; running generic Python source there does not make those platforms
 supported.
 
-The intended end-user distribution is an unsigned portable Windows ZIP built
-with normal 64-bit CPython 3.14.7. The release process builds and verifies
-candidates and published artifacts from a fresh clone of this public
-repository.
+The end-user distribution is an unsigned portable Windows ZIP built with
+normal 64-bit CPython 3.14.7. Historical releases remain available alongside the
+latest release.
 
-When that artifact is available, the intended experience is:
-
-1. Download `RepoManager-0.1.1-windows-x64.zip` from the GitHub Release.
-2. Extract the ZIP.
+1. Open the [latest public release](https://github.com/IcyShadow5/RepoManager/releases/latest).
+2. Download its `RepoManager-<version>-windows-x64.zip` and extract the complete folder.
 3. Start `RepoManager\RepoManager.exe`.
 
 The packaged application bundles Python, so end users do not need a separate
@@ -60,26 +109,53 @@ available on `PATH` for repository discovery and Git features. Because the
 initial build is unsigned, Windows may display an unknown-publisher or
 reputation warning.
 
+RepoManager detects Git at startup. If Git cannot start, the application shows a requirement notice instead of
+running a repository scan. Use **Install Git** to open the official
+[Git for Windows installation page](https://git-scm.com/install/windows),
+complete the normal installation with Git available on `PATH`, then select
+**Check again**. This checks the current process environment and resumes
+scanning when Git is available. If Git was installed while RepoManager was
+open and Check again still cannot find it, restart RepoManager so it inherits
+the updated `PATH`. A Git command that fails for a repository-specific reason
+is reported separately from missing Git.
+
+### Finding your repositories
+
+In **Settings > Scan folders**, add the folder containing your repository
+collection and choose **Save & scan**. New profiles start with Desktop, Documents,
+and Downloads below the current user folder; RepoManager does not search the whole
+machine automatically. Depth is relative to each root:
+depth 2 includes the root and up to two nested folder levels. Choose a nearer
+root or increase depth if a repository is deeper. Windows Settings offers
+**Add C:\\** as an optional whole-drive scope. This can take longer and encounter
+protected folders. Existing scan roots are preserved; Cancel discards unsaved
+folder additions. Invalid and duplicate additions are explained immediately.
+
 ## Run from source
 
-Source execution requires Windows 10 or 11, Python 3.14 with Tkinter, and Git
-on `PATH`. The official 0.1.1 build and CI baseline is normal 64-bit CPython
+Source execution requires Windows 10 22H2 or Windows 11 x64, Python 3.14 and Git
+on `PATH`. The official Windows build and CI baseline is normal 64-bit CPython
 3.14.7. Python 3.11 is not a supported or CI-tested source runtime.
 
-From the repository root:
+The current presentation uses PySide6 + QML. From the repository root:
 
 ```text
-py -3.14 run.py
+py -3.14 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r packaging\requirements-qt.txt
+.venv\Scripts\python.exe run.py
 ```
 
-The application runtime uses only the Python standard library. PyInstaller and
-its pinned dependencies are build tooling, not source-runtime dependencies.
+The existing Python domain, scanner, Git and storage modules remain shared.
+The classic Tkinter reference (`run_classic.py`) is retained as a regression reference
+pending a separately approved removal package. It still
+uses only the Python standard library and requires Tkinter. Qt packaging and
+promotion to a public release require separate owner acceptance.
 
 Optional external tools enable additional launchers:
 
 | Tool | Enables |
 |---|---|
-| Windows Terminal (`wt.exe`) | Terminal and Agent launch actions |
+| Windows Terminal (`wt.exe`) | Terminal action using its default profile; PowerShell 7 is not required |
 | VS Code | VS Code launch action |
 | Node.js / npm | npm launchers |
 | Godot | Godot project launchers |
@@ -99,6 +175,7 @@ RepoManager stores application-owned data under
 - `notes/` — per-Project Markdown notes;
 - rotating registry backups and corruption-quarantine files;
 - `repo_manager.log` and its rotated log files.
+- `feedback/` — reports explicitly saved locally from the Qt Feedback dialog.
 
 Notes and logs are ordinary local files. Do not place credentials or other
 sensitive values in notes, configured commands, repository metadata, or other
@@ -110,8 +187,21 @@ repository—Git writes, launched commands, and optional `run.bat` generation—
 require explicit user action. The generated starter never overwrites an
 existing `run.bat`.
 
+## Feedback and bug reports
+
+The **Feedback / Bug** button offers four categories: positive feedback,
+improvement, bug, and UI issue. Add a short title and description, then save
+locally, copy the report, or open a prefilled issue draft in the public
+RepoManager GitHub tracker. Review and submit the draft yourself; opening it
+does not send a report. There is no automatic telemetry.
+
+Only the text you enter, application edition and version are
+included by default. Optional runtime information adds Python, Qt and OS
+versions. Repository paths, inventory, notes, logs and credentials are not
+attached automatically. Review your text for private information before sharing.
+
 Selecting or refreshing a Project whose chosen remote corresponds to GitHub
-starts a read-only HTTPS request to `api.github.com`. The 0.1.1 UI does not
+starts a read-only HTTPS request to `api.github.com`. The UI does not
 accept or persist a GitHub token, so private repository metadata normally
 cannot be retrieved through this feature. Git Pull/Push and external launchers
 may also use the network according to Git and the launched tool's own
@@ -140,25 +230,60 @@ runtime license notices, and writes an adjacent integrity manifest. See
 [Windows release build](docs/RELEASE.md) for the exact contract and the
 required packaged-runtime checks.
 
-Run the complete source suite with:
+Run the current Qt product gate with:
 
 ```text
-py -3.14 -B -m unittest discover -s tests -v
+.venv\Scripts\python.exe -B -m tests.run_layers --layer current
 ```
 
 The tests provide evidence for the exercised paths; they do not replace live
 Windows GUI, packaged-executable, network, or external-launcher verification.
-See [Testing](docs/TESTING.md).
+See [Testing](docs/TESTING.md) for separate core, service, bridge, actual QML,
+packaging and Windows layers. Legacy Tkinter parity is a separate reference,
+not current UI proof. [Release evidence](docs/RELEASE_EVIDENCE.md) records the
+reconciled baseline and current release scope.
 
-## Current limitations
+## Everyday Git
 
-Version 0.1.1 does not include an installer, updater, signing pipeline, cloud
+Right-click a Project, or press Shift+F10 / the Menu key in either list.
+Changes opens a resizable staged/unstaged file list and bounded diff preview.
+Stage/Unstage apply to selected files; Unstage leaves working files intact.
+Commit defaults to staged changes, requires a message, works without a remote,
+and never pushes. Stage all current changes and commit is an explicit alternative:
+`git add -A` stages changes present at execution, not a locked preview snapshot.
+Git hooks and filters are not sandboxed.
+
+Push, Pull, and Fetch show a remote/destination preview before confirmation.
+Push is non-forced and can explicitly set an upstream. Pull requires a clean
+checkout and is fast-forward-only. Fetch does not prune or change checkout files.
+Multiple push destinations, mirror pushes, and non-standard fetch refspecs are
+blocked rather than guessed. No Git mutation is retried automatically.
+
+Repository submenus expose recent History, sanitized read-only Remotes, and a
+selected metadata refresh (not a full inventory scan). URL credential components
+are hidden, not arbitrary text secrets. Diff output is bounded to 2 MiB; Changes
+rejects status above 5,000 files. Conflict resolution, submodule writes, hunk
+staging, discard/reset/stash, and branch switching require an external Git tool.
+
+Scan issues and possible moves have separate review tabs with copyable paths.
+Ambiguous candidates require choosing an exact proven pair and confirming it;
+curated/note-owned targets cannot be silently absorbed. Missing pair provenance
+requires a rescan or Keep both. Later leaves suggestions unresolved; Keep both
+persists exact-pair suppression. No repository files are moved by reconciliation.
+
+## Current release limitations
+
+v0.1.2 does not include an installer, automatic updater, signing pipeline, cloud
 synchronization, Provider write/admin APIs, full Worktree lifecycle UI,
 coordinated multi-repository Workspace changes, Agent sessions/orchestration,
-or a general Policy/Profile/Workflow engine. Workspace metadata is retained for
-compatibility, but the 0.1.1 UI has no Workspace controls or repository-
-association picker. Project export is not a registry backup or repository
-archive.
+or a general Policy/Profile/Workflow engine. Project export is not a registry
+backup or repository archive. Workspace metadata may be retained internally,
+but Workspace controls and the repository-association picker are not exposed.
+
+Help > Versions and updates > Official releases opens the public release page
+for manual comparison/download. It does not query or replace the application
+automatically. WinGet submission #433770 for public v0.1.1 remains open as of
+2026-10-05; WinGet installation is not advertised as available.
 
 ## Documentation
 

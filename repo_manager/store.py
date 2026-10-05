@@ -6,9 +6,11 @@ import logging
 import os
 import shutil
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
+from .projects import sanitize_pending_move
 from .workspaces import ensure_workspace_id, validate_workspace
 
 
@@ -70,10 +72,12 @@ DEFAULT_SETTINGS = {
     ],
     "agent_cmd": "opencode",
     "move_suppressions": [],
+    "theme": "light",
 }
 
 log = logging.getLogger(__name__)
 _REGISTRY_SAVE_LOCK = threading.RLock()
+_SETTINGS_SAVE_LOCK = threading.RLock()
 _SETTINGS_REPORT = {"status": "fresh", "quarantined": None,
                     "reasons": [], "preservation_failed": False}
 _SETTINGS_QUARANTINED_KEY = None
@@ -216,11 +220,58 @@ def _preserve_settings_before_write():
     return None
 
 
+# Windows sharing-violation codes tolerated briefly at atomic commit points.
+# WinError 5 (ACCESS_DENIED) also covers permanent read-only/ACL failures,
+# which cannot be distinguished reliably — so retries are strictly bounded by
+# both an attempt cap and a monotonic deadline, and the final OSError always
+# surfaces unchanged.
+_REPLACE_RETRYABLE_WINERRORS = frozenset({5, 32})
+_REPLACE_MAX_ATTEMPTS = 40
+_REPLACE_DEADLINE_S = 2.0
+_REPLACE_INITIAL_DELAY_S = 0.02
+_REPLACE_MAX_DELAY_S = 0.1
+
+
+def _replace_with_retry(src, dst, *, sleep=None):
+    """Atomically replace ``dst`` with ``src``, tolerating transient locks.
+
+    Calls ``os.replace`` once; only ``OSError``s carrying a retryable
+    Windows sharing code (5/32) are retried, bounded by both an attempt cap
+    and a monotonic deadline (~2 s total, short backoff). All other errors
+    propagate immediately. On terminal failure the writer's temporary ``src``
+    is removed best-effort (never touching ``dst``) without masking the
+    final replace error, which is re-raised unchanged. ``sleep`` is
+    injectable so tests can assert bounded budgets without real waiting.
+    """
+    snooze = sleep if sleep is not None else time.sleep
+    delay = _REPLACE_INITIAL_DELAY_S
+    deadline = time.monotonic() + _REPLACE_DEADLINE_S
+    attempts = 0
+    while True:
+        attempts += 1
+        try:
+            os.replace(src, dst)
+            return attempts
+        except OSError as exc:
+            if getattr(exc, "winerror", None) not in _REPLACE_RETRYABLE_WINERRORS:
+                raise
+            if attempts >= _REPLACE_MAX_ATTEMPTS or time.monotonic() >= deadline:
+                try:
+                    Path(src).unlink()
+                except OSError:
+                    pass
+                raise
+            log.debug("atomic replace retry %d for %s (%s)",
+                      attempts, dst, exc)
+            snooze(delay)
+            delay = min(delay * 2, _REPLACE_MAX_DELAY_S)
+
+
 def _write_json(path, data):
     ensure_dirs()
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp, path)
+    _replace_with_retry(tmp, path)
 
 
 def sanitize_fingerprint(value):
@@ -401,6 +452,15 @@ def validate_registry(data):
         if "moved_from" in rec and not isinstance(rec["moved_from"], str):
             issues.append(f"[{i}] invalid 'moved_from'; ignored")
             rec = {k: v for k, v in rec.items() if k != "moved_from"}
+        if "pending_move" in rec:
+            cleaned_pending, pending_reason = sanitize_pending_move(rec)
+            if cleaned_pending is None:
+                issues.append(f"[{i}] invalid 'pending_move'"
+                              f" ({pending_reason}); relation dropped")
+                rec = {k: v for k, v in rec.items()
+                       if k != "pending_move"}
+            else:
+                rec = {**rec, "pending_move": cleaned_pending}
         records.append(rec)
         if isinstance(project_id, str):
             seen_ids.add(project_id)
@@ -649,8 +709,8 @@ def _sanitize_settings(stored):
         if not isinstance(val, list) or not all(
                 isinstance(v, str) and v.strip() for v in val):
             settings[key] = list(DEFAULT_SETTINGS[key])
-    if settings.get("theme", "dark") not in {"dark", "light"}:
-        settings["theme"] = "dark"
+    if settings.get("theme", "light") not in {"dark", "light"}:
+        settings["theme"] = "light"
     sort = settings.get("sort")
     if (sort is not None
             and (not isinstance(sort, list) or len(sort) != 2
@@ -695,11 +755,15 @@ def load_settings():
 
 
 def save_settings(settings):
+    # One settings transaction owns settings.tmp, the quarantine sidecars,
+    # and the save report atomically: preservation, sanitized write, and
+    # report update cannot interleave with another writer.
     global _SETTINGS_REPORT
-    _preserve_settings_before_write()
-    _write_json(SETTINGS_FILE, _sanitize_settings(settings))
-    _SETTINGS_REPORT = {"status": "valid", "quarantined": None,
-                        "reasons": [], "preservation_failed": False}
+    with _SETTINGS_SAVE_LOCK:
+        _preserve_settings_before_write()
+        _write_json(SETTINGS_FILE, _sanitize_settings(settings))
+        _SETTINGS_REPORT = {"status": "valid", "quarantined": None,
+                            "reasons": [], "preservation_failed": False}
 
 
 def load_projects():
@@ -793,7 +857,7 @@ def save_projects(projects, workspaces=None):
             json.dump(data, f, indent=2, ensure_ascii=False)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp, REPOS_FILE)
+        _replace_with_retry(tmp, REPOS_FILE)
         # Rotation follows the authoritative commit so bak1 always mirrors
         # the latest committed Registry; a later recovery from bak1 can then
         # never resurrect a state that the caller already replaced. Post-
@@ -852,8 +916,14 @@ def save_note(name, path, text, project_id=None):
     with _NOTE_SAVE_LOCK:
         ensure_dirs()
         tmp = p.with_suffix(".tmp")
-        tmp.write_text(text, encoding="utf-8")
-        os.replace(tmp, p)
+        # Same text/newline semantics as Path.write_text (newline=None):
+        # explicit flush + fsync + close before the atomic replace, matching
+        # the registry writer's durability shape.
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        _replace_with_retry(tmp, p)
 
 
 def move_note(old_name, old_path, new_name, new_path, project_id=None):

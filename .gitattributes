@@ -2,4 +2,37 @@
 
 *.bat text eol=crlf
 *.cmd text eol=crlf
+
+*.png binary
 *.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.pdf binary
+*.zip binary
+*.7z binary
+*.rar binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.mp3 binary
+*.wav binary
+*.ogg binary
+*.mp4 binary
+*.blend binary
+*.fbx binary
+*.obj binary
+*.gltf binary
+*.glb binary
+*.rbxm binary
+*.rbxl binary
+*.rbxlx binary
+*.r16 binary
+*.db binary
+*.sqlite binary

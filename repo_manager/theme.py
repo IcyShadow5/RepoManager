@@ -25,7 +25,7 @@ PALETTES = {
         "activity_bg": "#122b38", "activity_border": "#28647c",
         "neutral_bg": "#1a2430", "neutral_border": "#354658",
         # row state colors
-        "row_dirty_bg":  "#332815",
+        "row_dirty_bg":  "#182432",
         "row_dirty_fg":  "#f2bd5b",
         "row_sync_fg":   "#55c7f2",
         "row_norem_fg":  "#f2bd5b",
@@ -55,7 +55,7 @@ PALETTES = {
         "warning_bg": "#f4ead0", "warning_border": "#d1b66d",
         "activity_bg": "#d5edf3", "activity_border": "#82bfce",
         "neutral_bg": "#e1ebee", "neutral_border": "#afc2c8",
-        "row_dirty_bg":  "#f4ead0",
+        "row_dirty_bg":  "#edf6f8",
         "row_dirty_fg":  "#795000",
         "row_sync_fg":   "#086d91",
         "row_norem_fg":  "#795000",
@@ -65,11 +65,11 @@ PALETTES = {
 }
 
 
-def get_palette(name="dark"):
-    return PALETTES.get(name, PALETTES["dark"])
+def get_palette(name="light"):
+    return PALETTES.get(name, PALETTES["light"])
 
 
-def apply(root, name="dark"):
+def apply(root, name="light"):
     """Apply palette to root + ttk style. Returns the palette dict."""
     pal = get_palette(name)
     root.configure(bg=pal["bg"])
@@ -137,13 +137,14 @@ def apply(root, name="dark"):
 
     style.configure("Treeview", background=pal["panel"],
                     fieldbackground=pal["panel"], foreground=pal["text"],
-                    rowheight=26, bordercolor=pal["border"])
+                    font=("Segoe UI", 10), rowheight=30,
+                    bordercolor=pal["border"])
     style.map("Treeview",
               background=[("selected", pal["selection"])],
               foreground=[("selected", pal["selection_fg"])])
     style.configure("Treeview.Heading", background=pal["header"],
-                    foreground=pal["accent2"], relief="flat",
-                    padding=(6, 4), font=("", 9, "bold"))
+                    foreground=pal["muted"], relief="flat",
+                    padding=(6, 5), font=("Segoe UI", 9, "bold"))
     style.map("Treeview.Heading", background=[("active", pal["panel2"])])
 
     style.configure("TScrollbar", background=pal["panel2"],

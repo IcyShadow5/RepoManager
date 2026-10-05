@@ -169,9 +169,15 @@ class AgentTests(unittest.TestCase):
                 args=["-c", "raise SystemExit(0)"])
             run = agents.new_run(agents.launch_intent(agent, target))
             process = agents.start_run(run, agent=agent, target=target)
-            self.assertEqual(process.wait(timeout=10), 0)
-            self.assertEqual(agents.observe_run(run, process), agents.EXITED)
-            self.assertEqual(run["exit_code"], 0)
+            self.assertIsNotNone(process)
+            try:
+                self.assertEqual(process.wait(timeout=10), 0)
+                self.assertEqual(agents.observe_run(run, process), agents.EXITED)
+                self.assertEqual(run["exit_code"], 0)
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait(timeout=10)
 
     def test_missing_post_run_target_is_not_verified(self):
         run = agents.new_run({"agent_id": "a", "target": {}, "cwd": tempfile.gettempdir(),

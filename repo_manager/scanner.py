@@ -5,13 +5,19 @@ import re
 import subprocess
 from datetime import datetime, timedelta, timezone
 from multiprocessing.pool import ThreadPool
+from multiprocessing import TimeoutError as PoolTimeout
 from pathlib import Path
+from .git_environment import git_environment
+from .scan_control import ScanCancelled, active_scan, checkpoint, current_control, progress
 
-from .projects import (ensure_project_id, is_ignored, project_display_name,
-                       repository_default_name, repository_path_key)
+from .projects import (counterpart_is_pristine, ensure_project_id, is_ignored,
+                        project_display_name, project_id,
+                        project_location_key, repository_default_name,
+                        repository_path_key, sanitize_pending_move)
 
 GIT_TIMEOUT = 10
 MAX_WORKERS = 8
+CONTROLLED_SCAN_WORKERS = 4
 PRUNE_DAYS = 30
 CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
 SCHEME_RE = re.compile(r"^[a-zA-Z][\w+.-]*://")
@@ -83,11 +89,13 @@ def _git(path, *args):
 
 def _git_result(path, *args):
     """Run Git and retain return-code evidence for stateful observations."""
+    checkpoint()
     try:
         r = subprocess.run(
             ["git", "-C", str(path), *args],
             capture_output=True, text=True, timeout=GIT_TIMEOUT,
             encoding="utf-8", errors="replace",
+            env=git_environment(read_only=True),
             creationflags=CREATE_NO_WINDOW,
         )
         # Porcelain status uses a leading space as the meaningful index-state
@@ -95,6 +103,10 @@ def _git_result(path, *args):
         return (r.returncode, r.stdout.rstrip(), r.stderr.rstrip())
     except (OSError, subprocess.TimeoutExpired) as exc:
         return (None, "", str(exc))
+    finally:
+        # Finish only this bounded read-only command; never start the next
+        # command after cancellation, including timeout/error paths.
+        checkpoint()
 
 
 def scan_root_key(value):
@@ -144,6 +156,8 @@ def find_repo_dirs_with_status(roots, depth, skip_dirs):
     problems = []
     seen_roots = set()
     for root in roots:
+        checkpoint()
+        progress(path=root)
         try:
             root_path = Path(root).resolve()
         except OSError:
@@ -166,7 +180,9 @@ def find_repo_dirs_with_status(roots, depth, skip_dirs):
         root_error = None
         stack = [(root_path, 0)]
         while stack:
+            checkpoint()
             current, d = stack.pop()
+            progress(path=current, directories=1)
             try:
                 entries = list(os.scandir(current))
             except OSError as exc:
@@ -174,8 +190,10 @@ def find_repo_dirs_with_status(roots, depth, skip_dirs):
                     root_error = f"scan root incomplete: {exc}"
                 continue
             for entry in entries:
+                checkpoint()
                 if entry.name == ".git":
                     found.append(str(current))
+                    progress(repositories=1)
                     continue
                 try:
                     is_dir = entry.is_dir(follow_symlinks=False)
@@ -316,6 +334,7 @@ def _run_git(path, *args):
         result = subprocess.run(
             ["git", "-C", str(path), *args], capture_output=True, text=True,
             timeout=GIT_TIMEOUT, encoding="utf-8", errors="replace",
+            env=git_environment(),
             creationflags=CREATE_NO_WINDOW)
         return result.returncode, (result.stdout or "").strip(), (result.stderr or "").strip()
     except subprocess.TimeoutExpired as exc:
@@ -411,75 +430,400 @@ def remove_worktree(repository, target_path, *, confirm=False):
             "stdout": out, "stderr": err, "verified": absent}
 
 
-def collect_metadata(path):
-    """Gather live git metadata for one repo directory. Returns dict."""
+# Technical metadata keys that a positively-observed broken repository may
+# legitimately invalidate. Identity/curation keys (path, name, project_id,
+# folder_path, status, focus, pinned, added_at) are never included here;
+# ``remote_reachable`` is a dead field (always None) and is intentionally
+# excluded so observation validity never overwrites it.
+TECHNICAL_OBSERVED_FIELDS = frozenset({
+    "branch", "head", "dirty", "staged", "unstaged", "untracked",
+    "status_available", "ahead", "behind", "upstream", "upstream_state",
+    "sync_available", "remotes", "remote_names", "remote_name", "remote",
+    "last_commit_date", "last_commit_msg", "broken", "repository_observed",
+    "fingerprint", "worktrees", "worktrees_available",
+})
+
+
+def _unborn_repo_is_confirmed(path, cache):
+    """Return True only when Git positively proves zero reachable commits.
+
+    Runs at most once per collection and only on a failure path where a
+    HEAD/log/roots lookup already failed with a real non-zero Git exit
+    (never on timeout/OSError). ``rev-list --all --count`` is
+    locale-independent: ``0`` means genuinely unborn/empty, anything else
+    (or any failure) means the earlier failure was transient and must be
+    treated as unobserved.
+    """
+    if cache.get("unborn") is not None:
+        return cache["unborn"]
+    try:
+        rc, out, _err = _git_result(path, "rev-list", "--all", "--count")
+    except ScanCancelled:
+        raise
+    except Exception:
+        cache["unborn"] = False
+        return False
+    confirmed = (rc == 0 and (out or "").strip() == "0")
+    cache["unborn"] = confirmed
+    return confirmed
+
+
+def repository_marker_evidence(path):
+    """Classify local repository-marker evidence without running Git.
+
+    Returns one of ``missing`` (path does not exist), ``not_dir`` (path is
+    not a directory), ``absent`` (directory without a RepoManager-valid
+    marker), ``valid`` (marker present and plausible), ``invalid``
+    (marker present but filesystem-proven corrupt), or ``ambiguous``
+    (OSError/unreadable — fail closed toward preserving cached state).
+
+    The marker model mirrors discovery: a ``.git`` directory (normal
+    checkout, must contain ``HEAD``) or a ``.git`` file starting with
+    ``gitdir:`` (linked worktree). Bare layouts (top-level ``HEAD`` plus
+    ``objects`` with no ``.git`` child) are never positively condemned
+    here: a failing bare is ``ambiguous``. No Git output or locale text is
+    consulted.
+    """
+    try:
+        p = Path(path)
+    except Exception:
+        return "ambiguous"
+    try:
+        exists = p.exists()
+    except OSError:
+        return "ambiguous"
+    if not exists:
+        return "missing"
+    try:
+        is_dir = p.is_dir()
+    except OSError:
+        return "ambiguous"
+    if not is_dir:
+        return "not_dir"
+    dotgit = p / ".git"
+    try:
+        dot_exists = dotgit.exists()
+    except OSError:
+        return "ambiguous"
+    if not dot_exists:
+        try:
+            head_is_file = (p / "HEAD").is_file()
+            objects_is_dir = (p / "objects").is_dir()
+        except OSError:
+            return "ambiguous"
+        if head_is_file and objects_is_dir:
+            return "ambiguous"
+        return "absent"
+    try:
+        dot_is_dir = dotgit.is_dir()
+        dot_is_file = dotgit.is_file()
+    except OSError:
+        return "ambiguous"
+    if dot_is_dir and not dot_is_file:
+        try:
+            head_ok = (dotgit / "HEAD").is_file()
+        except OSError:
+            return "ambiguous"
+        return "valid" if head_ok else "invalid"
+    if dot_is_file and not dot_is_dir:
+        try:
+            content = dotgit.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return "ambiguous"
+        text = content.strip()
+        if not text.lower().startswith("gitdir:"):
+            return "invalid"
+        target_raw = text[7:].strip()
+        if not target_raw:
+            return "invalid"
+        try:
+            target = Path(target_raw)
+            if not target.is_absolute():
+                target = dotgit.parent / target_raw
+            target_exists = target.exists()
+        except OSError:
+            return "ambiguous"
+        return "valid" if target_exists else "invalid"
+    return "ambiguous"
+
+
+def collect_metadata_observation(path):
+    """Collect metadata plus transient field-level observation validity.
+
+    Returns ``(metadata, observed)`` where ``observed`` is a frozenset of
+    top-level metadata keys whose values were successfully observed during
+    this call — including legitimate absences (detached ``branch=None``,
+    explicit no-upstream ``NONE``, unborn ``head=None``, empty remotes).
+    Failed observations are absent from the set and their ``metadata``
+    values are defaults that must not overwrite cached state.
+
+    The validity set is transient: never persist it to repos.json and never
+    expose it in the project schema.
+    """
+    checkpoint()
     meta = empty_meta(path)
+    observed = set()
     p = Path(path)
-    if _git(p, "rev-parse", "--git-dir") is None:
-        meta["broken"] = True
-        return meta
+    state_cache = {}
+
+    git_dir_rc, _git_dir_out, _git_dir_err = _git_result(
+        p, "rev-parse", "--git-dir")
+    if git_dir_rc is None:
+        # Observation infrastructure failed (timeout/OSError/missing
+        # executable). This is NOT positive evidence the repository is
+        # broken: preserve all previous state.
+        return meta, frozenset()
+    if git_dir_rc != 0:
+        # A non-zero Git exit alone is NOT proof of a broken repository
+        # (permission, safe.directory, transient I/O, translated stderr).
+        # Only local positive evidence condemns the location; a plausible
+        # marker with failing Git stays UNKNOWN/unobserved and preserves
+        # cached state. stderr is diagnostic only, never sole authority.
+        marker = repository_marker_evidence(p)
+        if marker in ("missing", "not_dir", "absent", "invalid"):
+            meta["broken"] = True
+            observed.update(TECHNICAL_OBSERVED_FIELDS)
+            return meta, frozenset(observed)
+        return meta, frozenset()
     meta["repository_observed"] = True
+    observed.update({"repository_observed", "broken"})
+
+    # -- BRANCH: rc==0 means observed, even when stdout is empty (detached).
     branch = _git(p, "branch", "--show-current")
-    meta["branch"] = branch or None  # detached HEAD -> None
-    meta["head"] = _git(p, "rev-parse", "HEAD")
+    branch_observed = branch is not None
+    branch_value = None
+    if branch_observed:
+        branch_value = branch or None  # detached HEAD -> None (observed)
+        meta["branch"] = branch_value
+        observed.add("branch")
+
+    # -- HEAD: distinguish genuinely unborn (observed None) from transient.
+    head_rc, head_out, _head_err = _git_result(p, "rev-parse", "HEAD")
+    if head_rc == 0 and head_out:
+        meta["head"] = head_out
+        observed.add("head")
+    elif (head_rc is not None and head_rc != 0
+            and _unborn_repo_is_confirmed(p, state_cache)):
+        meta["head"] = None
+        observed.add("head")
+    # else: unobserved (timeout/OSError with rc None, or transient non-zero).
+
+    # -- STATUS: success (even empty clean output) is observed.
     status = _git(p, "status", "--porcelain")
     if status is not None:
-        meta["staged"], meta["unstaged"], meta["untracked"] = _parse_porcelain_status(status)
+        meta["staged"], meta["unstaged"], meta["untracked"] = (
+            _parse_porcelain_status(status))
         meta["dirty"] = meta["staged"] + meta["unstaged"] + meta["untracked"]
         meta["status_available"] = True
+        observed.update(
+            {"dirty", "staged", "unstaged", "untracked", "status_available"})
+
+    # -- UPSTREAM: TRACKED vs explicit NONE vs detached/unborn legit-clear
+    # vs generic transient (preserve).
     upstream_rc, upstream, upstream_error = _git_result(
         p, "rev-parse", "--abbrev-ref", "@{upstream}")
+    upstream_tracked = False
+    upstream_legit_absent = False
     if upstream_rc == 0 and upstream:
         meta["upstream"] = upstream
         meta["upstream_state"] = "TRACKED"
+        observed.update({"upstream", "upstream_state"})
+        upstream_tracked = True
+    elif upstream_rc is not None and upstream_rc != 0:
+        if "no upstream configured" in (upstream_error or "").casefold():
+            meta["upstream"] = None
+            meta["upstream_state"] = "NONE"
+            observed.update({"upstream", "upstream_state"})
+            upstream_legit_absent = True
+        elif branch_observed and branch_value is None:
+            # Detached HEAD cannot have an upstream; stale TRACKED must be
+            # cleared without relying on locale-fragile stderr text.
+            meta["upstream"] = None
+            meta["upstream_state"] = "UNKNOWN"
+            observed.update({"upstream", "upstream_state"})
+            upstream_legit_absent = True
+        elif _unborn_repo_is_confirmed(p, state_cache):
+            meta["upstream"] = None
+            meta["upstream_state"] = "UNKNOWN"
+            observed.update({"upstream", "upstream_state"})
+            upstream_legit_absent = True
+        # else: generic failure -> unobserved, preserve cached upstream facts.
+
+    # -- AHEAD/BEHIND: atomic success updates; legit absence clears;
+    # otherwise preserve cached counts.
+    if upstream_tracked:
         ahead = _git(p, "rev-list", "--count", "@{upstream}..HEAD")
         behind = _git(p, "rev-list", "--count", "HEAD..@{upstream}")
         if (ahead is not None and behind is not None
-                and ahead.isdigit() and behind.isdigit()):
-            meta["ahead"] = int(ahead)
-            meta["behind"] = int(behind)
+                and ahead.strip().isdigit() and behind.strip().isdigit()):
+            meta["ahead"] = int(ahead.strip())
+            meta["behind"] = int(behind.strip())
             meta["sync_available"] = True
-    elif "no upstream configured" in upstream_error.casefold():
-        meta["upstream_state"] = "NONE"
-    log = _git(p, "log", "-1", "--format=%cs|%s")
-    if log and "|" in log:
-        d, m = log.split("|", 1)
-        meta["last_commit_date"] = d
-        meta["last_commit_msg"] = m[:60]
+            observed.update({"ahead", "behind", "sync_available"})
+    elif upstream_legit_absent:
+        meta["ahead"] = None
+        meta["behind"] = None
+        meta["sync_available"] = False
+        observed.update({"ahead", "behind", "sync_available"})
+
+    # -- LAST COMMIT: success observed; confirmed unborn observed None;
+    # transient preserves.
+    log_rc, log_out, _log_err = _git_result(
+        p, "log", "-1", "--format=%cs|%s")
+    if log_rc == 0:
+        if log_out and "|" in log_out:
+            d, m = log_out.split("|", 1)
+            meta["last_commit_date"] = d
+            meta["last_commit_msg"] = m[:60]
+        observed.update({"last_commit_date", "last_commit_msg"})
+    elif (log_rc is not None and log_rc != 0
+            and _unborn_repo_is_confirmed(p, state_cache)):
+        observed.update({"last_commit_date", "last_commit_msg"})
+
+    # -- REMOTE: rc==0 observed even when empty (legit removal clears).
     remotes = set()
     remote_names = set()
     origin = None
     first = None
     first_name = None
     remote_v = _git(p, "remote", "-v")
-    if remote_v:
-        for line in remote_v.splitlines():
-            parts = line.split()
-            if len(parts) < 2 or not line.endswith("(fetch)"):
-                continue
-            name, url = parts[0], parts[1]
-            remote_names.add(name)
-            norm = normalize_remote(url)
-            if norm:
-                remotes.add(norm)
-            if name == "origin" and norm:
-                origin = norm
-            if first is None and norm:
-                first = norm
-                first_name = name
-    meta["remote"] = origin or first
-    meta["remote_name"] = "origin" if origin else first_name
-    meta["remotes"] = sorted(remotes)
-    meta["remote_names"] = sorted(remote_names)
+    remote_observed = remote_v is not None
+    if remote_observed:
+        if remote_v:
+            for line in remote_v.splitlines():
+                parts = line.split()
+                if len(parts) < 2 or not line.endswith("(fetch)"):
+                    continue
+                name, url = parts[0], parts[1]
+                remote_names.add(name)
+                norm = normalize_remote(url)
+                if norm:
+                    remotes.add(norm)
+                if name == "origin" and norm:
+                    origin = norm
+                if first is None and norm:
+                    first = norm
+                    first_name = name
+        meta["remote"] = origin or first
+        meta["remote_name"] = "origin" if origin else first_name
+        meta["remotes"] = sorted(remotes)
+        meta["remote_names"] = sorted(remote_names)
+        observed.update({"remote", "remotes", "remote_names", "remote_name"})
+        remote_remotes = sorted(remotes)
+    else:
+        remote_remotes = None
+
+    # -- WORKTREES: list (even single current-only) observed; None preserves.
     worktrees = _worktree_state(p)
-    meta["worktrees"] = worktrees if worktrees is not None else []
-    meta["worktrees_available"] = worktrees is not None
-    roots_raw = _git(p, "rev-list", "--max-parents=0", "HEAD")
-    meta["fingerprint"] = {
-        "remotes": sorted(remotes),
-        "root_commits": sorted(roots_raw.splitlines()) if roots_raw else [],
-    }
+    if worktrees is not None:
+        meta["worktrees"] = worktrees
+        meta["worktrees_available"] = True
+        observed.update({"worktrees", "worktrees_available"})
+
+    # -- FINGERPRINT ROOT COMMITS: success observed; unborn observed [];
+    # transient preserves previous roots.
+    roots_rc, roots_raw, _roots_err = _git_result(
+        p, "rev-list", "--max-parents=0", "HEAD")
+    roots_observed = False
+    roots_list = None
+    if roots_rc == 0:
+        roots_list = sorted(roots_raw.splitlines()) if roots_raw else []
+        roots_observed = True
+    elif (roots_rc is not None and roots_rc != 0
+            and _unborn_repo_is_confirmed(p, state_cache)):
+        roots_list = []
+        roots_observed = True
+    if remote_observed or roots_observed:
+        fp_remotes = (remote_remotes if remote_observed
+                      else sorted(remotes))
+        # remote_remotes is None only when unobserved; fall back to default
+        # empty here — the apply layer merges with cached fingerprint parts
+        # using the observed set, so this placeholder is never persisted
+        # over cached state for unobserved parts.
+        if fp_remotes is None:
+            fp_remotes = []
+        fp_roots = roots_list if roots_observed else []
+        meta["fingerprint"] = {
+            "remotes": fp_remotes,
+            "root_commits": fp_roots,
+        }
+        if roots_observed:
+            observed.add("fingerprint")
+    return meta, frozenset(observed)
+
+
+def collect_metadata(path):
+    """Gather live git metadata for one repo directory. Returns dict.
+
+    Compatibility wrapper around :func:`collect_metadata_observation`;
+    transient observation validity is discarded. Background refresh and
+    scan-merge paths must use the observation variant so failed fields
+    preserve cached values.
+    """
+    meta, _observed = collect_metadata_observation(path)
     return meta
+
+
+def apply_observed_fields(target, meta, observed):
+    """Update ``target`` only with successfully observed ``meta`` fields.
+
+    ``observed`` is a set of top-level metadata keys (or None for legacy
+    fully-observed records). Identity/curation keys and the dead
+    ``remote_reachable`` field are never overwritten here. ``fingerprint``
+    merges part-wise: ``remotes`` follows the ``remotes`` observation and
+    ``root_commits`` follows the ``fingerprint`` observation.
+    """
+    protected = {
+        "path", "name", "project_id", "folder_path", "status", "focus",
+        "pinned", "added_at",
+    }
+    if observed is None:
+        for key, value in meta.items():
+            if key in protected or key == "_observed_fields":
+                continue
+            if key == "fingerprint":
+                if isinstance(value, dict):
+                    target["fingerprint"] = dict(value)
+                continue
+            target[key] = value
+        return target
+    observed_set = set(observed or ())
+    for key in observed_set:
+        if key in protected or key == "_observed_fields":
+            continue
+        if key == "fingerprint":
+            # Root-commit part observed; remotes part follows "remotes".
+            new_fp = meta.get("fingerprint")
+            if not isinstance(new_fp, dict):
+                continue
+            current_fp = target.get("fingerprint")
+            if not isinstance(current_fp, dict):
+                current_fp = {"remotes": [], "root_commits": []}
+            else:
+                current_fp = dict(current_fp)
+            current_fp["root_commits"] = list(
+                new_fp.get("root_commits", []))
+            if "remotes" in observed_set:
+                current_fp["remotes"] = list(new_fp.get("remotes", []))
+            target["fingerprint"] = current_fp
+            continue
+        if key == "remote_reachable":
+            continue
+        if key not in meta:
+            continue
+        target[key] = meta[key]
+    # Fingerprint remotes part when only the remote group was observed
+    # (roots unobserved, so "fingerprint" absent but "remotes" present).
+    if ("remotes" in observed_set and "fingerprint" not in observed_set
+            and isinstance(meta.get("fingerprint"), dict)):
+        current_fp = target.get("fingerprint")
+        if not isinstance(current_fp, dict):
+            current_fp = {"remotes": [], "root_commits": []}
+        else:
+            current_fp = dict(current_fp)
+        current_fp["remotes"] = list(meta["fingerprint"].get("remotes", []))
+        target["fingerprint"] = current_fp
+    return target
 
 
 def match_move_candidates(stale_entries, fresh_items, suppressed=None):
@@ -583,6 +927,7 @@ def match_move_candidates(stale_entries, fresh_items, suppressed=None):
                 "kind": "move",
                 "category": category,
                 "old_path": old_path,
+                "old_project_id": project_id(entry),
                 "new_path": new_path,
                 "name": entry.get("name") or Path(old_path).name,
                 "evidence": evidence,
@@ -620,6 +965,7 @@ def match_move_candidates(stale_entries, fresh_items, suppressed=None):
                 "new_paths": [m["new_path"] for m in members],
                 "name": p["name"],
                 "evidence": ["Multiple candidate locations"],
+                "candidates": [dict(member) for member in members],
             })
         else:
             members = by_new[nk]
@@ -629,16 +975,273 @@ def match_move_candidates(stale_entries, fresh_items, suppressed=None):
                 "new_path": p["new_path"],
                 "name": Path(p["new_path"]).name,
                 "evidence": ["Matches multiple vanished entries"],
+                "candidates": [dict(member) for member in members],
             })
     return sorted(final, key=lambda s: (
         str(s.get("old_path") or s.get("old_paths")[0]).lower(),
         str(s.get("new_path") or "").lower()))
 
 
+def annotate_counterpart_provenance(suggestions, created_ids):
+    """Attach transient scan-created project_ids to unambiguous suggestions.
+
+    Only unambiguous suggestions and exact transient candidate pairs gain
+    ``new_project_id``. Ambiguous groups themselves never gain counterpart
+    identity or pending/batch eligibility; manual pair selection is a separate
+    explicit approval boundary. Never infer provenance from registry paths.
+    """
+    for s in suggestions or []:
+        if not isinstance(s, dict):
+            continue
+        if s.get("category") == "ambiguous":
+            # Pair provenance remains transient and requires explicit manual
+            # approval. Never promote a contested group into pending/batch state.
+            annotate_counterpart_provenance(s.get("candidates", []), created_ids)
+            continue
+        if "new_path" not in s:
+            continue
+        new_path = s.get("new_path")
+        if not isinstance(new_path, str):
+            continue
+        counterpart_id = (created_ids or {}).get(
+            repository_path_key(new_path))
+        if counterpart_id is not None:
+            s["new_project_id"] = counterpart_id
+    return suggestions
+
+
+def persist_pending_moves(by_path, suggestions, observed_by_key, now_iso):
+    """Record durable pending_move relations on stale OLD Projects.
+
+    Only for unambiguous suggestions carrying exact R2.6B counterpart
+    provenance whose fresh identity was actually observed. Never overwrites
+    a different pending relation (move chains stay unresolved, never
+    collapsed). Silent no-ops otherwise; the in-memory suggestion itself is
+    unaffected.
+    """
+    for s in suggestions or []:
+        if not isinstance(s, dict):
+            continue
+        if s.get("category") == "ambiguous" or "new_path" not in s:
+            continue
+        counterpart_id = s.get("new_project_id")
+        new_path = s.get("new_path")
+        if (not isinstance(counterpart_id, str)
+                or not counterpart_id.strip()
+                or not isinstance(new_path, str)):
+            continue
+        if s.get("category") not in ("strong", "possible"):
+            continue
+        identity = s.get("identity")
+        if not isinstance(identity, dict):
+            continue
+        id_remotes = identity.get("remotes")
+        id_roots = identity.get("root_commits")
+        if not isinstance(id_remotes, list) or not isinstance(id_roots, list):
+            continue
+        old_path = s.get("old_path")
+        old_entry = (by_path.get(repository_path_key(old_path))
+                     if isinstance(old_path, str) else None)
+        if not isinstance(old_entry, dict):
+            continue
+        existing = old_entry.get("pending_move")
+        if isinstance(existing, dict) and existing.get(
+                "new_project_id") != counterpart_id:
+            log.info("keeping existing pending move for %s; "
+                     "not collapsing chain", old_entry.get("path"))
+            continue
+        fresh_key = repository_path_key(new_path)
+        if fresh_key is None or fresh_key not in observed_by_key:
+            continue
+        fresh_obs = observed_by_key[fresh_key]
+        if fresh_obs is not None and ("fingerprint" not in fresh_obs
+                                      or "remotes" not in fresh_obs):
+            continue
+        old_entry["pending_move"] = {
+            "new_project_id": counterpart_id,
+            "new_path": new_path,
+            "identity": {"remotes": list(id_remotes),
+                         "root_commits": list(id_roots)},
+            "category": s["category"],
+            "detected_at": now_iso,
+        }
+
+
+def _pending_rehydration_evidence(pending, old_path, new_path):
+    """Rebuild presentation evidence from durable pending state."""
+    evidence = []
+    roots = pending["identity"]["root_commits"]
+    remotes = pending["identity"]["remotes"]
+    if roots:
+        evidence.append(f"Root history matches ({len(roots)})")
+    if remotes:
+        evidence.append("Same normalized remote: " + remotes[0])
+    old_folder = Path(old_path).name.lower() \
+        if isinstance(old_path, str) else ""
+    new_folder = Path(new_path).name.lower() \
+        if isinstance(new_path, str) else ""
+    if old_folder and old_folder == new_folder and len(old_folder) >= 5:
+        evidence.append("Folder name matches")
+    if not evidence:
+        evidence.append("Pending relocation revalidated")
+    return evidence
+
+
+def rehydrate_pending_moves(projects, scanned_keys, meta_by_key,
+                            observed_by_key, move_suppressions=None,
+                            existing_suggestions=None):
+    """Rebuild advisory move suggestions from durable pending_move relations.
+
+    The persisted project_id relation identifies WHICH counterpart;
+    fingerprint identity remains a revalidation mechanism, never lookup
+    identity. Pairs already covered by an actionable suggestion from this
+    same scan are skipped so one relocation is never offered twice.
+    Returns ``(suggestions, conflicts)``. Invalid, suppressed, or
+    contradicted relations are stripped in place (fail closed); transient
+    uncertainty defers silently with the relation retained; curated targets
+    yield non-destructive conflict problems without absorption.
+    """
+    supp_set = set()
+    for s in move_suppressions or []:
+        if isinstance(s, dict):
+            supp_set.add((str(s.get("old", "")).lower(),
+                          str(s.get("new", "")).lower()))
+        else:
+            try:
+                old_suppressed, new_suppressed = s
+            except (TypeError, ValueError):
+                continue
+            supp_set.add((str(old_suppressed).lower(),
+                          str(new_suppressed).lower()))
+
+    suggestions = []
+    conflicts = []
+    covered = set()
+    for s in existing_suggestions or []:
+        if not isinstance(s, dict):
+            continue
+        if s.get("category") == "ambiguous" or "new_path" not in s:
+            continue
+        old_covered = s.get("old_path")
+        new_covered = s.get("new_path")
+        if isinstance(old_covered, str) and isinstance(new_covered, str):
+            covered.add((old_covered.lower(), new_covered.lower()))
+    for old in list(projects):
+        if not isinstance(old, dict) or "pending_move" not in old:
+            continue
+        pending, reason = sanitize_pending_move(old)
+        if pending is None:
+            if reason is not None:
+                log.warning("dropping malformed pending move on %s: %s",
+                            old.get("path"), reason)
+                old.pop("pending_move", None)
+            continue
+        old_path = old.get("path")
+        if not isinstance(old_path, str) or not old_path.strip():
+            old_path = old.get("folder_path")
+        old_key = project_location_key(old)
+        new_key = repository_path_key(pending["new_path"])
+        if (not isinstance(old_path, str) or not old_path.strip()
+                or old_key is None or new_key is None):
+            log.warning("dropping pending move with unusable paths on %s",
+                        old.get("path"))
+            old.pop("pending_move", None)
+            continue
+        if (old_path.lower(), pending["new_path"].lower()) in supp_set:
+            log.info("pending move suppressed for %s", old_path)
+            old.pop("pending_move", None)
+            continue
+        if (old_path.lower(), pending["new_path"].lower()) in covered:
+            # This scan's own matcher already offers this exact relocation;
+            # keep the durable relation for later without doubling the offer.
+            continue
+        target = next((p for p in projects
+                       if p is not old and isinstance(p, dict)
+                       and project_id(p) == pending["new_project_id"]), None)
+        if target is None:
+            if new_key in scanned_keys:
+                log.warning("pending move target %s is gone; "
+                            "relation dropped", pending["new_path"])
+                old.pop("pending_move", None)
+            continue
+        if project_location_key(target) != new_key:
+            log.warning("pending move target now at a different path; "
+                        "relation dropped")
+            old.pop("pending_move", None)
+            continue
+        if old_key in scanned_keys:
+            log.warning("pending move source reappeared; relation dropped")
+            old.pop("pending_move", None)
+            continue
+        if not counterpart_is_pristine(target, pending["new_path"]):
+            conflicts.append({
+                "kind": "move", "category": "ambiguous",
+                "old_path": old_path,
+                "new_paths": [pending["new_path"]],
+                "name": old.get("name") or Path(
+                    pending["new_path"]).name,
+                "evidence": ["Move target has user-owned changes; kept "
+                             "without absorption. Keep Both to dismiss."],
+            })
+            continue
+        live = meta_by_key.get(new_key)
+        live_obs = observed_by_key.get(new_key, "missing")
+        if live is None or live_obs == "missing" or (
+                live_obs is not None
+                and ("fingerprint" not in live_obs
+                     or "remotes" not in live_obs)):
+            continue
+        if live.get("broken"):
+            continue
+        live_fp = live.get("fingerprint")
+        if not isinstance(live_fp, dict):
+            continue
+        live_remotes = live_fp.get("remotes", [])
+        live_roots = live_fp.get("root_commits", [])
+        if (not isinstance(live_remotes, list)
+                or not isinstance(live_roots, list)):
+            continue
+        live_identity = {
+            "remotes": sorted(
+                value.casefold() for value in live_remotes
+                if isinstance(value, str)),
+            "root_commits": sorted(
+                value for value in live_roots if isinstance(value, str)),
+        }
+        if live_identity != pending["identity"]:
+            log.warning("pending move identity conflicts with live target; "
+                        "relation dropped")
+            old.pop("pending_move", None)
+            continue
+        suggestions.append({
+            "kind": "move", "category": pending["category"],
+            "old_path": old_path, "new_path": pending["new_path"],
+            "name": old.get("name") or Path(pending["new_path"]).name,
+            "evidence": _pending_rehydration_evidence(
+                pending, old_path, pending["new_path"]),
+            "identity": {"remotes": list(pending["identity"]["remotes"]),
+                         "root_commits": list(
+                             pending["identity"]["root_commits"])},
+            "new_project_id": pending["new_project_id"],
+        })
+    return suggestions, conflicts
+
+
 def move_target_identity(path):
-    """Re-observe identity evidence stored with an advisory move."""
-    metadata = collect_metadata(path)
+    """Re-observe identity evidence stored with an advisory move.
+
+    Observation-aware: fingerprint components used for identity comparison
+    must have actually been observed. Unobserved (failed) fingerprint
+    evidence returns None (identity unavailable) so the move revalidation
+    path cancels via identity mismatch instead of authorizing
+    ``unobserved [] == legitimately observed []``. Genuinely observed
+    empty fingerprints (no remote, unborn) remain valid empty evidence.
+    """
+    metadata, observed = collect_metadata_observation(path)
     if metadata.get("broken"):
+        return None
+    observed_set = set(observed or ())
+    if "remotes" not in observed_set or "fingerprint" not in observed_set:
         return None
     fingerprint = metadata.get("fingerprint") or {}
     return {
@@ -664,6 +1267,7 @@ def merge_scan(existing_projects, scanned_paths, move_suppressions=None,
     Entries referenced by an open suggestion (protected_paths) are exempt
     from the 30-day prune while the suggestion remains actionable.
     """
+    checkpoint()
     failed_root_values = []
     for failed in failed_roots or []:
         if isinstance(failed, dict):
@@ -707,28 +1311,95 @@ def merge_scan(existing_projects, scanned_paths, move_suppressions=None,
     problems = []
 
     # parallel metadata collection (I/O-bound subprocess calls); one failing
-    # repo must not abort the results of all others
+    # repo must not abort the results of all others. Validity sets are
+    # transient and never persisted.
     scanned_paths = list(scanned_paths)
     metas = []
+    observed_list = []
     if scanned_paths:
-        with ThreadPool(processes=MAX_WORKERS) as pool:
-            futures = [pool.apply_async(collect_metadata, (sp,))
-                       for sp in scanned_paths]
-            for sp, fut in zip(scanned_paths, futures):
+        control = current_control()
+        workers = CONTROLLED_SCAN_WORKERS if control else MAX_WORKERS
+        progress(phase="Inspecting")
+
+        def inspect_path(path):
+            with active_scan(control):
+                progress(path=path)
+                return collect_metadata_observation(path)
+
+        pool = ThreadPool(processes=workers)
+        futures = []
+        next_path = iter(scanned_paths)
+        try:
+            for sp in list(scanned_paths[:workers]):
+                checkpoint()
+                futures.append((next(next_path), pool.apply_async(inspect_path, (sp,))))
+            while futures:
+                checkpoint()
+                sp, fut = futures[0]
                 try:
-                    metas.append(fut.get())
+                    while True:
+                        checkpoint()
+                        try:
+                            result = fut.get(timeout=0.1)
+                            break
+                        except PoolTimeout:
+                            continue
+                except ScanCancelled:
+                    raise
                 except Exception:
                     log.exception("metadata collection failed for %s", sp)
                     broken_meta = empty_meta(sp)
                     broken_meta["broken"] = True
                     metas.append(broken_meta)
+                    observed_list.append(frozenset(TECHNICAL_OBSERVED_FIELDS))
+                    futures.pop(0)
+                    following = next(next_path, None)
+                    if following is not None:
+                        checkpoint()
+                        futures.append((following, pool.apply_async(inspect_path, (following,))))
+                    continue
+                if isinstance(result, tuple) and len(result) == 2:
+                    meta_result, observed_result = result
+                    metas.append(meta_result)
+                    if observed_result is None:
+                        observed_list.append(None)
+                    else:
+                        observed_list.append(frozenset(observed_result))
+                elif isinstance(result, dict):
+                    # Legacy mocked collect_metadata shape; treat present
+                    # keys as fully observed for backward compatibility.
+                    metas.append(result)
+                    observed_list.append(None)
+                else:
+                    log.error("discarding malformed metadata result for %s",
+                              sp)
+                    broken_meta = empty_meta(sp)
+                    broken_meta["broken"] = True
+                    metas.append(broken_meta)
+                    observed_list.append(frozenset(TECHNICAL_OBSERVED_FIELDS))
+                progress(inspected=1)
+                futures.pop(0)
+                following = next(next_path, None)
+                if following is not None:
+                    checkpoint()
+                    futures.append((following, pool.apply_async(inspect_path, (following,))))
+        finally:
+            pool.close()
+            pool.join()
+        checkpoint()
 
     projects = list(standalone_projects)
     seen = set()
     upgraded_ids = set()
+    # R2.6B: transient provenance for scan-created Projects. Maps the new
+    # path key to the freshly assigned project_id so an unambiguous move
+    # suggestion can later prove its target is the scan-created counterpart
+    # (and not a legitimate user-owned Project). Never persisted.
+    created_counterpart_ids = {}
     for old in by_path.values():
         ensure_project_id(old)
-    for sp, meta in zip(scanned_paths, metas):
+    for sp, meta, observed in zip(scanned_paths, metas, observed_list):
+        checkpoint()
         key = repository_path_key(sp)
         old = by_path.get(key)
         if old is None:
@@ -751,9 +1422,16 @@ def merge_scan(existing_projects, scanned_paths, move_suppressions=None,
                 # Retain the logical Project and curation, but replace every
                 # Git-derived observation so a prior clean/PASS snapshot cannot
                 # be presented as current after Git becomes unavailable.
+                # Positively-broken observations carry full technical validity;
+                # infrastructure failures (empty observed) preserve instead and
+                # never reach this branch with stale invalidation because
+                # collect_metadata_observation returns broken=False there.
                 meta.pop("path", None)
                 meta.pop("name", None)
-                old.update(meta)
+                if observed is None:
+                    old.update(meta)
+                else:
+                    apply_observed_fields(old, meta, observed)
                 old["last_seen"] = now
                 projects.append(old)
                 seen.add(key)
@@ -768,11 +1446,14 @@ def merge_scan(existing_projects, scanned_paths, move_suppressions=None,
             # Scanner refresh must not overwrite curated names or rename note
             # keys. Legacy defaults receive a derived UI label instead.
             meta.pop("name", None)
-            old.update(meta)
+            if observed is None:
+                old.update(meta)
+            else:
+                apply_observed_fields(old, meta, observed)
             old["last_seen"] = now
             projects.append(old)
         else:
-            ensure_project_id(meta)
+            created_counterpart_ids[key] = ensure_project_id(meta)
             meta.update({
                 "added_at": now,
                 "last_seen": now,
@@ -794,6 +1475,20 @@ def merge_scan(existing_projects, scanned_paths, move_suppressions=None,
                    if repository_path_key(sp) not in by_path and not m["broken"]]
     suggestions = match_move_candidates(stale_entries, fresh_items,
                                         move_suppressions)
+    # Transient exact-pair proof also supports manual ambiguity review;
+    # contested groups themselves remain outside pending/batch approval.
+    annotate_counterpart_provenance(suggestions, created_counterpart_ids)
+    meta_by_key = {}
+    observed_by_key = {}
+    for sp, meta, observed in zip(scanned_paths, metas, observed_list):
+        key = repository_path_key(sp)
+        if key is None:
+            continue
+        meta_by_key[key] = meta
+        observed_by_key[key] = observed
+    # R2.6C: persist causal provenance on the stale OLD Project for
+    # unambiguous scan-created relations (never reconstructed heuristically).
+    persist_pending_moves(by_path, suggestions, observed_by_key, now)
     problems.extend(suggestions)
 
     protected = {
@@ -805,11 +1500,21 @@ def merge_scan(existing_projects, scanned_paths, move_suppressions=None,
         for s in suggestions
         for x in ([s.get("old_path")] + list(s.get("old_paths") or []))
         if x)
+    # R2.6C: an OLD Project carrying a pending relation stays shielded from
+    # the prune below even when no suggestion is currently actionable
+    # (deferred while a root is offline, for example). Strips performed by
+    # the rehydration below only end retention shielding for relations that
+    # are no longer pending.
+    protected.update(
+        key for p in list(projects) + list(by_path.values())
+        if isinstance(p, dict) and isinstance(p.get("pending_move"), dict)
+        for key in [project_location_key(p)] if key is not None)
 
     # keep recently-seen vanished projects for PRUNE_DAYS; open suggestions
     # keep their referenced old entries alive until resolved/expired
     cutoff = datetime.now(timezone.utc) - timedelta(days=PRUNE_DAYS)
     for key, old in by_path.items():
+        checkpoint()
         try:
             last_seen = datetime.strptime(
                 old.get("last_seen"), "%Y-%m-%dT%H:%M:%SZ").replace(
@@ -823,5 +1528,15 @@ def merge_scan(existing_projects, scanned_paths, move_suppressions=None,
                      or key in protected)):
             projects.append(old)
 
+    # R2.6C: rehydrate AFTER retention so stale OLD Projects are present in
+    # the merged list. Consumes the durable project_id relation only; never
+    # reconstructs provenance heuristically.
+    pending_suggestions, pending_conflicts = rehydrate_pending_moves(
+        projects, scanned_keys, meta_by_key, observed_by_key,
+        move_suppressions, existing_suggestions=suggestions)
+    problems.extend(pending_suggestions)
+    problems.extend(pending_conflicts)
+
     projects.sort(key=lambda x: project_display_name(x).lower())
+    checkpoint()
     return projects, problems
