@@ -4,16 +4,14 @@ RepoManager is a Windows desktop application for finding, organizing,
 and inspecting local Git repositories. It keeps a separate Project registry,
 shows current repository metadata, and puts a small set of explicit actions in
 one interface without treating discovery as permission to modify a repository.
-A public v0.1.1 release already exists (see "Platform and release status"
-below); this Development tree contains post-v0.1.1 hardening and is not
-identical to that published source state. The in-tree Qt version is **0.1.2-rc.2**,
-an unpublished release candidate for owner and independent review. Building this tree does not publish or
-replace public v0.1.1.
+The source version is **0.1.2**, prepared for the next Windows portable release.
+Public v0.1.1 remains the published release until v0.1.2 is explicitly uploaded.
+Building this tree does not publish or replace an existing release.
 
-## v0.1.2 candidate scope
+## v0.1.2 release scope
 
 The standalone Python backend now uses **PySide6 + QML** by default. This is
-not RepoManager 2.0 or IC Platform. The candidate includes cooperative scan
+not RepoManager 2.0 or IC Platform. The release includes cooperative scan
 cancellation and close confirmation, repository search/selection/curation/notes,
 Git Changes/diff/stage/unstage and confirmed Git actions, Health advisory
 ignore/restore with transparent scoring, Quick Run and the full Run tab,
@@ -45,7 +43,7 @@ Key capabilities include:
 - independent local Commit and confirmed Push, fast-forward-only Pull, and
   explicit Fetch;
 - bounded Changes/Diff with per-file Stage/Unstage, recent History, and
-  read-only Remote inspection (Development additions, not public v0.1.1);
+  read-only Remote inspection (new since v0.1.1);
 - advisory repository-move reconciliation that requires confirmation;
 - metadata-only Project export and repository reports in JSON or Markdown;
 - local Provider correspondence, plus a read-only GitHub metadata lookup when
@@ -56,16 +54,15 @@ automation engine, or a sandbox for commands it launches.
 
 ## Platform and release status
 
-The Qt candidate targets Windows 10 22H2 and Windows 11 x64. Linux and macOS are
+RepoManager v0.1.2 targets Windows 10 22H2 and Windows 11 x64. Linux and macOS are
 deferred; running generic Python source there does not make those platforms
 supported.
 
 The intended end-user distribution is an unsigned portable Windows ZIP built
 with normal 64-bit CPython 3.14.7. Public v0.1.1 was published on 2026-09-12
 as `RepoManager-0.1.1-windows-x64.zip` from the separate Public Release
-repository; this Development tree has moved beyond that published source
-state, so a build from the current tree is NOT that published artifact and
-must not be presented as such without a deliberate future release decision.
+repository. v0.1.2 is prepared from the curated public lineage and remains
+pending publication; it does not overwrite the historical v0.1.1 artifact.
 
 For the existing public release:
 
@@ -79,7 +76,7 @@ available on `PATH` for repository discovery and Git features. Because the
 initial build is unsigned, Windows may display an unknown-publisher or
 reputation warning.
 
-Current Development builds detect Git at startup. If they cannot start Git, they show a Git requirement notice instead of
+RepoManager detects Git at startup. If they cannot start Git, they show a Git requirement notice instead of
 running a repository scan. Use **Install Git** to open the official
 [Git for Windows installation page](https://git-scm.com/install/windows),
 complete the normal installation with Git available on `PATH`, then select
@@ -104,10 +101,10 @@ folder additions. Invalid and duplicate additions are explained immediately.
 ## Run from source
 
 Source execution requires Windows 10 22H2 or Windows 11 x64, Python 3.14 and Git
-on `PATH`. The official 0.1.1 build and CI baseline is normal 64-bit CPython
+on `PATH`. The official Windows build and CI baseline is normal 64-bit CPython
 3.14.7. Python 3.11 is not a supported or CI-tested source runtime.
 
-The current Development presentation uses PySide6 + QML. From the repository root:
+The current presentation uses PySide6 + QML. From the repository root:
 
 ```text
 py -3.14 -m venv .venv
@@ -157,7 +154,7 @@ repository—Git writes, launched commands, and optional `run.bat` generation—
 require explicit user action. The generated starter never overwrites an
 existing `run.bat`.
 
-## Feedback and bug reports (Development)
+## Feedback and bug reports
 
 The **Feedback / Bug** button offers four categories: positive feedback,
 improvement, bug, and UI issue. Add a short title and description, then save
@@ -165,13 +162,13 @@ locally, copy the report, or open a prefilled issue draft in the public
 RepoManager GitHub tracker. Review and submit the draft yourself; opening it
 does not send a report. There is no automatic telemetry.
 
-Only the text you enter, Development edition and application version are
+Only the text you enter, application edition and version are
 included by default. Optional runtime information adds Python, Qt and OS
 versions. Repository paths, inventory, notes, logs and credentials are not
 attached automatically. Review your text for private information before sharing.
 
 Selecting or refreshing a Project whose chosen remote corresponds to GitHub
-starts a read-only HTTPS request to `api.github.com`. The 0.1.1 UI does not
+starts a read-only HTTPS request to `api.github.com`. The UI does not
 accept or persist a GitHub token, so private repository metadata normally
 cannot be retrieved through this feature. Git Pull/Push and external launchers
 may also use the network according to Git and the launched tool's own
@@ -211,9 +208,9 @@ Windows GUI, packaged-executable, network, or external-launcher verification.
 See [Testing](docs/TESTING.md) for separate core, service, bridge, actual QML,
 packaging and Windows layers. Legacy Tkinter parity is a separate reference,
 not current UI proof. [Release evidence](docs/RELEASE_EVIDENCE.md) records the
-reconciled baseline and current candidate scope.
+reconciled baseline and current release scope.
 
-## Everyday Git in this Development tree
+## Everyday Git
 
 Right-click a Project, or press Shift+F10 / the Menu key in either list.
 Changes opens a resizable staged/unstaged file list and bounded diff preview.
@@ -241,9 +238,9 @@ curated/note-owned targets cannot be silently absorbed. Missing pair provenance
 requires a rescan or Keep both. Later leaves suggestions unresolved; Keep both
 persists exact-pair suppression. No repository files are moved by reconciliation.
 
-## Current candidate limitations
+## Current release limitations
 
-The v0.1.2 candidate does not include an installer, automatic updater, signing pipeline, cloud
+v0.1.2 does not include an installer, automatic updater, signing pipeline, cloud
 synchronization, Provider write/admin APIs, full Worktree lifecycle UI,
 coordinated multi-repository Workspace changes, Agent sessions/orchestration,
 or a general Policy/Profile/Workflow engine. Project export is not a registry

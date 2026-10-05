@@ -1,4 +1,4 @@
-# Portable Qt candidate redistribution inventory
+# Portable Qt redistribution inventory
 
 The exact bundled DLLs, plugins, QML directories, versions and notice hashes are
 listed in `REDISTRIBUTION.json`. The build fails on unreviewed Qt add-ons or missing
@@ -20,7 +20,7 @@ required notices. Build tools are listed separately from runtime components.
 | PyInstaller bootloader | GPL with bootloader distribution exception; Apache runtime hooks | `LICENSES/PyInstaller.txt`; this exception does not change the application license |
 
 Upstream matching source archives are identified by immutable commit, URL and
-SHA-256 in `THIRD_PARTY_SOURCES.json`, and are supplied alongside this local RC.
+SHA-256 in `THIRD_PARTY_SOURCES.json`, and are supplied alongside the portable binary.
 No Qt/PySide source or library has been patched. Users may replace/rebuild the
 LGPL libraries; the package applies no signature or integrity restriction to
 replacement libraries. Application MIT terms do not prohibit reverse engineering

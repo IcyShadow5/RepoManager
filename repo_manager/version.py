@@ -1,6 +1,6 @@
 """RepoManager release identity."""
 
-VERSION = "0.1.2-rc.2"
+VERSION = "0.1.2"
 
 
 def is_prerelease() -> bool:

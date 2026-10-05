@@ -11,7 +11,7 @@ RepoManager does not have a general policy engine or unattended automation. Thes
 - Move suggestions require confirmation. Ambiguous matches require exact-pair selection and confirmation with proven counterpart identity; user-owned target curation and notes remain protected.
 - Project association updates through the move/reconciliation flows change RepoManager metadata only (no general repository-association picker is exposed in the UI). They do not move files or modify Git.
 - Git writes require explicit UI initiation. Commit and Push are independent; Commit is local and staged-only by default, with explicit stage-all. Unstage does not discard working files. Pull is fast-forward-only. Push cannot force; Fetch does not prune. Changed approval evidence cancels actions; no automatic mutation retries.
-- Development Changes/History/Remotes are bounded read-only views. External diff/textconv execution is disabled; URL userinfo/query/fragment filtering is not general secret scanning.
+- Changes/History/Remotes are bounded read-only views. External diff/textconv execution is disabled; URL userinfo/query/fragment filtering is not general secret scanning.
 - The optional generated `run.bat` is opt-in and never overwrites an existing file.
 - Registry, settings, notes, backups, and quarantine files are stored outside managed repositories.
 - Cached data must not be presented as current when the Working Tree is stale or unavailable.

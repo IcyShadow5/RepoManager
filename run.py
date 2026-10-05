@@ -1,4 +1,4 @@
-"""RepoManager Development desktop entry point (PySide6/QML)."""
+"""RepoManager desktop entry point (PySide6/QML)."""
 import sys
 from pathlib import Path
 
@@ -10,7 +10,7 @@ def main():
     except ModuleNotFoundError as exc:
         if not (exc.name or "").startswith("PySide6"):
             raise
-        message = ("RepoManager Development requires PySide6.\n\n"
+        message = ("RepoManager requires PySide6.\n\n"
                    "Install the development dependencies in a local environment:\n"
                    ".venv\\Scripts\\python.exe -m pip install -r packaging\\requirements-qt.txt")
         if sys.platform == "win32":

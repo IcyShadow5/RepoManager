@@ -1,14 +1,13 @@
 # RepoManager — Roadmap
 
-## Released: public v0.1.1 / current Development state
+## Public v0.1.1 / prepared v0.1.2 release scope
 
 Public RepoManager v0.1.1 is already released from the separate Public Release
-repository. This Development tree contains post-v0.1.1 hardening and
-move-reconciliation and Qt work. The in-tree version is now 0.1.2-rc.2;
-it must not be described as the published
-v0.1.1 source state.
+repository. The curated v0.1.2 source includes post-v0.1.1 hardening,
+move reconciliation and the Qt presentation. Publication remains a separate
+owner-controlled step.
 
-This Development state provides:
+The prepared v0.1.2 release provides:
 
 - bounded local Git discovery and metadata display;
 - stable Project IDs, curation, notes, filtering, sorting, and one-repository-per-Project association;
@@ -26,7 +25,7 @@ This Development state provides:
 
 The application runs from source on Windows. Its intended public distribution
 is an unsigned portable Windows build; any future artifact from this
-Development tree requires an explicit version/publication decision plus clean
+source requires explicit publication approval plus clean
 curated release preparation, and must be built
 and verified from a curated release source. Linux and macOS are deferred,
 not supported by generic source availability.
@@ -34,7 +33,7 @@ not supported by generic source availability.
 The current UI also includes Help/Guidance, empty-state guidance, keyboard
 behavior, dark and Ice Light themes, responsive/bounded columns, a scrollable
 detail panel, semantic state colors, and Workspace/Agent context presentation.
-These are current Development capabilities, not roadmap promises; the newest
+These are current v0.1.2 capabilities, not roadmap promises; the newest
 everyday Git and review UI additions are not part of the public v0.1.1 artifact.
 
 ## Current / release-relevant

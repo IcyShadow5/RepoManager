@@ -31,7 +31,7 @@ def make_report(category, title, message, *, include_runtime=False, qt_version="
         raise ValueError("Use a title up to 140 characters and a message up to 6000 characters")
     report = {"category": category, "title": title or CATEGORIES[category],
               "message": message, "version": version.VERSION,
-              "edition": "RepoManager Development"}
+              "edition": "RepoManager"}
     if include_runtime:
         report["runtime"] = {"python": platform.python_version(),
                              "system": platform.system(), "qt": qt_version}

@@ -99,7 +99,7 @@ $major = [int]$versionParts[0]
 $minor = [int]$versionParts[1]
 $patch = [int]$versionParts[2]
 $versionFlags = if ($productVersion.Contains('-')) { '0x2' } else { '0x0' }
-$productName = if ($Presentation -eq 'Qt') { 'RepoManager Development' } else { 'RepoManager Classic Development' }
+$productName = if ($Presentation -eq 'Qt') { 'RepoManager' } else { 'RepoManager Classic Development' }
 
 New-Item -ItemType Directory -Path $buildRoot -Force | Out-Null
 @"

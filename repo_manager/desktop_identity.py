@@ -78,7 +78,7 @@ def set_windows_window_identity(window_id):
         executable = str(Path(sys.executable).resolve())
         # Set relaunch properties before AppID, as required by Windows Shell.
         properties = ((2, f'"{executable}"'), (3, executable + ",0"),
-                      (4, "RepoManager Development"), (5, WINDOWS_DEVELOPMENT_APP_ID))
+                      (4, "RepoManager"), (5, WINDOWS_APP_USER_MODEL_ID))
         for pid, text in properties:
             buffer = ctypes.create_unicode_buffer(text)
             value = _PropertyValue(31, (ctypes.c_ushort * 3)(),

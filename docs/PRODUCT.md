@@ -1,15 +1,14 @@
 # RepoManager — Product
 
-RepoManager is a local-first Windows desktop application for organizing and observing local Git work. It discovers repositories under configured roots, keeps curated Project records, shows repository state, supports explicit local actions, and reports lightweight repository Health. Public v0.1.1 is already released; this tree is the unpublished Qt candidate **0.1.2-rc.2**.
+RepoManager is a local-first Windows desktop application for organizing and observing local Git work. It discovers repositories under configured roots, keeps curated Project records, shows repository state, supports explicit local actions, and reports lightweight repository Health. Public v0.1.1 is already released; this tree is prepared for the Qt release **0.1.2**, pending publication.
 
 It runs directly from source with Python 3.14 and PySide6/QML. Tkinter is retained
 as a source-only reference and is excluded from the Qt portable package.
 The unsigned portable Windows build bundles normal
 64-bit CPython 3.14.7 and Qt, so packaged users do not need a separate Python
 installation. The published public v0.1.1 artifact already exists from the
-separate Public Release repository; the current Development tree has moved
-beyond that published source state. The release candidate does not publish or
-replace the public release. RepoManager does not synchronize its registry,
+separate Public Release repository. The prepared v0.1.2 source/build does not
+publish or overwrite an existing public artifact. RepoManager does not synchronize its registry,
 settings, or notes to the cloud.
 
 ## Projects and repositories
@@ -47,7 +46,7 @@ RepoManager stores its registry, settings, notes, backups, and corruption quaran
 
 Discovery, metadata collection, Health, and Provider observation do not modify managed repositories. Git actions, launcher runs, and the optional generated `run.bat` require explicit user action. The starter never overwrites an existing file.
 
-The application currently supports advisory move reconciliation, association updates through the move/reconciliation flows (no general repository-association picker is exposed in the UI), independent local Commit and confirmed Push, fast-forward-only Pull, explicit Fetch, Changes/Diff and per-file Stage/Unstage, recent History, read-only Remotes, and bounded metadata/report export. These everyday Git additions belong to this Development tree, not the published public v0.1.1. Commit defaults to staged-only with an explicit stage-all alternative; Unstage never discards working files. An export is not a persistence backup or a repository archive.
+The application currently supports advisory move reconciliation, association updates through the move/reconciliation flows (no general repository-association picker is exposed in the UI), independent local Commit and confirmed Push, fast-forward-only Pull, explicit Fetch, Changes/Diff and per-file Stage/Unstage, recent History, read-only Remotes, and bounded metadata/report export. These everyday Git additions are new since public v0.1.1. Commit defaults to staged-only with an explicit stage-all alternative; Unstage never discards working files. An export is not a persistence backup or a repository archive.
 
 Export/report filtering omits fields with credential-like keys; it does not
 scan arbitrary text or notes for embedded secrets. Selecting or refreshing a

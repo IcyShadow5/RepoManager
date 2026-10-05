@@ -1,10 +1,9 @@
-RepoManager Development - portable Qt Windows candidate
+RepoManager 0.1.2 - portable Qt Windows
 
-This is an unreleased Development / Release Candidate build, not public v0.1.1.
 Extract the complete RepoManager folder, then run RepoManager.exe.
 Keep _internal beside the executable. No Python installation is required.
 
-System requirements: Windows 10 (1809 or newer) / Windows 11, x64.
+System requirements: Windows 10 22H2 / Windows 11, x64.
 Git is external: install Git for Windows with Git available on PATH.
 The application offers Install Git and Check again. Restart RepoManager if a
 running Windows process still has the previous PATH after installation.
@@ -19,8 +18,7 @@ No update is downloaded or installed automatically.
 
 LICENSE is the application license. THIRD_PARTY_NOTICES.md, REDISTRIBUTION.json
 and LICENSES document the bundled runtime components. THIRD_PARTY_SOURCES.json
-identifies the matching upstream source archives supplied beside the candidate.
+identifies the matching upstream source archives supplied beside the binary.
 
-This candidate includes opt-in --rc-qa instrumentation for controlled acceptance.
-It requires a specially marked directory and isolated application data. Normal
-launch does not run the probe, load test fixtures or alter the user's PATH.
+Prerelease QA instrumentation is inactive in stable 0.1.2. Normal launch does
+not run a probe, load test fixtures or alter the user's PATH.

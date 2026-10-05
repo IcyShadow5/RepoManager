@@ -86,10 +86,10 @@ class QtPackagingTests(unittest.TestCase):
                 collector.verify(toc,target)
             self.assertFalse(target.exists())
 
-    def test_identity_is_explicitly_unreleased(self):
+    def test_identity_is_stable(self):
         from repo_manager.version import VERSION, is_prerelease
-        self.assertRegex(VERSION, r'^0\.1\.2-(?:dev|rc\.[1-9]\d*)$')
-        self.assertTrue(is_prerelease())
+        self.assertEqual(VERSION, "0.1.2")
+        self.assertFalse(is_prerelease())
         self.assertNotEqual(VERSION,'0.1.1')
 
     def test_probe_is_unavailable_for_stable_and_invalid_versions(self):

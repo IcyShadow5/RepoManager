@@ -8,19 +8,18 @@ Git remains an external runtime requirement and must be available on `PATH`.
 Public v0.1.1 already exists: it was published on 2026-09-12 from the
 separate Public Release repository as `RepoManager-0.1.1-windows-x64.zip`
 (SHA-256 `5b1cc5d3e5008b8aa7fc0a317146c2845fbb8ead967ddafc485fac46219e03c2`).
-This Development tree has moved beyond that published source state and
-uses **0.1.2-rc.2** for the unpublished Qt release candidate. Building the current tree
-does not publish or replace public v0.1.1. Public promotion still requires an
-explicit version/publication decision and curated release preparation.
+The curated source version is **0.1.2**. Building the current tree does not
+publish or overwrite public v0.1.1. Uploading/tagging the prepared release
+requires separate owner approval.
 
 This document defines the build and verification contract. It does not claim
-that an artifact built from the current Development tree is the published
+that an artifact built from the current source tree is the published
 public release.
 
-## Current Development presentation
+## Current desktop presentation
 
 `run.py` and the builder default to PySide6/QML. `-Presentation Classic` retains
-the Tk behavioral reference through `run_classic.py`; it is not the Qt candidate.
+the Tk behavioral reference through `run_classic.py`; it is not the shipped Qt presentation.
 The Qt bundle excludes Tkinter/Tcl/Tk and collects the actual QML import closure
 with Qt's scanner. Basic is the only selectable Controls style. Missing imports,
 scanner warnings, unreviewed add-ons and binaries from unrelated developer tools
@@ -66,11 +65,11 @@ the matching Windows version resource under ignored `build/`, builds the
 windowed executable with PyInstaller, and produces:
 
 - `dist\RepoManager\` — runnable portable directory;
-- `dist\RepoManager-0.1.2-rc.2-windows-x64.zip` — unpublished Qt candidate;
-- `dist\RepoManager-0.1.2-rc.2-windows-x64-manifest.json` — source `HEAD`, dirty
+- `dist\RepoManager-0.1.2-windows-x64.zip` — prepared Qt release;
+- `dist\RepoManager-0.1.2-windows-x64-manifest.json` — source `HEAD`, dirty
   state, Python/Qt/PySide versions, installed build dependencies, requirement
   hashes, license hashes, PyInstaller version, archive size, and archive SHA-256.
-- `dist\RepoManager-0.1.2-rc.2-third-party-sources.zip` and adjacent JSON —
+- `dist\RepoManager-0.1.2-third-party-sources.zip` and adjacent JSON —
   matching hash-verified Qt/PySide archives and required notice inputs; distribute
   this companion alongside the binary, not only a link to an internal folder.
 
@@ -91,7 +90,7 @@ Qt/PySide notices come from hash-verified matching upstream source archives;
 third-party attribution files and referenced license files are retained.
 `REDISTRIBUTION.json` inventories the actual libraries/plugins/notices,
 `BINARY_ORIGINS.json` records approved binary provenance without absolute build
-paths, and `BUILD_INFO.json` records the prerelease identity and clean source commit.
+paths, and `BUILD_INFO.json` records the release identity and clean source commit.
 `PE_IMPORT_CLOSURE.json` distinguishes bundled dependencies from approved Windows
 components, including OS ICU. RC builds reject a dirty source tree.
 Classic instead collects Tcl/Tk notices from their active libraries.
@@ -131,7 +130,7 @@ from `HEAD` alone. The manifest is integrity metadata, not a signature.
 
 ## Signing and distribution boundary
 
-The Development candidate is unsigned. Windows may therefore show an
+The portable release build is unsigned. Windows may therefore show an
 unknown-publisher or reputation warning. No installer, automatic updater, or
 automatic GitHub Release publication is part of this build.
 

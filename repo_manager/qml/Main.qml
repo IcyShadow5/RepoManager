@@ -11,7 +11,7 @@ ApplicationWindow {
     visible: true
     width: 1660; height: 940
     minimumWidth: 1120; minimumHeight: 640
-    title: "RepoManager Development " + App.versionText
+    title: "RepoManager " + App.versionText
     color: Design.Theme.background
     property bool extendedColumns: false
     font.family: Design.Theme.fontFamily
@@ -94,7 +94,7 @@ ApplicationWindow {
                     ColumnLayout {
                         spacing: 1
                         UI.AppText { text: "RepoManager"; font.pixelSize: 15; font.weight: Font.DemiBold }
-                        UI.AppText { text: "DEVELOPMENT"; color: Design.Theme.icy; font.pixelSize: 10; font.letterSpacing: 1.1 }
+                        UI.AppText { text: "REPOSITORIES"; color: Design.Theme.icy; font.pixelSize: 10; font.letterSpacing: 1.1 }
                     }
                 }
                 Rectangle { height: 1; color: Design.Theme.divider; Layout.fillWidth: true }

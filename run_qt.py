@@ -1,4 +1,4 @@
-"""Development entry point for the incremental PySide6/QML presentation."""
+"""RepoManager PySide6/QML desktop entry point."""
 import sys
 import logging
 import logging.handlers
@@ -31,10 +31,10 @@ def report_qml_load_failure(qml_path):
 
 
 def main():
-    desktop_identity.set_windows_app_user_model_id(desktop_identity.WINDOWS_DEVELOPMENT_APP_ID)
+    desktop_identity.set_windows_app_user_model_id(desktop_identity.WINDOWS_APP_USER_MODEL_ID)
     QQuickStyle.setStyle("Basic")
     app = QApplication(sys.argv)
-    app.setApplicationName("RepoManager Development")
+    app.setApplicationName("RepoManager")
     app.setApplicationVersion(version.VERSION)
     icon = Path(__file__).resolve().parent / "appicon.ico"
     if icon.is_file():

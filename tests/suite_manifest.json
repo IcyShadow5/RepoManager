@@ -2816,7 +2816,7 @@
         "test_binary_origins_are_confined_and_redacted",
         "test_foreign_dll_blocks_packaging_without_output",
         "test_missing_binary_provenance_blocks_packaging",
-        "test_identity_is_explicitly_unreleased",
+        "test_identity_is_stable",
         "test_probe_is_unavailable_for_stable_and_invalid_versions",
         "test_qml_scanner_collects_application_closure",
         "test_unresolved_qml_module_blocks_collection",

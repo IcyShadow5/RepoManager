@@ -1,7 +1,7 @@
-# Release evidence — 0.1.2-rc.2
+# Release evidence — 0.1.2
 
-This is an unpublished Windows x64 candidate. Public v0.1.1 remains unchanged.
-Candidate identity comes from `repo_manager/version.py`; the exact clean source
+This is the prepared Windows x64 v0.1.2 release, pending publication.
+Public v0.1.1 remains unchanged. Release identity comes from `repo_manager/version.py`; the exact clean source
 commit and binary hashes are recorded in `BUILD_INFO.json` and the build manifest.
 Do not use older Development ZIP hashes or a dirty tree's HEAD as provenance.
 
@@ -20,7 +20,7 @@ It also retains 41 valid neutral/public safety tests from the public parent;
 their assertions are bound to current backend modules, not Tk widgets. The
 move-semantic assertions import `relocation` directly rather than the legacy UI.
 
-| Current evidence layer | RC2 catalog cases |
+| Current evidence layer | Release catalog cases |
 |---|---:|
 | Core | 626 |
 | Services | 99 |
@@ -34,7 +34,7 @@ move-semantic assertions import `relocation` directly rather than the legacy UI.
 | Complete classified catalog | 1247 |
 
 Counts above describe the source catalog. Executed results and runtime probe
-outputs belong to the exact candidate freeze. No legacy UI test is current UI
+outputs belong to the exact release freeze. No legacy UI test is current UI
 proof. `tests/suite_manifest.json` and `tests/run_layers.py` reject unclassified,
 absent and duplicate cases; current-product skips are failures.
 
@@ -64,21 +64,22 @@ evidence. Process-scale tests at 100/125/150 percent do not certify every monito
 The historical rescan timeout and `DelegateModel::cancel` warning were not
 reproduced in bounded preceding checks; no guessed cause is asserted.
 
-## Candidate corrections and deferred limitations
+## Release corrections and deferred limitations
 
 Repository/config-redirection Git environment variables are removed by one
 canonical helper for product, scanner, Classic reference and build/probe Git.
 Safe non-interactive controls remain; read-only Git disables optional locks.
 Normal on-disk Git configuration and transport settings remain effective.
 
-RC builds require clean committed source. Corresponding hash-pinned Qt/PySide
+Release artifacts are built from clean committed source. Corresponding hash-pinned Qt/PySide
 source archives and notices are delivered in the adjacent third-party-sources
 ZIP. Expat and liblzma notices are explicit. ICU is supplied by supported Windows,
 not an arbitrary build-machine DLL. Direct/delay PE imports are checked against
 bundled libraries or approved Windows components.
 
-No product features or UI redesign were added for RC2. Unsigned/SmartScreen,
+The final promotion changes version and desktop/release identity only; it adds
+no product features or UI redesign. Unsigned/SmartScreen,
 possible Git-check/note-flush latency, full release automation, attestations,
 schema-validated SBOM, custom themes, Agent history, cloud/monetization,
-Linux/macOS support and self-update remain outside this correction package.
+Linux/macOS support and self-update remain outside this release.
 They are not declared blockers without direct release-blocking evidence.

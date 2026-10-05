@@ -28,16 +28,16 @@ def read_property(window_id, pid):
 
 
 def main():
-    assert identity.set_windows_app_user_model_id(identity.WINDOWS_DEVELOPMENT_APP_ID)
+    assert identity.set_windows_app_user_model_id(identity.WINDOWS_APP_USER_MODEL_ID)
     app = QGuiApplication([])
     window = QWindow()
     window.create()
     try:
         with mock.patch.object(sys, "frozen", True, create=True):
             assert identity.set_windows_window_identity(int(window.winId()))
-        assert read_property(int(window.winId()), 5) == identity.WINDOWS_DEVELOPMENT_APP_ID
+        assert read_property(int(window.winId()), 5) == identity.WINDOWS_APP_USER_MODEL_ID
         assert read_property(int(window.winId()), 3) == sys.executable + ",0"
-        assert read_property(int(window.winId()), 4) == "RepoManager Development"
+        assert read_property(int(window.winId()), 4) == "RepoManager"
         assert read_property(int(window.winId()), 2) == '"' + sys.executable + '"'
         print("WINDOWS IDENTITY properties=4 native_readback=PASS")
     finally:
