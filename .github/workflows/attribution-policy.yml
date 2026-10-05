@@ -113,7 +113,7 @@ jobs:
           echo "Trusted ref resolved to '$PR_BASE_REF' via ${{ steps.trusted.outputs.source }}" || true
 
       - name: Check out the trusted base commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ steps.trusted.outputs.ref }}
           fetch-depth: 1
@@ -202,7 +202,7 @@ jobs:
           fi
 
       - name: Check out the trusted base commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ steps.trusted.outputs.ref }}
           fetch-depth: 1
@@ -268,7 +268,7 @@ jobs:
             echo "ref=$PR_BASE_REF" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.trusted.outputs.ref }}
           fetch-depth: 1
