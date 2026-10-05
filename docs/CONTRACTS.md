@@ -39,8 +39,9 @@ Local Provider correspondence is descriptive evidence derived from a supported r
 - Discovery, metadata collection, Health, and Provider observation do not modify managed repositories.
 - Detecting a launcher does not execute it. Launcher and Agent execution require explicit user action.
 - Changing a Project’s repository association changes RepoManager metadata only. It does not move files, run Git, change branches or remotes, or delete anything.
-- Move matching never changes data without confirmation. Ambiguous matches remain unresolved.
-- Git writes require explicit UI initiation. Pull is fast-forward-only. Commit & Push reports its separate steps.
+- Move matching never changes data without confirmation. Ambiguous groups stay unresolved until an exact candidate pair is explicitly selected and confirmed. Absorption requires proven scan-created counterpart identity and pristine curation/notes; paths alone never grant that authority.
+- Git writes require explicit UI initiation. Independent Commit defaults to staged-only, permits explicit stage-all, requires a message, needs no remote, and never pushes. Unstage changes only the index, not working files. Push previews a non-forced destination; upstream setup is explicit. Pull is fast-forward-only with a clean checkout. Fetch is explicit and does not prune or alter checkout files.
+- Git previews are snapshots, not external-process locks. Live branch/HEAD, index, association, physical identity, and destinations are rechecked; changed evidence cancels the approval. Failed/uncertain writes are re-observed and never automatically retried. Staging before a failed commit may remain in the index.
 - Future high-risk or history-rewriting operations need their own preview, confirmation, failure, and recovery rules.
 
 ## Persistence and artifacts

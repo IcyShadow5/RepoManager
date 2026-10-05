@@ -13,6 +13,7 @@ WARN = "WARN"
 FAIL = "FAIL"
 UNKNOWN = "UNKNOWN"
 NOT_APPLICABLE = "NOT_APPLICABLE"
+IGNORED = "IGNORED"
 
 INFO = "INFO"
 LOW = "LOW"
@@ -32,7 +33,7 @@ UNAVAILABLE = "UNAVAILABLE"
 NOT_RUN = "NOT_RUN"
 
 SEVERITY_ORDER = {INFO: 0, LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4}
-STATUS_ORDER = {PASS: 0, NOT_APPLICABLE: 1, WARN: 2, UNKNOWN: 3, FAIL: 4}
+STATUS_ORDER = {IGNORED: -1, PASS: 0, NOT_APPLICABLE: 1, WARN: 2, UNKNOWN: 3, FAIL: 4}
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,8 @@ class Finding:
     remediation: str | None = None
     policy_relevant: bool = False
     importance: str = REQUIRED
+    observed_status: str = ""
+    suppression_scope: str = ""
 
     def __post_init__(self):
         # Map the historical six-argument constructor to the current fields;
@@ -94,6 +97,8 @@ class HealthSummary:
     highest_severity: str
     unknown_count: int
     stale_count: int
+    ignored_count: int = 0
+    active_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -105,16 +110,19 @@ class HealthResult:
 
     def __post_init__(self):
         findings = self.findings
+        active = tuple(f for f in findings if f.status != IGNORED and f.importance != DISABLED)
         status = aggregate_status(findings)
         object.__setattr__(self, "status", status)
         object.__setattr__(self, "summary", HealthSummary(
             status,
             len(findings),
-            max((f.severity for f in findings),
+            max((f.severity for f in active),
                 key=lambda value: SEVERITY_ORDER.get(value, -1),
                 default=INFO),
-            sum(f.status == UNKNOWN for f in findings),
-            sum(f.freshness == STALE for f in findings),
+            sum(f.status == UNKNOWN for f in active),
+            sum(f.freshness == STALE for f in active),
+            sum(f.status == IGNORED for f in findings),
+            len(active),
         ))
 
     def prioritized_findings(self) -> tuple[Finding, ...]:
@@ -165,7 +173,7 @@ def _presence_rule(root: Path, filename: str, rule: str, timestamp: str,
 
 def aggregate_status(findings: tuple[Finding, ...] | list[Finding]) -> str:
     """Aggregate enabled, material findings without numeric scoring."""
-    enabled = tuple(f for f in findings if f.importance != DISABLED)
+    enabled = tuple(f for f in findings if f.importance != DISABLED and f.status != IGNORED)
     material = tuple(f for f in enabled if f.importance != INFORMATIONAL)
     if any(f.status == FAIL for f in material):
         return FAIL

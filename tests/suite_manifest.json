@@ -1,0 +1,3653 @@
+{
+  "schema_version": 1,
+  "groups": [
+    {
+      "module": "tests.legacy.test_build_toolchain",
+      "class": "RuntimeLicenseTests",
+      "category": "LEGACY_OBSOLETE",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "RuntimeLicense",
+      "tests": [
+        "test_missing_python_notice_fails_before_package_is_modified"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_dialog_geometry",
+      "class": "DialogPositionGeometryTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "DialogPositionGeometry",
+      "tests": [
+        "test_primary_monitor_centers_over_parent",
+        "test_negative_x_monitor_keeps_negative_origin",
+        "test_negative_y_monitor_top_align_uses_work_top",
+        "test_positive_nonzero_origin_monitor",
+        "test_parent_near_right_bottom_edge_clamps_into_work_area",
+        "test_parent_near_left_top_edge_clamps_into_work_area",
+        "test_oversized_dialog_is_deterministically_anchored",
+        "test_settings_top_align_pins_to_work_area_top",
+        "test_degenerate_geometry_falls_back_to_safe_origin"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_dialog_geometry",
+      "class": "SettingsDialogHeightTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "SettingsDialogHeight",
+      "tests": [
+        "test_constrained_heights_match_historical_values",
+        "test_negative_origin_monitor_uses_span_not_absolute_bottom",
+        "test_degenerate_work_area_yields_minimal_dialog"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_dialog_geometry",
+      "class": "WorkAreaResolutionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "WorkAreaResolution",
+      "tests": [
+        "test_native_failure_falls_back_to_tk_screen_dimensions",
+        "test_invalid_tk_dimensions_fall_back_to_safe_default",
+        "test_winfo_id_failure_still_falls_back_to_tk_dimensions",
+        "test_monitor_from_window_receives_defaulttonearest_flag_2"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_dialog_geometry",
+      "class": "DialogGeometryGuiTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "DialogGeometryGui",
+      "tests": [
+        "test_native_failure_fallback_still_opens_help_and_settings",
+        "test_settings_constrained_height_uses_resolved_work_area",
+        "test_help_and_settings_geometry_survives_tk_application",
+        "test_negative_origin_geometry_survives_tk_application",
+        "test_escape_and_close_protocol_remain_intact"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_dialog_geometry",
+      "class": "WindowsMonitorBoundarySmokeTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "WindowsMonitorBoundarySmoke",
+      "tests": [
+        "test_windows_work_area_returns_taskbar_excluded_bounds",
+        "test_windows_work_area_rejects_invalid_handles"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_everyday_git_gui",
+      "class": "EverydayGitGuiTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "EverydayGitGui",
+      "tests": [
+        "test_changes_dialog_stage_unstage_and_local_commit",
+        "test_menu_target_survives_selection_change_and_blocks_reassociation",
+        "test_keyboard_menu_bindings_and_checked_status",
+        "test_closed_dialog_discards_late_worker_response",
+        "test_all_git_viewers_construct_in_both_themes",
+        "test_move_review_has_filter_separate_tabs_and_copyable_details",
+        "test_targeted_refresh_only_observes_approved_project"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_git_availability",
+      "class": "GitOnboardingTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "GitOnboarding",
+      "tests": [
+        "test_missing_then_recheck_resumes_scan",
+        "test_ordinary_repository_error_does_not_show_missing_git",
+        "test_install_opens_official_page"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "ShutdownCallbackSafetyTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ShutdownCallbackSafety",
+      "tests": [
+        "test_callbacks_are_tracked_and_inert_after_shutdown",
+        "test_late_queue_results_are_discarded_after_shutdown",
+        "test_late_error_event_is_discarded_after_shutdown",
+        "test_specialized_cancellation_is_idempotent_when_job_is_unavailable"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "ReconcilePlanTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ReconcilePlan",
+      "tests": [
+        "test_unchanged_reuses_all_rows",
+        "test_removed_row_flagged_only",
+        "test_new_row_flagged_only",
+        "test_remove_and_insert",
+        "test_pure_reorder_is_no_op_for_plan"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "AvailabilityCacheTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "AvailabilityCache",
+      "tests": [
+        "test_stats_once_per_path_until_invalidate",
+        "test_false_availability_cached",
+        "test_real_isdir_lookups_return_consistent_booleans"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "PersistProjectIgnoreTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "PersistProjectIgnore",
+      "tests": [
+        "test_persists_only_stable_target_and_preserves_files_note_and_curation",
+        "test_save_failure_restores_exact_prior_ignored_state",
+        "test_missing_stable_identity_never_falls_back_to_name_or_path"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "PersistProjectRestoreTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "PersistProjectRestore",
+      "tests": [
+        "test_persists_stable_target_and_preserves_files_note_and_metadata",
+        "test_save_failure_restores_ignored_state",
+        "test_missing_stable_identity_never_falls_back_to_name_or_path"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "LargeDatasetToolsTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "LargeDatasetTools",
+      "tests": [
+        "test_filter_sort_large_dataset_deterministic"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "PersistenceDebounceTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "PersistenceDebounce",
+      "tests": [
+        "test_schedule_defers_write_until_flush",
+        "test_rapid_edits_coalesce_to_one_write",
+        "test_flush_cancels_pending_and_saves"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "ReconcileTreeGUITests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ReconcileTreeGUI",
+      "tests": [
+        "test_builds_from_empty",
+        "test_unchanged_rebuild_is_idempotent",
+        "test_adds_new_rows_only",
+        "test_removes_stale_rows",
+        "test_reorders_rows",
+        "test_updates_row_values"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "CustomLauncherDialogGuiTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "CustomLauncherDialogGui",
+      "tests": [
+        "test_dialog_starts_without_visible_error_surface",
+        "test_invalid_submission_shows_actionable_feedback",
+        "test_valid_submission_persists_one_custom_launcher",
+        "test_cancel_does_not_mutate_project"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "TkCallbackReportingTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "TkCallbackReporting",
+      "tests": [
+        "test_reporter_accepts_tk_bound_method_arguments"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "NoteSelectionIntegrityTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "NoteSelectionIntegrity",
+      "tests": [
+        "test_a_b_a_selection_never_writes_b_text_to_a",
+        "test_late_note_load_does_not_replace_same_selection_edit",
+        "test_note_load_failure_does_not_leave_other_detail_surfaces_loading",
+        "test_detail_worker_start_failure_leaves_unknown_state"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "ClosePersistenceSafetyTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ClosePersistenceSafety",
+      "tests": [
+        "test_save_failure_keeps_window_open_and_allows_retry"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "TooltipStartupRegressionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "TooltipStartupRegression",
+      "tests": [
+        "test_startup_initializes_tip_row_before_motion_callback"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "FolderOnlyGuiRegressionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "FolderOnlyGuiRegression",
+      "tests": [
+        "test_folder_only_selection_updates_detail_without_stale_repository",
+        "test_folder_only_enter_and_git_actions_are_contained"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "ProjectDisplayNameGuiRegressionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ProjectDisplayNameGuiRegression",
+      "tests": [
+        "test_legacy_repository_row_and_detail_use_parent_project_name",
+        "test_primary_launcher_uses_ttk_style_without_callback_error"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "MalformedWorktreeDetailGuiTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "MalformedWorktreeDetailGui",
+      "tests": [
+        "test_malformed_string_keeps_broken_detail_and_does_not_persist",
+        "test_mixed_valid_and_malformed_entries_preserve_valid_rendering",
+        "test_valid_and_zero_worktree_summaries_are_unchanged",
+        "test_malformed_collection_shapes_are_not_fake_worktrees",
+        "test_trees_sort_refresh_uses_the_visible_defensive_count"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "LauncherPresentationGuiRegressionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "LauncherPresentationGuiRegression",
+      "tests": [
+        "test_long_launcher_actions_use_bounded_grid_and_keep_all_button_reachable",
+        "test_more_than_two_healthy_alternatives_are_progressively_disclosed",
+        "test_custom_edit_controls_use_multiple_rows_and_add_remains_reachable",
+        "test_empty_state_is_vertical_and_bounded",
+        "test_long_unavailable_reason_wraps_inside_launch_section",
+        "test_all_launchers_name_filter_uses_clean_presentation_name"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "DialogAndLayoutRegressionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "DialogAndLayoutRegression",
+      "tests": [
+        "test_detail_window_never_exceeds_canvas_at_default_and_minimum",
+        "test_resize_sequence_preserves_legal_panes_and_no_horizontal_overflow",
+        "test_settled_layout_is_idempotent",
+        "test_aggressive_sashes_are_recovered_without_resetting_valid_position",
+        "test_selection_survives_resize_sequence",
+        "test_detail_scrollregion_remains_vertical_and_reaches_lower_sections",
+        "test_notes_wheel_scrolls_child_then_outer_at_child_boundary",
+        "test_dynamic_launcher_button_routes_wheel_to_detail_canvas",
+        "test_project_switch_recreated_launchers_route_once_without_global_bind",
+        "test_loading_and_folder_only_replacement_route_wheel_to_detail",
+        "test_detail_body_background_routes_wheel_to_detail_canvas",
+        "test_rapid_resize_and_selection_leaves_final_detail_authoritative"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "HealthDashboardGuiTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "HealthDashboardGui",
+      "tests": [
+        "test_overview_is_default_and_all_checks_built_lazily_once",
+        "test_all_findings_represented_exactly_once_in_groups",
+        "test_navigator_columns_fit_without_clipping",
+        "test_required_warn_is_grouped_and_selectable",
+        "test_detail_render_is_bounded_during_initial_open",
+        "test_gauge_shows_score_with_semantic_color_drawn_once",
+        "test_gauge_ring_fits_inside_canvas_bounds",
+        "test_counters_reflect_documented_enabled_rules",
+        "test_overview_action_cards_follow_prioritized_order",
+        "test_healthy_state_shows_positive_message",
+        "test_semantic_row_tags_match_status_colors",
+        "test_opening_and_closing_does_not_mutate_health_state"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "CoreSurfaceVisibilityRegressionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "CoreSurfaceVisibilityRegression",
+      "tests": [
+        "test_reduced_v010_surfaces_are_visible_and_misleading_ones_absent"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "DetailLayoutRegressionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "DetailLayoutRegression",
+      "tests": [
+        "test_detail_sections_are_reachable_through_bounded_scroll_panel",
+        "test_column_widths_and_panes_cannot_collapse_core_surfaces",
+        "test_ice_light_updates_plain_tk_detail_surfaces",
+        "test_help_and_settings_dialogs_share_theme_and_escape_behavior"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "ActiveTreeAndContextMenuTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ActiveTreeAndContextMenu",
+      "tests": [
+        "test_set_active_unit",
+        "test_selected_project_routes_by_active_tree",
+        "test_main_right_click_builds_menu_sets_main",
+        "test_now_right_click_builds_menu_sets_now",
+        "test_now_placeholder_right_click_no_error",
+        "test_right_click_after_filter_reorders",
+        "test_right_click_unselected_after_selection_removed",
+        "test_right_click_large_datasets"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "RemoveFromRepoManagerGuiTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "RemoveFromRepoManagerGui",
+      "tests": [
+        "test_context_menu_offers_remove_for_unavailable_and_archived_states",
+        "test_cancel_has_no_mutation_persistence_or_ui_removal",
+        "test_confirm_persists_then_hides_only_selected_stable_identity",
+        "test_save_failure_rolls_back_and_keeps_complete_ui_state",
+        "test_post_commit_cache_failure_keeps_remove_successful_and_hidden",
+        "test_dialog_reresolves_by_id_and_does_not_mutate_replacement",
+        "test_ignored_project_is_hidden_and_has_no_normal_remove_action",
+        "test_pending_edited_note_is_flushed_under_unchanged_project_id",
+        "test_stale_scan_cannot_resurrect_removed_project"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "IgnoredProjectsSettingsGuiTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "IgnoredProjectsSettingsGui",
+      "tests": [
+        "test_settings_controls_reachable_at_normal_and_constrained_heights",
+        "test_wheel_over_editable_child_routes_through_scanning_viewport",
+        "test_scanning_content_background_routes_wheel_to_viewport",
+        "test_ignored_tree_scrolls_natively_then_hands_boundary_to_settings",
+        "test_repeated_settings_cycles_leave_no_global_or_duplicate_wheel_bind",
+        "test_view_lists_only_ignored_projects_with_stable_identity",
+        "test_restore_persists_then_updates_ignored_and_normal_views",
+        "test_pre_commit_failure_rolls_memory_and_ignored_ui_back",
+        "test_post_commit_cache_failure_remains_successful",
+        "test_stale_ui_target_cannot_restore_same_path_replacement"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "ScanStateOwnershipTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ScanStateOwnership",
+      "tests": [
+        "test_git_events_never_clear_scanning"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "KeyboardEnterRoutingTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "KeyboardEnterRouting",
+      "tests": [
+        "test_enter_follows_focus_into_main_tree",
+        "test_enter_follows_focus_into_now_tree",
+        "test_fast_enter_before_selection_sync",
+        "test_keyboard_selection_routes_detail_actions_to_main_project"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "WorkingOnNowImmediateReconcileTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "WorkingOnNowImmediateReconcile",
+      "tests": [
+        "test_work_on_this_appears_immediately",
+        "test_stop_working_appears_immediately_and_preserves_pin",
+        "test_stop_working_preserves_unpinned_active_project",
+        "test_manual_status_change_updates_working_action",
+        "test_context_menu_label_is_dynamic_and_pin_is_separate",
+        "test_deactivation_removes_immediately",
+        "test_saving_inactive_form_status_removes_active_row",
+        "test_unrelated_rows_keep_identity_and_order",
+        "test_placeholder_restored_when_now_empties"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "SettingsIsolationRegressionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "SettingsIsolationRegression",
+      "tests": [
+        "test_sort_by_writes_settings_to_isolated_path_only",
+        "test_real_store_paths_restored_after_isolation_closes"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "MoveRevalidationWiringGuiTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "MoveRevalidationWiringGui",
+      "tests": [
+        "test_accept_move_blocks_stale_target",
+        "test_accept_move_still_succeeds_when_target_is_present",
+        "test_accept_moves_batch_reports_stale_target_failure"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "DetailObservationAsyncTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "DetailObservationAsync",
+      "tests": [
+        "test_slow_health_does_not_block_selection_callback",
+        "test_slow_launcher_discovery_does_not_block_selection_callback",
+        "test_new_selection_clears_previous_health_until_result_arrives",
+        "test_rapid_a_b_c_keeps_c_authoritative",
+        "test_selection_remains_valid_during_active_scan",
+        "test_folder_only_detail_never_uses_repository_launcher_path",
+        "test_shutdown_with_pending_detail_has_no_late_widget_result"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "QueueBudgetTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "QueueBudget",
+      "tests": [
+        "test_detail_events_are_bounded_and_remaining_events_are_drained"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "ProviderObservationAsyncTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ProviderObservationAsync",
+      "tests": [
+        "test_apply_provider_keeps_online_not_found_as_warning",
+        "test_theme_toggle_preserves_provider_warning_semantics",
+        "test_show_detail_does_not_request_provider_on_tk_thread",
+        "test_stale_result_for_previous_selection_is_discarded",
+        "test_newer_selection_supersedes_by_generation",
+        "test_full_scan_remote_change_supersedes_old_observation"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "InteractionAcceptanceTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "InteractionAcceptance",
+      "tests": [
+        "test_project_id_keeps_windows_path_out_of_treeview_identity",
+        "test_agent_start_immediately_enables_stop_action",
+        "test_healthy_summary_keeps_informational_warnings_secondary",
+        "test_metadata_refresh_updates_selected_detail_health_and_worktrees",
+        "test_filter_does_not_redefine_working_on_now_and_clears_stale_detail",
+        "test_filtered_out_active_project_remains_navigable_from_now",
+        "test_working_on_now_empty_state_names_only_active_membership",
+        "test_common_detail_actions_precede_technical_and_secondary_content",
+        "test_all_launchers_dialog_handles_structured_command_tuple",
+        "test_provider_summary_exposes_source_conflict_and_access_boundary"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "AgentClosePolicyGuiTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "AgentClosePolicyGui",
+      "tests": [
+        "test_cancel_closing_leaves_running_agent_and_window_untouched",
+        "test_stop_and_close_waits_for_confirmed_process_exit"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "GitClosePolicyGuiTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "GitClosePolicyGui",
+      "tests": [
+        "test_close_is_deferred_while_git_worker_is_active",
+        "test_thread_start_failure_still_resumes_deferred_close"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "StubGenerationGuiTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "StubGenerationGui",
+      "tests": [
+        "test_stub_generation_reports_when_file_was_not_created"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_gui_scaling",
+      "class": "WorkspaceSurfaceReductionGuiTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "WorkspaceSurfaceReductionGui",
+      "tests": [
+        "test_app_startup_does_not_mutate_persisted_workspaces",
+        "test_help_topic_no_longer_advertises_workspace_grouping"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "ProblemTaxonomyTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ProblemTaxonomy",
+      "tests": [
+        "test_scan_root_is_not_a_repository_problem",
+        "test_invalid_git_candidate_remains_a_repository_problem",
+        "test_legacy_repository_problem_defaults_to_repository_category",
+        "test_attention_summary_uses_accurate_categories"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "CustomLauncherDialogLogicTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "CustomLauncherDialogLogic",
+      "tests": [
+        "test_form_controls_have_unique_grid_cells",
+        "test_empty_validation_state_is_hidden_and_neutral",
+        "test_invalid_input_has_actionable_feedback",
+        "test_corrected_input_clears_validation_feedback"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "AvailableProjectFolderTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "AvailableProjectFolder",
+      "tests": [
+        "test_empty_missing_and_oserror_targets_are_unavailable",
+        "test_existing_folder_is_returned_unchanged",
+        "test_scan_root_validation_is_accessible_and_canonical"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "SafeRemoteWebUrlTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "SafeRemoteWebUrl",
+      "tests": [
+        "test_recognized_remote_forms_become_credential_free_https",
+        "test_arbitrary_or_credential_like_text_is_unavailable"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "MetadataRefreshTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "MetadataRefresh",
+      "tests": [
+        "test_refresh_preserves_identity_name_and_curation"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "RowTagTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "RowTag",
+      "tests": [
+        "test_clean_is_untagged",
+        "test_precedence_archived_beats_all",
+        "test_local_only_repository_emphasizes_dirty_state",
+        "test_dirty_before_sync",
+        "test_sync_only"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "GuardedWorkerTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "GuardedWorker",
+      "tests": [
+        "test_success_emits_only_worker_event",
+        "test_exception_emits_exactly_one_error_event",
+        "test_error_emission_failure_does_not_raise"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "CoalesceErrorsTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "CoalesceErrors",
+      "tests": [
+        "test_empty",
+        "test_deduplicates_and_limits_to_three",
+        "test_single_message_passthrough"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "AssociationAuthorityTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "AssociationAuthority",
+      "tests": [
+        "test_application_api_has_no_subset_authority_parameter_or_bypass",
+        "test_partial_context_cannot_be_supplied_to_authorize_mutation",
+        "test_live_registry_rejects_canonical_owner_before_mutation",
+        "test_source_must_belong_to_live_registry",
+        "test_unowned_target_mutates_only_source_and_preserves_curation"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "MetadataRefreshProjectBoundaryTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "MetadataRefreshProjectBoundary",
+      "tests": [
+        "test_stale_metadata_result_is_not_applied_after_reassociation",
+        "test_second_refresh_generation_supersedes_first",
+        "test_stale_metadata_worker_error_does_not_end_newer_refresh",
+        "test_stale_scan_worker_error_does_not_end_newer_scan",
+        "test_deleted_project_discards_delayed_metadata_result",
+        "test_full_scan_result_does_not_allow_metadata_result_to_reassociate",
+        "test_legacy_metadata_payload_is_discarded",
+        "test_metadata_collection_failure_does_not_discard_other_results",
+        "test_folder_only_projects_are_not_submitted_to_git_metadata",
+        "test_metadata_pool_does_not_hold_process_open_after_gui_worker_exit",
+        "test_metadata_result_updates_repository_and_preserves_folder_only"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "StaleRowTagTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "StaleRowTag",
+      "tests": [
+        "test_stale_dominates_all_states",
+        "test_available_rows_keep_legacy_tags",
+        "test_default_signature_backwards_compatible"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "ResolvePrimaryTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ResolvePrimary",
+      "tests": [
+        "test_npm_dev_resolved",
+        "test_no_signals_yields_none",
+        "test_utility_only_scripts_yield_none",
+        "test_missing_path_yields_none"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "GitOutcomeTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "GitOutcome",
+      "tests": [
+        "test_success_and_partial_push_failure_are_distinct",
+        "test_timeout_is_unknown",
+        "test_cancelled_is_explicit",
+        "test_partial_message_exposes_durable_commit"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "GitStepEvaluationTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "GitStepEvaluation",
+      "tests": [
+        "test_all_steps_success",
+        "test_add_failure_named_and_fatal",
+        "test_commit_failure_no_longer_masked_by_push",
+        "test_push_failure_reported_as_push",
+        "test_empty_results_is_failure"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "PushRemoteSelectionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "PushRemoteSelection",
+      "tests": [
+        "test_single_non_origin_remote_is_selected",
+        "test_tracked_remote_wins",
+        "test_origin_is_safe_default_but_ambiguous_custom_set_is_blocked"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "GitMutationGuardTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "GitMutationGuard",
+      "tests": [
+        "test_upstream_parser_preserves_branch_slashes"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "StatusLineTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "StatusLine",
+      "tests": [
+        "test_important_resists_transient_overwrite",
+        "test_hold_expires_and_transient_flows_again",
+        "test_important_replaces_important_immediately",
+        "test_transient_chain_unaffected_without_hold"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "ThreadExcepthookTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ThreadExcepthook",
+      "tests": [
+        "test_logs_critical_with_traceback",
+        "test_system_exit_ignored",
+        "test_hook_installed_by_setup_logging"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_main_logic",
+      "class": "ClassicGitStepRegressionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ClassicGitStepRegression",
+      "tests": [
+        "test_failed_add_is_fatal_not_partial"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_metadata_failclosed",
+      "class": "FailurePreservationTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "FailurePreservation",
+      "tests": [
+        "test_01_branch_transient_preserved",
+        "test_02_head_transient_preserved",
+        "test_03_status_timeout_preserved",
+        "test_04_upstream_generic_failure_preserved",
+        "test_05_ahead_behind_failure_preserved",
+        "test_06_log_failure_preserved",
+        "test_07_remote_failure_preserved",
+        "test_08_worktree_failure_preserved",
+        "test_09_roots_failure_preserved",
+        "test_10_infrastructure_failure_not_broken"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_metadata_failclosed",
+      "class": "LegitimateClearingTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "LegitimateClearing",
+      "tests": [
+        "test_11_attached_to_detached_clears_branch",
+        "test_12_tracked_to_no_upstream_clears",
+        "test_13_remote_removal_clears",
+        "test_14_unborn_repo_legit_none",
+        "test_15_new_head_and_log_replace",
+        "test_16_missing_repo_can_mark_broken"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_metadata_failclosed",
+      "class": "PersistenceTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "Persistence",
+      "tests": [
+        "test_20_queue_persist_preserves_failed_fields",
+        "test_dead_remote_reachable_untouched"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_metadata_failclosed",
+      "class": "WholeRepoPositiveEvidenceTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "WholeRepoPositiveEvidence",
+      "tests": [
+        "test_21_permission_style_failure_preserves",
+        "test_22_translated_stderr_preserves",
+        "test_23_missing_path_positive_broken",
+        "test_24_marker_absent_positive_broken",
+        "test_25_corrupt_marker_invalid_broken_but_ambiguous_preserves"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_metadata_failclosed",
+      "class": "NoValidityPersistedTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "NoValidityPersisted",
+      "tests": [
+        "test_32_queue_and_merge_persist_no_validity"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_pending_move",
+      "class": "KeepBothResolutionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "KeepBothResolution",
+      "tests": [
+        "test_keep_both_strips_pending_and_suppresses",
+        "test_keep_both_registry_failure_restores_pending",
+        "test_detach_helper_only_touches_old_side"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_pending_move",
+      "class": "KeepBothDurabilityTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "KeepBothDurability",
+      "tests": [
+        "test_A_settings_failure_keeps_pending_and_claims_nothing",
+        "test_B_registry_failure_after_suppression_keeps_redundant_safety",
+        "test_C_success_suppresses_and_cleans_pending",
+        "test_D_redundant_state_resolves_to_suppression_on_next_scan"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_registry_recovery",
+      "class": "RegistryLifecycleTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "RegistryLifecycle",
+      "tests": [
+        "test_failed_read_stays_blocked_after_access_returns_until_f5_reload",
+        "test_retry_failure_never_unblocks_or_starts_scan",
+        "test_backup_appearing_during_blocked_session_becomes_visible_on_retry",
+        "test_delayed_save_callback_uses_reloaded_projects_after_retry",
+        "test_empty_backup_under_lock_does_not_trigger_startup_scan",
+        "test_file_disappearing_after_failed_read_does_not_authorize_empty_save",
+        "test_backup_is_readable_but_curation_and_writes_wait_for_reload",
+        "test_retry_uses_readable_primary_instead_of_older_backup",
+        "test_malformed_primary_waits_for_repair_and_reloads",
+        "test_first_run_scans_saves_and_closes_without_recovery_warning",
+        "test_valid_primary_startup_scan_and_shutdown_preserve_content",
+        "test_real_persistent_lock_startup_retry_and_shutdown_preserve_bytes",
+        "test_real_transient_lock_never_saves_empty_and_f5_recovers_original",
+        "test_real_lock_with_backup_can_close_without_writing_primary"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_startup_freshness",
+      "class": "FullScanTimestampTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "FullScanTimestamp",
+      "tests": [
+        "test_rejects_missing_and_malformed_values",
+        "test_accepts_registry_timestamp_shape_as_utc",
+        "test_unknown_without_timestamp",
+        "test_buckets_are_coarse_and_deterministic"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_startup_freshness",
+      "class": "StartupDispatchTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "StartupDispatch",
+      "tests": [
+        "test_populated_startup_runs_full_discovery_not_metadata_only",
+        "test_empty_startup_runs_full_discovery",
+        "test_cached_ui_renders_before_scan_with_unknown_freshness",
+        "test_cached_ui_shows_stale_inventory_age"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_startup_freshness",
+      "class": "StartupDiscoveryIntegrationTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "StartupDiscoveryIntegration",
+      "tests": [
+        "test_startup_discovers_beta_and_advances_freshness",
+        "test_metadata_only_refresh_does_not_stamp_full_scan"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_startup_freshness",
+      "class": "RescanCoalescingTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "RescanCoalescing",
+      "tests": [
+        "test_request_while_busy_is_queued_not_started_or_lost",
+        "test_closing_request_is_dropped_without_queue",
+        "test_drain_while_closing_starts_no_trailing_scan",
+        "test_finish_close_cancels_pending_rescan",
+        "test_failed_scan_records_no_successful_timestamp"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_store_association",
+      "class": "LegacyStoreAssociationTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "LegacyStoreAssociation",
+      "tests": [
+        "test_association_survives_save_reload_and_preserves_metadata",
+        "test_canonical_association_collision_preserves_identities_and_notes"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_theme_default",
+      "class": "ThemeDefaultContractTests",
+      "category": "LEGACY_OBSOLETE",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ThemeDefaultContract",
+      "tests": [
+        "test_first_run_without_settings_file_is_light",
+        "test_missing_theme_key_is_light",
+        "test_invalid_theme_value_sanitizes_to_light",
+        "test_explicit_dark_is_preserved",
+        "test_explicit_light_is_preserved",
+        "test_default_settings_carry_light_theme",
+        "test_theme_module_defaults_to_ice_light"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_theme_default",
+      "class": "ThemeApplicationDefaultTests",
+      "category": "LEGACY_OBSOLETE",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ThemeApplicationDefault",
+      "tests": [
+        "test_apply_first_run_theme_paints_light"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_ui_polish",
+      "class": "IconResolutionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "IconResolution",
+      "tests": [
+        "test_canonical_appicon_preferred_over_legacy",
+        "test_falls_back_to_legacy_icon",
+        "test_none_when_no_icon_present",
+        "test_custom_candidate_names_respected",
+        "test_package_root_is_absolute_source_tree_root",
+        "test_windows_app_user_model_id_is_explicit"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_ui_polish",
+      "class": "EmptyStateTextTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "EmptyStateText",
+      "tests": [
+        "test_with_roots_lists_them",
+        "test_without_roots_guides_to_settings",
+        "test_compact_and_english"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_ui_polish",
+      "class": "StatusForegroundTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "StatusForeground",
+      "tests": [
+        "test_health_pass_fail_warn",
+        "test_unknown_stale_unavailable_use_muted_tones",
+        "test_provider_and_run_states",
+        "test_verification_states",
+        "test_project_lifecycle_statuses",
+        "test_unknown_status_defaults_to_muted"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_ui_polish",
+      "class": "SemanticStateTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "SemanticState",
+      "tests": [
+        "test_severity_activity_and_unknown_are_distinct",
+        "test_semantic_style_names_are_stable",
+        "test_ice_light_uses_cool_nonwhite_application_surfaces"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_ui_polish",
+      "class": "ColumnWidthConstraintTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ColumnWidthConstraint",
+      "tests": [
+        "test_defaults_are_complete_and_within_bounds",
+        "test_persisted_widths_are_clamped_and_malformed_values_reset"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_ui_polish",
+      "class": "HealthHeadlineTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "HealthHeadline",
+      "tests": [
+        "test_headlines_explain_without_hiding_evidence_status"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_ui_polish",
+      "class": "WorkingActionPresentationTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "WorkingActionPresentation",
+      "tests": [
+        "test_action_label_follows_lifecycle_status",
+        "test_context_menu_action_is_status_aware"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_ui_polish",
+      "class": "ContextMenuGroupingTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "ContextMenuGrouping",
+      "tests": [
+        "test_all_intended_actions_present",
+        "test_mutating_git_never_mixed_with_read_only",
+        "test_launcher_execution_grouped_together",
+        "test_project_metadata_actions_are_grouped_together"
+      ]
+    },
+    {
+      "module": "tests.legacy.test_windows_launcher_boundary",
+      "class": "VSCodeActionTests",
+      "category": "LEGACY_TKINTER_PARITY",
+      "gate": false,
+      "method_categories": {},
+      "production": "run_classic.py / repo_manager.main / theme / git_dialogs / Tk event wiring",
+      "behavior": "VSCodeAction",
+      "tests": [
+        "test_missing_editor_reports_error_without_starting_process",
+        "test_unavailable_project_does_not_start_editor",
+        "test_disappeared_editor_reports_launch_failure",
+        "test_native_executable_receives_project_argument",
+        "test_rejected_batch_argument_reports_error",
+        "test_cmd_action_preserves_paths_without_command_interpretation"
+      ]
+    },
+    {
+      "module": "tests.test_agent_selection",
+      "class": "AgentCatalogTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.agents",
+      "behavior": "AgentCatalog",
+      "tests": [
+        "test_zero_one_multiple_detected_commands",
+        "test_duplicate_command_is_not_a_second_choice",
+        "test_custom_target_missing_and_invalid_settings_remain_explicit",
+        "test_configuration_accepts_named_executable_and_rejects_duplicate_identity",
+        "test_resolving_targets_does_not_execute_them"
+      ]
+    },
+    {
+      "module": "tests.test_agents",
+      "class": "AgentTests",
+      "category": "CURRENT_SERVICE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.agents",
+      "behavior": "Agent",
+      "tests": [
+        "test_availability_states",
+        "test_launch_intent_requires_existing_explicit_target",
+        "test_run_lifecycle_and_post_run_verification",
+        "test_nonzero_exit_and_failed_start_are_distinct",
+        "test_duplicate_running_run_is_blocked_by_pure_check",
+        "test_cancellation_does_not_claim_rollback",
+        "test_stop_remains_stopping_until_exit_is_observed",
+        "test_preflight_rejects_changed_target_configuration_and_executable",
+        "test_readiness_requires_executable_and_concrete_target",
+        "test_real_bounded_process_start_stop_and_confirmed_exit",
+        "test_real_bounded_process_success_is_observed_as_exit",
+        "test_missing_post_run_target_is_not_verified"
+      ]
+    },
+    {
+      "module": "tests.test_atomic_replace",
+      "class": "NoteRetryTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.store",
+      "behavior": "NoteRetry",
+      "tests": [
+        "test_01_note_win5_then_success",
+        "test_02_note_win32_then_success"
+      ]
+    },
+    {
+      "module": "tests.test_atomic_replace",
+      "class": "RegistrySettingsRetryTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.store",
+      "behavior": "RegistrySettingsRetry",
+      "tests": [
+        "test_03_registry_transient_then_success_with_backup",
+        "test_04_settings_transient_then_success"
+      ]
+    },
+    {
+      "module": "tests.test_atomic_replace",
+      "class": "TerminalFailureTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.store",
+      "behavior": "TerminalFailure",
+      "tests": [
+        "test_05_permanent_win5_bounded_and_safe",
+        "test_06_non_retryable_single_attempt"
+      ]
+    },
+    {
+      "module": "tests.test_atomic_replace",
+      "class": "SharingWindowTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.store",
+      "behavior": "SharingWindow",
+      "tests": [
+        "test_07_reader_released_within_budget_succeeds",
+        "test_07b_injected_reader_contention_then_success",
+        "test_08_terminal_failure_keeps_destination",
+        "test_09_tmp_cleanup_and_original_exception"
+      ]
+    },
+    {
+      "module": "tests.test_atomic_replace",
+      "class": "SettingsSerializationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.store",
+      "behavior": "SettingsSerialization",
+      "tests": [
+        "test_10_concurrent_settings_serialized",
+        "test_11_terminal_failure_waiting_writer",
+        "test_12_report_consistency"
+      ]
+    },
+    {
+      "module": "tests.test_build_toolchain",
+      "class": "BuildPreflightTests",
+      "category": "CURRENT_PACKAGE_RUNTIME",
+      "gate": true,
+      "method_categories": {},
+      "production": "packaging/build_windows.ps1 preflight / ZIP stream source contract",
+      "behavior": "BuildPreflight",
+      "tests": [
+        "test_unsupported_official_build_runtimes_are_rejected_without_creation",
+        "test_check_only_does_not_create_environment_or_outputs",
+        "test_incomplete_existing_directory_is_not_repurposed",
+        "test_matching_real_environment_is_preserved_without_installing"
+      ]
+    },
+    {
+      "module": "tests.test_build_toolchain",
+      "class": "CheckOnlyHarnessStabilityTests",
+      "category": "CURRENT_PACKAGE_RUNTIME",
+      "gate": true,
+      "method_categories": {},
+      "production": "packaging/build_windows.ps1 preflight / ZIP stream source contract",
+      "behavior": "CheckOnlyHarnessStability",
+      "tests": [
+        "test_check_only_uses_sixty_second_budget_with_noninteractive_stdin",
+        "test_timeout_propagates_and_retains_partial_output",
+        "test_failure_diagnostics_report_context_without_secrets"
+      ]
+    },
+    {
+      "module": "tests.test_build_toolchain",
+      "class": "ZipEntryStreamOwnershipTests",
+      "category": "CURRENT_PACKAGE_RUNTIME",
+      "gate": true,
+      "method_categories": {},
+      "production": "packaging/build_windows.ps1 preflight / ZIP stream source contract",
+      "behavior": "ZipEntryStreamOwnership",
+      "tests": [
+        "test_entry_open_is_guarded_by_the_input_stream_try",
+        "test_output_disposal_cannot_mask_input_disposal"
+      ]
+    },
+    {
+      "module": "tests.test_compatibility_lab",
+      "class": "RepositoryCompatibilityLabTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.scanner",
+      "behavior": "RepositoryCompatibilityLab",
+      "tests": [
+        "test_discovery_contract_for_direct_nested_bare_and_non_repository",
+        "test_linked_worktree_git_file_is_discovered",
+        "test_attached_detached_and_unborn_head_are_distinct",
+        "test_working_tree_status_counts_meaningful_states",
+        "test_local_remote_names_are_observed_without_identity_inference",
+        "test_upstream_ahead_behind_and_diverged_against_local_bare_remote",
+        "test_branch_without_upstream_is_not_invalid",
+        "test_primary_attached_and_detached_linked_worktrees_are_distinct",
+        "test_inspection_is_deterministic_and_semantically_read_only",
+        "test_unusual_repository_does_not_contaminate_following_inspection"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "LocationLabelTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "LocationLabel",
+      "tests": [
+        "test_scanned_path_keeps_root_name_and_relative_location",
+        "test_other_root_and_missing_path_are_not_invented"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "VisibleTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "Visible",
+      "tests": [
+        "test_empty_filter_matches_all",
+        "test_matches_name_path_focus_case_insensitive",
+        "test_missing_fields_do_not_crash"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "SortTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "Sort",
+      "tests": [
+        "test_default_pinned_then_active_then_name",
+        "test_by_name_asc_and_desc",
+        "test_dirty_numeric_not_string",
+        "test_sync_sums_ahead_behind",
+        "test_missing_values_tolerated"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "ConfirmedMoveTransactionTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "ConfirmedMoveTransaction",
+      "tests": [
+        "test_happy_path_migrates_and_adopts_name",
+        "test_duplicate_new_path_blocked",
+        "test_equivalent_duplicate_new_path_is_blocked",
+        "test_missing_old_blocked",
+        "test_registry_failure_cancels_before_note_touch",
+        "test_note_failure_rolls_registry_back",
+        "test_stable_project_note_migrates_before_registry_commit",
+        "test_stable_note_failure_never_mutates_registry"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "MoveRaceGuardTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "MoveRaceGuard",
+      "tests": [
+        "test_stale_snapshot_cannot_resurrect_moved_row",
+        "test_current_generation_result_unfiltered",
+        "test_multiple_sequential_moves_scoped_by_gen",
+        "test_full_ordering_scan_confirm_result"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "MoveRevalidationWiringTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "MoveRevalidationWiring",
+      "tests": [
+        "test_compatibility_call_without_callbacks_still_moves",
+        "test_wired_path_exists_blocks_stale_target",
+        "test_run_batch_moves_compatibility_call_without_path_exists",
+        "test_run_batch_moves_forwards_path_exists_guard"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "BatchReconciliationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "BatchReconciliation",
+      "tests": [
+        "test_grouping_splits_and_sorts_categories",
+        "test_unknown_category_lands_in_possible",
+        "test_batch_selects_strong_only",
+        "test_batch_empty_state",
+        "test_batch_reuses_transaction_and_reports",
+        "test_one_failure_does_not_block_rest",
+        "test_consumed_suggestions_disappear_no_double_processing"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "WorkingOnNowTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "WorkingOnNow",
+      "tests": [
+        "test_empty_items_yield_empty",
+        "test_active_alive_included",
+        "test_pinned_only_is_not_included",
+        "test_stale_active_excluded",
+        "test_stale_pinned_excluded",
+        "test_archived_alive_excluded",
+        "test_idea_alive_excluded",
+        "test_sorting_newest_first_and_cap",
+        "test_membership_does_not_mutate_inputs"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "LauncherQualityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "LauncherQuality",
+      "tests": [
+        "test_configure_scripts_demoted",
+        "test_gradlew_demoted",
+        "test_operational_verbs_demoted",
+        "test_unknown_tier_ranks_below_build",
+        "test_build_wins_over_unknown_tier_in_selection"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "GitTargetFreshnessTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "GitTargetFreshness",
+      "tests": [
+        "test_snapshot_requires_same_live_project_and_path",
+        "test_legacy_snapshot_is_not_authorized_by_equal_values",
+        "test_same_project_and_path_is_current",
+        "test_reassociation_or_removal_invalidates_preview",
+        "test_removed_target_cannot_be_authorized",
+        "test_repository_marker_replacement_blocks_mutation"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "ScanResultReconciliationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "ScanResultReconciliation",
+      "tests": [
+        "test_equivalent_path_variation_does_not_retain_duplicate_identity",
+        "test_distinct_canonical_paths_remain_distinct",
+        "test_current_project_fields_survive_same_path_scan",
+        "test_reassociation_during_scan_keeps_live_identity_once",
+        "test_name_and_remote_similarity_do_not_transfer_stale_identity",
+        "test_stale_scan_cannot_reactivate_newly_ignored_project",
+        "test_stale_scan_cannot_reignore_explicitly_restored_project",
+        "test_different_project_ids_same_path_do_not_transfer_ignored_state",
+        "test_stale_ignored_identity_cannot_reignore_live_identity_at_same_path",
+        "test_idless_legacy_record_can_still_match_by_path"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "RecoveryHardeningTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "RecoveryHardening",
+      "tests": [
+        "test_save_failure_after_note_migration_reports_rollback_failed",
+        "test_compensation_failure_after_note_failure_reports_rollback_failed",
+        "test_unchanged_note_save_failure_still_reports_registry_rollback"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "MoveMatcherBruteForceEquivalenceTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "MoveMatcherBruteForceEquivalence",
+      "tests": [
+        "test_distinct_remote_dataset",
+        "test_folder_and_suppressed_dataset",
+        "test_shared_remote_hub_dataset",
+        "test_empty_and_disjoint"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "MergeScanValidityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "MergeScanValidity",
+      "tests": [
+        "test_17_merge_status_timeout_preserves_dirty",
+        "test_18_merge_remote_worktree_partial_preserved",
+        "test_19_merge_mixed_success_updates_failed_preserves"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "MoveIdentityValidityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "MoveIdentityValidity",
+      "tests": [
+        "test_26_fingerprint_failure_returns_unavailable",
+        "test_27_observed_empty_fingerprint_stays_valid"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "VerifyPostRunValidityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "VerifyPostRunValidity",
+      "tests": [
+        "test_28_infrastructure_failure_not_rechecked",
+        "test_29_partial_status_failure_is_unknown",
+        "test_30_full_success_still_rechecked",
+        "test_31_missing_target_still_failed"
+      ]
+    },
+    {
+      "module": "tests.test_current_contracts",
+      "class": "GitMutationGuardTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "projects / project_presentation / relocation / git_targets / scan_state / scanner / agents",
+      "behavior": "GitMutationGuard",
+      "tests": [
+        "test_same_repository_is_serialized_and_release_reopens_it"
+      ]
+    },
+    {
+      "module": "tests.test_current_windows",
+      "class": "FolderActionTests",
+      "category": "CURRENT_WINDOWS_INTEGRATION",
+      "gate": true,
+      "method_categories": {},
+      "production": "RepositorySession.open_folder -> processes.spawn_structured / launchers.generate_stub_bat",
+      "behavior": "FolderAction",
+      "tests": [
+        "test_explorer_and_terminal_receive_exact_target_and_working_directory",
+        "test_vscode_executable_receives_exact_path_without_shell",
+        "test_missing_editor_unavailable_folder_and_stale_target_never_launch",
+        "test_launch_failures_remain_visible",
+        "test_current_vscode_batch_preserves_special_paths_in_real_child",
+        "test_missing_terminal_explains_requirement_without_launching_a_shell"
+      ]
+    },
+    {
+      "module": "tests.test_current_windows",
+      "class": "GeneratedStarterBoundaryTests",
+      "category": "CURRENT_WINDOWS_INTEGRATION",
+      "gate": true,
+      "method_categories": {},
+      "production": "RepositorySession.open_folder -> processes.spawn_structured / launchers.generate_stub_bat",
+      "behavior": "GeneratedStarterBoundary",
+      "tests": [
+        "test_generated_starter_changes_directory_without_interpreting_name"
+      ]
+    },
+    {
+      "module": "tests.test_custom_launchers",
+      "class": "CustomLauncherTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers / repo_manager.store",
+      "behavior": "CustomLauncher",
+      "tests": [
+        "test_custom_launcher_roundtrip_and_malformed_record_is_ignored",
+        "test_custom_launcher_edit_and_remove_semantics_roundtrip",
+        "test_custom_candidate_is_project_scoped_and_unavailable_when_missing",
+        "test_custom_launcher_executes_structured_argv_without_shell",
+        "test_custom_launcher_identity_survives_project_move_and_rename",
+        "test_custom_candidate_accepts_path_resolved_executable",
+        "test_custom_candidate_unhealthy_when_executable_not_resolvable",
+        "test_custom_launcher_run_accepts_path_resolved_executable"
+      ]
+    },
+    {
+      "module": "tests.test_desktop_identity",
+      "class": "DesktopIdentityTests",
+      "category": "CURRENT_WINDOWS_INTEGRATION",
+      "gate": true,
+      "method_categories": {},
+      "production": "desktop_identity / run_qt; mock calls + native shell property readback",
+      "behavior": "DesktopIdentity",
+      "tests": [
+        "test_non_windows_identity_is_inapplicable",
+        "test_source_execution_does_not_register_python_as_portable_app",
+        "test_portable_identity_reads_back_from_native_window"
+      ]
+    },
+    {
+      "module": "tests.test_feedback",
+      "class": "FeedbackTests",
+      "category": "CURRENT_SERVICE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.feedback / repo_manager.store",
+      "behavior": "Feedback",
+      "tests": [
+        "test_four_categories_produce_reviewable_public_issue_drafts",
+        "test_default_report_contains_no_runtime_paths_or_repository_state",
+        "test_runtime_is_explicit_and_bounded",
+        "test_invalid_empty_or_oversized_reports_are_rejected",
+        "test_saved_reports_are_distinct_and_preserve_user_text",
+        "test_save_failure_leaves_no_partial_feedback"
+      ]
+    },
+    {
+      "module": "tests.test_git_availability",
+      "class": "GitAvailabilityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.git_availability",
+      "behavior": "GitAvailability",
+      "tests": [
+        "test_probe_scopes_native_error_mode_and_restores_it_on_failure",
+        "test_native_error_mode_failure_is_reported_without_launching_git",
+        "test_available_git",
+        "test_git_not_on_path",
+        "test_git_launch_failure",
+        "test_git_timeout",
+        "test_git_version_error_is_unusable",
+        "test_recheck_uses_fresh_detection"
+      ]
+    },
+    {
+      "module": "tests.test_git_fixture",
+      "class": "FixtureGitHarnessTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.scanner",
+      "behavior": "FixtureGitHarness",
+      "tests": [
+        "test_git_is_noninteractive_with_finite_timeout",
+        "test_git_timeout_propagates_with_command_evidence",
+        "test_git_nonzero_exit_still_fails_loudly"
+      ]
+    },
+    {
+      "module": "tests.test_git_fixture",
+      "class": "BoundedObservationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.scanner",
+      "behavior": "BoundedObservation",
+      "tests": [
+        "test_unobserved_then_observed_passes",
+        "test_never_observed_fails",
+        "test_observed_wrong_sha_fails_immediately_without_retry",
+        "test_head_observed_branch_unobserved_retries_then_passes",
+        "test_observed_wrong_branch_fails_immediately_without_retry",
+        "test_contradiction_dominates_missing_evidence",
+        "test_retry_bound_is_small_and_deterministic"
+      ]
+    },
+    {
+      "module": "tests.test_git_operations",
+      "class": "EverydayGitTests",
+      "category": "CURRENT_SERVICE",
+      "gate": true,
+      "method_categories": {},
+      "production": "git_operations.Repository / project_actions on temporary Git repositories",
+      "behavior": "EverydayGit",
+      "tests": [
+        "test_local_staged_commit_preserves_unstaged_content_without_remote",
+        "test_stage_all_and_clean_commit_guidance",
+        "test_blank_message_and_stale_index_cancel",
+        "test_literal_unusual_paths_stage_and_unstage_without_discard",
+        "test_unborn_stage_unstage_and_commit",
+        "test_rename_diff_and_unstage_preserve_renamed_working_file",
+        "test_failed_hook_reports_retained_index",
+        "test_authorization_revoked_starts_no_mutation",
+        "test_push_uses_different_upstream_destination",
+        "test_remote_and_head_change_cancel_approved_push",
+        "test_multiple_push_destinations_and_mirror_are_blocked",
+        "test_fetch_changes_refs_not_checkout_and_does_not_prune",
+        "test_read_only_diff_history_and_remotes_preserve_index_and_head",
+        "test_binary_and_large_untracked_previews",
+        "test_non_fast_forward_push_is_rejected_without_force",
+        "test_pull_fast_forwards_clean_checkout_and_blocks_dirty",
+        "test_detached_and_unborn_push_are_blocked",
+        "test_conflict_index_never_authorizes_commit_or_stage",
+        "test_linked_worktree_shares_physical_mutation_lock",
+        "test_nonstandard_fetch_refspec_is_blocked",
+        "test_timeout_after_write_is_unknown_not_retried"
+      ]
+    },
+    {
+      "module": "tests.test_git_operations",
+      "class": "ParsingAndActionsTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "git_operations.Repository / project_actions on temporary Git repositories",
+      "behavior": "ParsingAndActions",
+      "tests": [
+        "test_nul_status_keeps_literal_paths_and_rename_source",
+        "test_redaction",
+        "test_target_never_falls_back_to_equal_legacy_record",
+        "test_capability_and_local_only_commit"
+      ]
+    },
+    {
+      "module": "tests.test_health",
+      "class": "HealthTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "health / health_presentation",
+      "behavior": "Health",
+      "tests": [
+        "test_complete_repository_passes_presence_rules",
+        "test_missing_optional_files_are_informational_and_do_not_warn",
+        "test_material_fail_cannot_coexist_with_pass",
+        "test_material_unknown_cannot_coexist_with_pass",
+        "test_disabled_rule_is_excluded_from_aggregation",
+        "test_warning_material_evidence_cannot_coexist_with_pass",
+        "test_unknown_inaccessible_repository",
+        "test_broken_git_metadata_is_unknown",
+        "test_dirty_tree_warns",
+        "test_explicit_status_unavailable_is_unknown_not_clean",
+        "test_findings_have_required_evidence_fields_and_timestamp",
+        "test_evaluation_does_not_mutate_files_or_metadata",
+        "test_snapshot_findings_disclose_metadata_source",
+        "test_legacy_six_argument_constructor_maps_all_fields",
+        "test_all_not_applicable_is_not_reported_as_pass",
+        "test_not_applicable_is_supported_as_domain_state",
+        "test_modern_constructor_is_unchanged"
+      ]
+    },
+    {
+      "module": "tests.test_health",
+      "class": "HealthDetailsPresentationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "health / health_presentation",
+      "behavior": "HealthDetailsPresentation",
+      "tests": [
+        "test_group_classification_covers_all_statuses_and_importances",
+        "test_required_warn_is_never_omitted",
+        "test_every_finding_maps_to_exactly_one_group",
+        "test_display_name_is_presentation_only",
+        "test_detail_summary_counts_required_warn_as_warning"
+      ]
+    },
+    {
+      "module": "tests.test_health",
+      "class": "HealthScorePresentationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "health / health_presentation",
+      "behavior": "HealthScorePresentation",
+      "tests": [
+        "test_clean_pass_scores_in_band_preferably_near_100",
+        "test_required_warn_decreases_score_and_stays_in_warn_band",
+        "test_required_fail_is_at_most_39",
+        "test_unknown_status_stays_in_40_to_59_band",
+        "test_informational_warn_only_slightly_reduces_pass_score",
+        "test_unknown_future_importance_falls_back_to_required",
+        "test_known_importance_penalties_are_unchanged",
+        "test_stale_penalty_applies_and_is_capped_at_five",
+        "test_stale_evidence_lowers_score_without_dominating",
+        "test_not_enough_applicable_evidence_returns_none",
+        "test_score_is_deterministic",
+        "test_score_language_is_restrained",
+        "test_dashboard_counts_follow_documented_rule"
+      ]
+    },
+    {
+      "module": "tests.test_health_preferences",
+      "class": "HealthPreferenceTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "health_preferences / health / RepositorySession",
+      "behavior": "HealthPreference",
+      "tests": [
+        "test_ignored_is_explicit_and_preserves_observation",
+        "test_active_score_excludes_ignored_penalty_without_adding_a_pass",
+        "test_integrity_policy_and_serious_failures_cannot_be_hidden",
+        "test_restoration_reapplies_original_status_after_background_inspection",
+        "test_unknown_and_malformed_preferences_are_not_suppression_authority",
+        "test_global_and_repository_preferences_remain_independent"
+      ]
+    },
+    {
+      "module": "tests.test_health_preferences",
+      "class": "HealthPreferencePersistenceTests",
+      "category": "CURRENT_SERVICE",
+      "gate": true,
+      "method_categories": {},
+      "production": "health_preferences / health / RepositorySession",
+      "behavior": "HealthPreferencePersistence",
+      "tests": [
+        "test_restart_rename_and_restore_use_project_id",
+        "test_write_failure_preserves_preferences_in_memory_and_on_disk",
+        "test_changed_association_and_protected_rule_are_rejected",
+        "test_global_save_persists_without_overwriting_local_preference"
+      ]
+    },
+    {
+      "module": "tests.test_icon_assets",
+      "class": "IconAssetTests",
+      "category": "CURRENT_PACKAGE_RUNTIME",
+      "gate": true,
+      "method_categories": {},
+      "production": "packaging/assets icon file structure; not taskbar rendering",
+      "behavior": "IconAsset",
+      "tests": [
+        "test_both_windows_icons_have_all_sizes_and_alpha_png_frames",
+        "test_vector_source_is_valid_and_uses_shared_palette"
+      ]
+    },
+    {
+      "module": "tests.test_instance_lock",
+      "class": "InstanceLockTests",
+      "category": "CURRENT_WINDOWS_INTEGRATION",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.instance_lock / repo_manager.store",
+      "behavior": "InstanceLock",
+      "tests": [
+        "test_competing_process_cannot_truncate_or_replace_owner_pid"
+      ]
+    },
+    {
+      "module": "tests.test_launcher_identity",
+      "class": "LauncherApprovalIdentityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "LauncherApprovalIdentity",
+      "tests": [
+        "test_fresh_candidates_compare_evidence_not_object_identity",
+        "test_existing_execution_accepts_fresh_matching_detection",
+        "test_changed_arguments_still_require_new_approval"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "LauncherPresentationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "LauncherPresentation",
+      "tests": [
+        "test_display_name_removes_only_detected_play_marker",
+        "test_summary_uses_display_name_without_mutating_candidate"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "DetectTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "Detect",
+      "tests": [
+        "test_bat_and_ps1",
+        "test_bat_ps1_twin_dedup_prefers_bat",
+        "test_package_json_scripts_skip_pre_post",
+        "test_godot_unavailable_exe_emits_unhealthy_candidates",
+        "test_godot_configured_exe_healthy"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "PrimarySelectionTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "PrimarySelection",
+      "tests": [
+        "test_empty_yields_none",
+        "test_single_healthy_returned",
+        "test_all_unhealthy_yields_none",
+        "test_healthy_beats_better_priority_unhealthy",
+        "test_npm_ladder_dev_beats_build_test_lint",
+        "test_build_selected_when_no_run_word",
+        "test_equal_priority_is_explicitly_ambiguous",
+        "test_demoted_only_candidates_yield_no_primary",
+        "test_demoted_single_candidate_also_yields_none",
+        "test_large_script_list_selects_dev"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "NpmPriorityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "NpmPriority",
+      "tests": [
+        "test_run_words_lowest",
+        "test_prefixed_run_variants_rank_as_run",
+        "test_tauri_is_app_runner",
+        "test_build_above_test_lint_format_deploy",
+        "test_unknown_middle_tier"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "GodotV2Tests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "GodotV2",
+      "tests": [
+        "test_nested_one_level_detected",
+        "test_root_project_outranks_nested",
+        "test_nested_choice_deterministic",
+        "test_depth_two_not_scanned",
+        "test_excluded_directories_skipped",
+        "test_auto_discovery_used_without_configuration",
+        "test_invalid_configured_falls_back_to_discovery"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "PythonV2Tests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "PythonV2",
+      "tests": [
+        "test_src_main_py_detected",
+        "test_all_four_src_entries_supported",
+        "test_missing_venv_yields_unhealthy_candidate",
+        "test_broken_venv_layout_yields_unhealthy",
+        "test_app_main_py_detected",
+        "test_arbitrary_python_file_not_selected"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "NestedNpmTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "NestedNpm",
+      "tests": [
+        "test_root_package_wins_over_nested",
+        "test_nested_detected_when_no_root",
+        "test_node_modules_never_considered",
+        "test_multiple_subdirs_deterministic"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "HealthGatingTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "HealthGating",
+      "tests": [
+        "test_npm_absent_makes_all_npm_unhealthy",
+        "test_conflicting_lockfiles_explain_ambiguity_not_missing_npm",
+        "test_powershell_absent_makes_ps1_unhealthy",
+        "test_ps1_healthy_when_only_pwsh_available",
+        "test_resolve_powershell_exe_prefers_powershell_then_pwsh",
+        "test_utility_named_scripts_demoted",
+        "test_every_candidate_carries_priority_and_health",
+        "test_python_venv_with_entry",
+        "test_python_venv_without_entry_ignored",
+        "test_roblox_place",
+        "test_no_descend_into_subdirs",
+        "test_generate_stub_bat",
+        "test_generate_stub_bat_writes_crlf_not_crcrlf"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "MixedCaseFilenameTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "MixedCaseFilename",
+      "tests": [
+        "test_uppercase_bat_detected",
+        "test_mixed_case_cmd_detected",
+        "test_mixed_case_ps1_detected",
+        "test_wild_case_bat_extension",
+        "test_original_casing_preserved_in_path_and_label",
+        "test_mixed_case_twin_dedup_prefers_bat",
+        "test_mixed_case_twin_dedup_both_bat_exts",
+        "test_distinct_stems_not_deduped_across_cases",
+        "test_lowercase_behavior_unchanged",
+        "test_spaces_and_unicode_in_repo_path_preserved",
+        "test_lowercase_bat_cmd_twin_prefers_bat_deterministically"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "NpmNameValidationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "NpmNameValidation",
+      "tests": [
+        "test_valid_names_accepted",
+        "test_hostile_names_rejected",
+        "test_detection_hides_invalid_keeps_valid_and_logs"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "ShLauncherTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "ShLauncher",
+      "tests": [
+        "test_hidden_when_no_executor",
+        "test_wsl_executor_labeled",
+        "test_git_bash_executor_labeled",
+        "test_run_command_wsl_argv",
+        "test_run_command_git_bash_argv",
+        "test_run_command_without_executor_is_defensive_error",
+        "test_run_command_missing_executor_runtime_raises"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "WslCapabilityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "WslCapability",
+      "tests": [
+        "test_probe_success_means_usable",
+        "test_probe_nonzero_exit_means_unusable",
+        "test_probe_timeout_means_unusable",
+        "test_probe_missing_binary_means_unusable",
+        "test_probe_executed_only_once_per_process",
+        "test_stub_on_path_without_distro_is_not_wsl",
+        "test_usable_wsl_selected",
+        "test_git_bash_fallback_when_wsl_unusable",
+        "test_neither_available_yields_none",
+        "test_detection_probes_only_once_across_calls",
+        "test_detection_without_sh_files_never_probes"
+      ]
+    },
+    {
+      "module": "tests.test_launchers",
+      "class": "RunCommandGoldenTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "RunCommandGolden",
+      "tests": [
+        "test_bat_golden",
+        "test_ps1_golden",
+        "test_ps1_runs_with_pwsh_when_windows_powershell_absent",
+        "test_npm_golden",
+        "test_py_golden",
+        "test_godot_golden",
+        "test_rbx_uses_startfile",
+        "test_spawn_failure_propagates_for_dialog",
+        "test_unknown_type_defensive_error"
+      ]
+    },
+    {
+      "module": "tests.test_move_counterpart",
+      "class": "CounterpartProvenanceTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects / repo_manager.relocation / repo_manager.scanner / repo_manager.store",
+      "behavior": "CounterpartProvenance",
+      "tests": [
+        "test_rename_produces_provenance_matching_counterpart",
+        "test_ambiguous_group_gains_no_counterpart_identity",
+        "test_second_scan_rehydrates_provenance"
+      ]
+    },
+    {
+      "module": "tests.test_move_counterpart",
+      "class": "CounterpartAbsorptionTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects / repo_manager.relocation / repo_manager.scanner / repo_manager.store",
+      "behavior": "CounterpartAbsorption",
+      "tests": [
+        "test_foreign_occupant_without_provenance_is_duplicate",
+        "test_foreign_occupant_with_mismatched_provenance_is_duplicate",
+        "test_legacy_occupant_without_id_is_duplicate",
+        "test_curated_counterpart_is_duplicate_and_preserved",
+        "test_pinned_counterpart_is_duplicate_and_preserved",
+        "test_identity_revalidation_failure_preserves_both",
+        "test_absorb_happy_path_keeps_original_identity",
+        "test_save_failure_restores_both_records",
+        "test_stable_note_failure_restores_counterpart",
+        "test_nonstable_note_failure_restores_counterpart",
+        "test_counterpart_note_blocks_absorption"
+      ]
+    },
+    {
+      "module": "tests.test_move_counterpart",
+      "class": "CounterpartEndToEndTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects / repo_manager.relocation / repo_manager.scanner / repo_manager.store",
+      "behavior": "CounterpartEndToEnd",
+      "tests": [
+        "test_simple_rename_end_to_end",
+        "test_cross_root_move_end_to_end"
+      ]
+    },
+    {
+      "module": "tests.test_move_counterpart",
+      "class": "CloneSafetyTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects / repo_manager.relocation / repo_manager.scanner / repo_manager.store",
+      "behavior": "CloneSafety",
+      "tests": [
+        "test_two_clones_produce_no_move_suggestion",
+        "test_clone_occupant_without_provenance_is_duplicate"
+      ]
+    },
+    {
+      "module": "tests.test_move_review",
+      "class": "ManualMoveTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.relocation / repo_manager.scanner / repo_manager.store",
+      "behavior": "ManualMove",
+      "tests": [
+        "test_group_stays_ambiguous_but_preserves_proven_pair",
+        "test_missing_pair_provenance_never_infers_occupant_id",
+        "test_source_replacement_identity_blocks_transaction",
+        "test_curated_counterpart_is_never_absorbed",
+        "test_retirement_keeps_unresolved_contested_sources"
+      ]
+    },
+    {
+      "module": "tests.test_pending_move",
+      "class": "PendingValidationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects / repo_manager.relocation / repo_manager.scanner / repo_manager.store",
+      "behavior": "PendingValidation",
+      "tests": [
+        "test_shape_round_trip_preserved_exactly",
+        "test_malformed_variants_fail_closed",
+        "test_save_then_load_strips_malformed_pending"
+      ]
+    },
+    {
+      "module": "tests.test_pending_move",
+      "class": "PendingRehydrateUnitTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects / repo_manager.relocation / repo_manager.scanner / repo_manager.store",
+      "behavior": "PendingRehydrateUnit",
+      "tests": [
+        "test_unobserved_identity_defers_with_pending_retained",
+        "test_unscanned_target_defers_silently",
+        "test_missing_target_with_scanned_path_invalidates",
+        "test_missing_target_unscanned_defers",
+        "test_target_moved_path_invalidates",
+        "test_old_reappears_invalidates",
+        "test_suppression_wins_over_pending",
+        "test_identity_conflict_invalidates",
+        "test_curated_target_conflicts_and_retains",
+        "test_legacy_fully_observed_counts_as_observed",
+        "test_chain_never_collapses"
+      ]
+    },
+    {
+      "module": "tests.test_pending_move",
+      "class": "PendingLiveFlowTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects / repo_manager.relocation / repo_manager.scanner / repo_manager.store",
+      "behavior": "PendingLiveFlow",
+      "tests": [
+        "test_f5_before_accept_rehydrates_and_succeeds",
+        "test_restart_before_accept_rehydrates_and_succeeds",
+        "test_cross_root_restart",
+        "test_offline_second_root_defers",
+        "test_old_reappears_invalidates",
+        "test_target_replaced_invalidates",
+        "test_pristine_clone_gets_no_pending",
+        "test_backup_recovery_preserves_pending"
+      ]
+    },
+    {
+      "module": "tests.test_pending_move",
+      "class": "ChainSafetyTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects / repo_manager.relocation / repo_manager.scanner / repo_manager.store",
+      "behavior": "ChainSafety",
+      "tests": [
+        "test_existing_different_pending_never_overwritten",
+        "test_chain_old_reappears"
+      ]
+    },
+    {
+      "module": "tests.test_phase1_move_semantics",
+      "class": "ConfirmedMoveSemanticTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.relocation",
+      "behavior": "ConfirmedMoveSemantic",
+      "tests": [
+        "test_revalidation_blocks_changed_filesystem_target",
+        "test_revalidation_blocks_identity_change",
+        "test_structured_success_preserves_existing_transaction"
+      ]
+    },
+    {
+      "module": "tests.test_phase2a_classification",
+      "class": "DerivedClassificationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects",
+      "behavior": "DerivedClassification",
+      "tests": [
+        "test_git_repository_is_derived_from_scanner_evidence",
+        "test_broken_repository_does_not_become_authoritative_classification",
+        "test_path_without_current_scanner_evidence_is_unknown",
+        "test_folder_without_repository_is_non_git_location",
+        "test_archived_is_project_status_not_repository_ownership",
+        "test_unknown_is_supported_without_inference",
+        "test_classification_is_not_persisted_or_authorizing",
+        "test_display_label_is_stable_and_readable",
+        "test_summary_exposes_source_and_evidence_without_persisting_result"
+      ]
+    },
+    {
+      "module": "tests.test_phase3_worktrees",
+      "class": "WorktreeIntegrationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.scanner",
+      "behavior": "WorktreeIntegration",
+      "tests": [
+        "test_single_worktree_has_branch_and_head",
+        "test_multiple_worktrees_are_associated_independently",
+        "test_inspection_failure_is_not_reported_as_empty",
+        "test_creation_fails_closed_when_postcondition_inspection_unavailable",
+        "test_removal_fails_closed_when_postcondition_inspection_unavailable",
+        "test_creation_checks_collision_and_verifies_postcondition",
+        "test_removal_requires_confirmation_and_blocks_dirty_worktree",
+        "test_removal_verifies_absence",
+        "test_metadata_marks_worktree_inspection_unavailable",
+        "test_metadata_includes_worktrees_and_status_breakdown"
+      ]
+    },
+    {
+      "module": "tests.test_phase4_intelligence",
+      "class": "Phase4IntelligenceTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.health",
+      "behavior": "Phase4Intelligence",
+      "tests": [
+        "test_finding_exposes_structured_evidence_and_guidance",
+        "test_missing_git_state_is_unknown_and_unavailable",
+        "test_prioritization_is_deterministic_not_numeric_scoring",
+        "test_not_applicable_summary_preserves_domain_state",
+        "test_evaluation_is_read_only"
+      ]
+    },
+    {
+      "module": "tests.test_phase8_intelligence",
+      "class": "Phase8IntelligenceTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.intelligence / repo_manager.reports",
+      "behavior": "Phase8Intelligence",
+      "tests": [
+        "test_documentation_reports_presence_without_claiming_correctness",
+        "test_stack_detection_uses_known_files_only",
+        "test_export_excludes_secret_fields_and_preserves_identity",
+        "test_repository_report_is_deterministic_except_generation_timestamp",
+        "test_markdown_export_keeps_untrusted_values_on_their_lines",
+        "test_export_handles_cycles_and_atomic_writer_writes_complete_text",
+        "test_filesystem_observation_error_is_not_reported_as_missing"
+      ]
+    },
+    {
+      "module": "tests.test_processes",
+      "class": "StructuredInvocationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.processes",
+      "behavior": "StructuredInvocation",
+      "tests": [
+        "test_direct_executable_remains_structured",
+        "test_batch_values_are_not_embedded_in_cmd_program",
+        "test_batch_boundary_rejects_quote_or_line_break_injection",
+        "test_batch_boundary_does_not_trust_comspec",
+        "test_cmd_and_bat_run_with_spaces_unicode_and_structured_argv"
+      ]
+    },
+    {
+      "module": "tests.test_projects",
+      "class": "ProjectIdentityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects",
+      "behavior": "ProjectIdentity",
+      "tests": [
+        "test_id_is_created_once_and_is_path_independent",
+        "test_existing_id_is_preserved_for_legacy_compatible_records",
+        "test_missing_id_is_reported_without_mutating_when_only_reading",
+        "test_repository_layout_uses_parent_as_default_name",
+        "test_legacy_scanner_name_gets_derived_display_without_mutation",
+        "test_curated_name_wins_over_repository_layout",
+        "test_other_repository_folder_names_keep_existing_behavior",
+        "test_normal_stored_name_casing_is_preserved",
+        "test_name_suggestion_is_separate_and_has_provenance",
+        "test_manifest_suggestion_can_replace_legacy_generated_name",
+        "test_custom_name_remains_untouched_even_if_evidence_differs",
+        "test_equal_suggestion_is_not_repeated_case_insensitively",
+        "test_evidence_changes_do_not_mutate_stored_name",
+        "test_curated_name_has_no_automatic_rename",
+        "test_duplicate_names_have_secondary_identity",
+        "test_move_keeps_project_id_and_stored_name",
+        "test_repository_report_uses_display_name_without_mutating_project",
+        "test_project_export_uses_display_name_without_mutating_project"
+      ]
+    },
+    {
+      "module": "tests.test_projects",
+      "class": "ProjectAssociationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects",
+      "behavior": "ProjectAssociation",
+      "tests": [
+        "test_candidates_exclude_current_and_broken_records",
+        "test_candidates_exclude_ignored_repositories",
+        "test_distinct_project_ids_cannot_be_collapsed_by_association",
+        "test_invalid_association_is_blocked",
+        "test_broken_association_is_blocked",
+        "test_valid_association_preserves_project_identity_and_metadata",
+        "test_association_preserves_curated_name_and_clears_observations"
+      ]
+    },
+    {
+      "module": "tests.test_projects",
+      "class": "ProjectVisibilityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects",
+      "behavior": "ProjectVisibility",
+      "tests": [
+        "test_empty_filter_matches_every_project",
+        "test_filter_matches_name_path_and_focus_case_insensitively",
+        "test_filter_matches_derived_legacy_display_name"
+      ]
+    },
+    {
+      "module": "tests.test_projects",
+      "class": "ProjectOrderingTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects",
+      "behavior": "ProjectOrdering",
+      "tests": [
+        "test_default_order_is_pinned_then_active_then_name",
+        "test_name_sort_is_case_insensitive_in_both_directions",
+        "test_sync_sort_uses_ahead_plus_behind",
+        "test_name_sort_uses_derived_legacy_display_name",
+        "test_every_visible_column_sorts_by_its_displayed_value",
+        "test_worktree_projection_rejects_malformed_collections",
+        "test_worktree_projection_preserves_only_scanner_compatible_records",
+        "test_worktree_sort_uses_projected_count_without_mutation",
+        "test_duplicate_names_use_visible_path_then_stable_id",
+        "test_unicode_casefold_is_used_for_filter_and_sort"
+      ]
+    },
+    {
+      "module": "tests.test_projects",
+      "class": "WorkingOnNowTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects",
+      "behavior": "WorkingOnNow",
+      "tests": [
+        "test_ignored_active_project_is_not_in_working_on_now_projection",
+        "test_only_explicitly_active_projects_are_kept_including_folder_only",
+        "test_rows_are_newest_first_and_capped",
+        "test_pinned_only_is_not_working_on_now",
+        "test_working_on_now_does_not_mutate_project_records"
+      ]
+    },
+    {
+      "module": "tests.test_projects",
+      "class": "ProjectCurationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects",
+      "behavior": "ProjectCuration",
+      "tests": [
+        "test_apply_curation_preserves_record_and_normalizes_existing_fields",
+        "test_empty_status_keeps_existing_ui_default"
+      ]
+    },
+    {
+      "module": "tests.test_providers",
+      "class": "ProviderTests",
+      "category": "CURRENT_SERVICE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.providers / repo_manager.scanner",
+      "behavior": "Provider",
+      "tests": [
+        "test_github_redirect_is_rejected_before_cross_host_follow",
+        "test_local_provider_correspondence_covers_common_and_generic_hosts",
+        "test_codeberg_is_not_falsely_labeled_forgejo_and_self_hosted_is_generic",
+        "test_malformed_remote_is_not_strong_correspondence",
+        "test_unsupported_provider_observation_is_explicit",
+        "test_github_correspondence_supported_and_unsupported",
+        "test_correspondence_accepts_normalized_and_full_remote_forms",
+        "test_correspondence_rejects_non_github_and_malformed",
+        "test_multiple_remote_correspondence_can_be_selected_without_authority",
+        "test_multiple_remote_correspondences_preserve_conflicting_hosts",
+        "test_malformed_origin_does_not_hide_valid_alternate",
+        "test_scanner_metadata_remote_reaches_provider_observation",
+        "test_successful_observation_normalizes_metadata",
+        "test_response_identity_must_match_selected_remote",
+        "test_malformed_success_payload_is_not_available",
+        "test_provider_presentation_status_separates_local_and_online_severity",
+        "test_failure_states_are_distinct",
+        "test_http_failure_closes_response_without_changing_status",
+        "test_freshness_and_disagreement",
+        "test_provider_observation_is_read_only_and_non_authoritative"
+      ]
+    },
+    {
+      "module": "tests.test_qt_bridge",
+      "class": "QtBridgeTests",
+      "category": "CURRENT_QT_BRIDGE",
+      "gate": true,
+      "method_categories": {},
+      "production": "RepoManagerBridge / RepositoryListModel -> RepositorySession",
+      "behavior": "QtBridge",
+      "tests": [
+        "test_root_form_validation_does_not_save_or_scan",
+        "test_ignored_settings_rows_preserve_status_and_identity",
+        "test_unavailable_git_does_not_present_cached_clean_counts_as_current",
+        "test_broken_repository_never_counts_cached_clean_as_current",
+        "test_compact_location_keeps_full_authoritative_path",
+        "test_keep_both_confirmation_cannot_follow_reordered_suggestion",
+        "test_keep_both_write_failure_preserves_suggestion_and_records",
+        "test_move_confirmation_rechecks_new_activity_before_mutation",
+        "test_close_scan_confirmation_does_not_queue_exit",
+        "test_return_to_app_during_scan_failure_does_not_exit_or_fake_success",
+        "test_agent_duplicate_and_close_confirmation_preserve_running_target",
+        "test_unknown_agent_exit_keeps_application_open",
+        "test_post_run_close_waits_for_observation_and_reports_its_limits",
+        "test_feedback_is_user_requested_and_browser_failure_preserves_draft",
+        "test_approved_ignore_does_not_follow_new_selection",
+        "test_provider_result_cannot_cross_selection_or_changed_remote",
+        "test_column_bounds_and_theme_persist_without_overwriting_settings",
+        "test_recovery_gate_explains_block_and_missing_retry",
+        "test_model_roles_and_counts_are_real",
+        "test_search_sort_and_keyboard_selection",
+        "test_note_autosave_is_flushed_to_previous_target_on_selection",
+        "test_note_save_failure_blocks_selection_filter_navigation_and_close",
+        "test_curation_and_working_toggle_persist",
+        "test_missing_git_blocks_scan_then_recheck_repeats_probe",
+        "test_launch_failure_is_distinct_from_missing",
+        "test_repository_error_does_not_change_git_prerequisite_state",
+        "test_async_scan_uses_existing_scanner_and_updates_model",
+        "test_second_scan_is_queued_instead_of_lost",
+        "test_git_disappearance_drops_scan_results_without_saving",
+        "test_closed_bridge_ignores_late_scan_and_detail_results",
+        "test_stale_detail_result_cannot_replace_new_selection",
+        "test_health_result_exposes_real_findings_and_uncertainty",
+        "test_install_opens_only_official_destination",
+        "test_browser_failure_is_visible",
+        "test_remote_userinfo_is_redacted_and_invalid_dirty_remains_unknown",
+        "test_official_releases_is_explicit_browser_action_and_reports_failure"
+      ]
+    },
+    {
+      "module": "tests.test_qt_git",
+      "class": "QtGitTests",
+      "category": "CURRENT_QT_BRIDGE",
+      "gate": true,
+      "method_categories": {},
+      "production": "GitController -> git_operations.Repository",
+      "behavior": "QtGit",
+      "tests": [
+        "test_real_diff_stage_and_unstage_preserve_working_file",
+        "test_commit_requires_explicit_confirmation_and_retains_partial_result",
+        "test_cancelled_confirmation_cannot_commit",
+        "test_reassociated_target_cannot_receive_approved_mutation",
+        "test_actual_ordinary_git_error_is_reported",
+        "test_network_input_change_invalidates_approval"
+      ]
+    },
+    {
+      "module": "tests.test_qt_owner_corrections",
+      "class": "OwnerCorrectionBridgeTests",
+      "category": "CURRENT_QT_BRIDGE",
+      "gate": true,
+      "method_categories": {},
+      "production": "RepoManagerBridge Quick Run / Health -> RepositorySession (mock launch boundary)",
+      "behavior": "OwnerCorrectionBridge",
+      "tests": [
+        "test_zero_launchers_and_unhealthy_launchers_do_not_execute",
+        "test_single_healthy_launcher_uses_existing_safe_execution",
+        "test_multiple_launchers_require_choice",
+        "test_choice_cannot_follow_selection_change",
+        "test_changed_candidate_and_launch_failure_are_reported",
+        "test_closing_and_loading_never_start_quick_run",
+        "test_detail_acceptance_reapplies_current_suppression",
+        "test_preference_write_failure_is_visible_and_preserves_state"
+      ]
+    },
+    {
+      "module": "tests.test_qt_packaging",
+      "class": "QtPackagingTests",
+      "category": "CURRENT_PACKAGE_RUNTIME",
+      "gate": true,
+      "method_categories": {},
+      "production": "packaging/qml_inventory.py / qt_runtime_licenses.py / verify_binary_origins.py / build_windows.ps1; collectors, not EXE launch",
+      "behavior": "QtPackaging",
+      "tests": [
+        "test_pe_imports_distinguish_bundled_windows_api_and_icu",
+        "test_unresolved_pe_import_and_copied_os_dll_fail_closed",
+        "test_unreviewed_translation_catalog_blocks_bundle",
+        "test_explicit_excluded_qml_import_blocks_collection",
+        "test_binary_origins_are_confined_and_redacted",
+        "test_foreign_dll_blocks_packaging_without_output",
+        "test_missing_binary_provenance_blocks_packaging",
+        "test_identity_is_explicitly_unreleased",
+        "test_probe_is_unavailable_for_stable_and_invalid_versions",
+        "test_qml_scanner_collects_application_closure",
+        "test_unresolved_qml_module_blocks_collection",
+        "test_qml_scanner_warning_is_not_ignored",
+        "test_missing_source_closure_fails_before_bundle_write",
+        "test_existing_source_archive_is_never_overwritten",
+        "test_source_download_requires_reviewed_hash"
+      ]
+    },
+    {
+      "module": "tests.test_qt_runtime",
+      "class": "QtRuntimeTests",
+      "category": "CURRENT_QML_UI",
+      "gate": true,
+      "method_categories": {
+        "test_initial_window_fits_common_logical_work_areas": "CURRENT_QT_BRIDGE"
+      },
+      "production": "Main.qml + real controls / run.py -> run_qt (source subprocess)",
+      "behavior": "QtRuntime",
+      "tests": [
+        "test_qml_root_load_failure_reports_error_and_preserves_nonzero_exit",
+        "test_qml_project_menu_and_settings_use_real_control_events",
+        "test_initial_window_fits_common_logical_work_areas",
+        "test_qml_startup_at_three_scales_without_tkinter_or_qml_errors"
+      ]
+    },
+    {
+      "module": "tests.test_qt_scan_agent_control",
+      "class": "QtScanAgentTests",
+      "category": "CURRENT_QT_BRIDGE",
+      "gate": true,
+      "method_categories": {},
+      "production": "RepoManagerBridge -> ScanControl / agents / RepositorySession (controlled worker/process)",
+      "behavior": "QtScanAgent",
+      "tests": [
+        "test_cancel_keeps_ui_responsive_and_allows_next_scan",
+        "test_close_warns_without_queuing_until_explicit_cancel_exit",
+        "test_cancel_after_result_is_queued_still_discards_it",
+        "test_zero_agent_has_explanation_and_does_not_launch",
+        "test_one_agent_starts_existing_launch_path_in_repository",
+        "test_multiple_requires_explicit_choice_and_persists_selection",
+        "test_changed_repository_rejects_menu_selection",
+        "test_disappeared_executable_or_failed_persistence_does_not_launch",
+        "test_invalid_targets_settings_are_atomic",
+        "test_malformed_saved_targets_have_explicit_ui_error"
+      ]
+    },
+    {
+      "module": "tests.test_registry_ignore_recovery",
+      "class": "RegistryIgnoreRecoveryTests",
+      "category": "CURRENT_SERVICE",
+      "gate": true,
+      "method_categories": {},
+      "production": "RepositorySession.set_ignored -> store",
+      "behavior": "RegistryIgnoreRecovery",
+      "tests": [
+        "test_committed_ignore_survives_missing_primary_recovery",
+        "test_committed_ignore_survives_corrupt_primary_recovery",
+        "test_recovered_ignore_state_is_not_resurrected_again",
+        "test_backup_generations_mirror_committed_history",
+        "test_invalid_backups_do_not_recover_corrupt_primary",
+        "test_pre_commit_failure_preserves_previous_registry",
+        "test_post_commit_rotation_failure_does_not_invalidate_commit",
+        "test_corrupt_primary_recovery_cannot_undo_committed_ignore"
+      ]
+    },
+    {
+      "module": "tests.test_registry_recovery",
+      "class": "RegistryReadFailureTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.store",
+      "behavior": "RegistryReadFailure",
+      "tests": [
+        "test_absence_alone_authorizes_fresh_state_and_persistence",
+        "test_valid_primary_preserves_project_and_workspace_content",
+        "test_permission_failure_is_unavailable_and_does_not_write",
+        "test_invalid_backups_do_not_make_permission_failure_fresh",
+        "test_unreadable_primary_uses_first_valid_backup_without_rotation",
+        "test_compatibility_loaders_cannot_hide_failed_read_as_empty",
+        "test_workspace_save_cannot_use_failed_implicit_project_load",
+        "test_malformed_content_is_distinct_and_preserved_for_retry",
+        "test_primary_read_does_not_rely_on_exists_permission_probe"
+      ]
+    },
+    {
+      "module": "tests.test_repository_service",
+      "class": "RepositoryServiceTests",
+      "category": "CURRENT_SERVICE",
+      "gate": true,
+      "method_categories": {},
+      "production": "RepositorySession -> store / scanner / launchers / projects",
+      "behavior": "RepositoryService",
+      "tests": [
+        "test_scan_root_addition_is_validated_without_persistence",
+        "test_scan_root_addition_rejects_missing_and_duplicate_paths",
+        "test_scan_depth_is_relative_to_each_configured_folder",
+        "test_drive_relative_scan_root_is_not_a_whole_drive_search",
+        "test_custom_launcher_crud_preserves_identity_and_notes",
+        "test_launcher_write_failure_and_invalid_fields_preserve_records",
+        "test_ignore_restore_preserves_notes_and_folder",
+        "test_missing_registry_after_blocked_load_never_becomes_fresh",
+        "test_exports_use_existing_report_schemas",
+        "test_stub_does_not_overwrite_existing_file",
+        "test_real_scan_discovers_and_persists_git_observations",
+        "test_unknown_or_invalid_dirty_is_never_counted_clean",
+        "test_curation_during_scan_survives_old_payload",
+        "test_failed_curation_does_not_change_live_or_persisted_state",
+        "test_failed_scan_save_retains_live_registry",
+        "test_timestamp_failure_reports_saved_inventory_honestly",
+        "test_stable_notes_follow_curation_not_row_position",
+        "test_notes_reject_reassociated_target",
+        "test_search_and_sort_reuse_display_rules",
+        "test_working_view_preserves_activity_order_and_excludes_missing",
+        "test_settings_validation_preserves_unknown_fields_and_deduplicates_roots",
+        "test_workspace_metadata_survives_scan_and_curation",
+        "test_registry_block_blocks_scan_curation_and_notes",
+        "test_stale_launcher_is_rejected_before_execution",
+        "test_unavailable_launcher_preserves_reason",
+        "test_available_launcher_uses_existing_execution_boundary"
+      ]
+    },
+    {
+      "module": "tests.test_scan_control",
+      "class": "ScanControlTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "ScanControl / scanner bounded metadata pool / subprocess cleanup / RepositorySession.scan",
+      "behavior": "ScanControl",
+      "tests": [
+        "test_progress_and_cancel_are_explicit",
+        "test_context_does_not_leak_into_other_work",
+        "test_cancel_stops_scheduling_and_joins_all_metadata_threads",
+        "test_current_git_timeout_reaps_process_before_cancel_is_reported",
+        "test_unborn_failure_handler_does_not_swallow_cancellation"
+      ]
+    },
+    {
+      "module": "tests.test_scan_control",
+      "class": "ScanPersistenceTests",
+      "category": "CURRENT_SERVICE",
+      "gate": true,
+      "method_categories": {},
+      "production": "ScanControl / scanner bounded metadata pool / subprocess cleanup / RepositorySession.scan",
+      "behavior": "ScanPersistence",
+      "tests": [
+        "test_cancelled_discovery_preserves_registry_and_timestamp",
+        "test_cancel_during_real_discovery_is_not_returned_as_empty_inventory"
+      ]
+    },
+    {
+      "module": "tests.test_scanner",
+      "class": "FindRepoDirsTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.health / repo_manager.projects / repo_manager.scanner",
+      "behavior": "FindRepoDirs",
+      "tests": [
+        "test_finds_repos_and_respects_skip_and_depth",
+        "test_relative_and_absolute_alias_roots_discover_one_canonical_path"
+      ]
+    },
+    {
+      "module": "tests.test_scanner",
+      "class": "MergeScanTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.health / repo_manager.projects / repo_manager.scanner",
+      "behavior": "MergeScan",
+      "tests": [
+        "test_registry_equivalent_path_variations_merge_into_one_project",
+        "test_distinct_canonical_paths_remain_distinct",
+        "test_folder_only_project_survives_repository_scan",
+        "test_new_project_gets_defaults",
+        "test_nested_repository_uses_parent_project_name",
+        "test_user_data_preserved_on_rescan",
+        "test_ignored_project_stays_ignored_when_rediscovered",
+        "test_ignored_project_is_not_scanner_pruned_when_vanished",
+        "test_ignored_and_normal_projects_remain_independently_addressable",
+        "test_legacy_repository_name_is_not_rewritten_on_rescan",
+        "test_ordinary_directory_without_git_is_not_discovered",
+        "test_broken_repo_reported_as_repository_problem",
+        "test_persisted_ordinary_path_is_not_promoted_to_git_repository",
+        "test_vanished_project_kept_within_window",
+        "test_vanished_project_without_age_evidence_is_not_pruned",
+        "test_worktree_repo_is_discovered",
+        "test_transient_failure_keeps_existing_project",
+        "test_broken_existing_repository_invalidates_old_git_observations"
+      ]
+    },
+    {
+      "module": "tests.test_scanner",
+      "class": "MergeScanHardeningTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.health / repo_manager.projects / repo_manager.scanner",
+      "behavior": "MergeScanHardening",
+      "tests": [
+        "test_record_without_path_skipped_others_kept",
+        "test_non_dict_entry_and_missing_name_skipped",
+        "test_vanished_poisoned_records_do_not_crash",
+        "test_one_metadata_failure_does_not_abort_others"
+      ]
+    },
+    {
+      "module": "tests.test_scanner",
+      "class": "GitObservationAvailabilityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.health / repo_manager.projects / repo_manager.scanner",
+      "behavior": "GitObservationAvailability",
+      "tests": [
+        "test_failed_status_is_unknown_not_clean",
+        "test_no_upstream_is_distinct_from_zero_divergence",
+        "test_worktree_remove_blocks_when_status_is_unavailable"
+      ]
+    },
+    {
+      "module": "tests.test_scanner",
+      "class": "IdentityMatchingTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.health / repo_manager.projects / repo_manager.scanner",
+      "behavior": "IdentityMatching",
+      "tests": [
+        "test_strong_remote_match_iron_style",
+        "test_case_folded_remote_matches",
+        "test_folder_rename_with_remote",
+        "test_legacy_entry_without_fingerprint_still_matches_by_remote",
+        "test_no_evidence_no_candidate",
+        "test_differing_remotes_disjoint_roots_no_candidate",
+        "test_same_remote_independent_clone_is_suggestion_not_migration",
+        "test_one_stale_two_fresh_is_ambiguous_grouped",
+        "test_two_stale_one_fresh_is_ambiguous_grouped",
+        "test_suppressed_pair_filtered",
+        "test_deterministic_ordering",
+        "test_folder_only_match_is_possible_category",
+        "test_short_generic_folder_names_ignored"
+      ]
+    },
+    {
+      "module": "tests.test_scanner",
+      "class": "FingerprintCaptureTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.health / repo_manager.projects / repo_manager.scanner",
+      "behavior": "FingerprintCapture",
+      "tests": [
+        "test_fingerprint_captures_remotes_and_roots",
+        "test_multiple_remotes_preserved",
+        "test_unborn_head_empty_root_commits"
+      ]
+    },
+    {
+      "module": "tests.test_scanner",
+      "class": "MoveAwareMergeTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.health / repo_manager.projects / repo_manager.scanner",
+      "behavior": "MoveAwareMerge",
+      "tests": [
+        "test_vanished_plus_matching_discovery_yields_suggestion_only",
+        "test_suppressed_pair_produces_no_suggestion",
+        "test_exact_path_match_refreshes_fingerprint",
+        "test_same_remote_at_two_paths_remains_two_projects"
+      ]
+    },
+    {
+      "module": "tests.test_scanner",
+      "class": "PruneGuardTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.health / repo_manager.projects / repo_manager.scanner",
+      "behavior": "PruneGuard",
+      "tests": [
+        "test_spaces_in_repo_path_discovered_and_merged",
+        "test_suggested_entry_survives_prune",
+        "test_unsuggested_ancient_entry_still_pruned",
+        "test_explicit_protection_keeps_unrelated_entry",
+        "test_registered_new_location_no_longer_produces_move_suggestion",
+        "test_case_insensitive_path_identity_in_merge"
+      ]
+    },
+    {
+      "module": "tests.test_scanner",
+      "class": "TimestampFormatTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.health / repo_manager.projects / repo_manager.scanner",
+      "behavior": "TimestampFormat",
+      "tests": [
+        "test_format_matches_legacy_contract",
+        "test_compares_correctly_against_persisted_values"
+      ]
+    },
+    {
+      "module": "tests.test_scanner",
+      "class": "NormalizeRemoteTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.health / repo_manager.projects / repo_manager.scanner",
+      "behavior": "NormalizeRemote",
+      "tests": [
+        "test_known_forms",
+        "test_unrepresentable_returns_none",
+        "test_invalid_ports_and_percent_encoded_paths_are_rejected",
+        "test_collect_metadata_normalizes_remote"
+      ]
+    },
+    {
+      "module": "tests.test_scanner",
+      "class": "ScanRootAvailabilityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.health / repo_manager.projects / repo_manager.scanner",
+      "behavior": "ScanRootAvailability",
+      "tests": [
+        "test_missing_root_is_reported_as_scan_problem",
+        "test_find_repo_dirs_carries_root_problems",
+        "test_merge_keeps_project_below_unavailable_root",
+        "test_merge_still_prunes_stale_project_outside_failed_root"
+      ]
+    },
+    {
+      "module": "tests.test_store",
+      "class": "StoreTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects / repo_manager.store",
+      "behavior": "Store",
+      "tests": [
+        "test_projects_roundtrip",
+        "test_ignored_project_roundtrips_without_losing_identity_or_note",
+        "test_valid_false_ignored_project_remains_active",
+        "test_malformed_ignored_values_fail_closed_with_validation_evidence",
+        "test_legacy_project_defaults_to_not_ignored",
+        "test_archived_and_ignored_are_distinct_persisted_states",
+        "test_workspace_metadata_roundtrip_and_legacy_compatibility",
+        "test_corrupt_registry_recovers_workspaces_from_backup",
+        "test_workspaces_survive_ordinary_bare_save_paths",
+        "test_explicit_empty_workspaces_still_clears",
+        "test_workspace_save_uses_live_projects_when_provided",
+        "test_unreadable_primary_aborts_bare_save_and_preserves_bytes",
+        "test_recovered_registry_keeps_workspaces_with_legacy_ids",
+        "test_missing_primary_recovery_repersists_workspaces",
+        "test_invalid_workspace_is_ignored_without_dropping_projects",
+        "test_settings_defaults_and_persistence",
+        "test_notes_roundtrip",
+        "test_concurrent_note_writes_are_not_corrupted",
+        "test_note_collision_gets_unique_files",
+        "test_project_id_note_key_survives_rename_move_and_reassociation",
+        "test_legacy_six_hex_note_remains_readable_after_key_upgrade",
+        "test_save_stamps_schema_version",
+        "test_legacy_file_without_version_is_valid",
+        "test_legacy_ids_are_durable_without_subsequent_save",
+        "test_legacy_backfill_save_failure_does_not_report_durable_identity",
+        "test_save_rejects_equivalent_duplicate_paths_before_replace",
+        "test_project_id_is_persisted_without_schema_migration",
+        "test_malformed_json_is_corruption_with_recovery",
+        "test_truncated_json_is_corruption",
+        "test_empty_file_is_corruption_not_fresh",
+        "test_wrong_top_level_type_list_is_corruption",
+        "test_wrong_top_level_type_string_is_corruption",
+        "test_missing_projects_key_is_corruption",
+        "test_projects_null_is_corruption_not_fresh",
+        "test_projects_string_is_corruption",
+        "test_projects_object_is_corruption",
+        "test_unknown_schema_version_is_corruption",
+        "test_malformed_record_dropped_valid_kept",
+        "test_read_registry_reports_dropped_records_on_valid_file",
+        "test_unknown_fields_preserved",
+        "test_backup_rotation_order",
+        "test_semantic_noop_preserves_existing_backup_history",
+        "test_matching_backup_never_suppresses_stale_primary_repair",
+        "test_concurrent_registry_writes_are_serialized",
+        "test_failed_write_keeps_previous_primary",
+        "test_post_replace_cache_failure_keeps_committed_save_successful",
+        "test_successful_save_keeps_primary_valid_and_rotates",
+        "test_missing_primary_recovers_from_valid_backup",
+        "test_recovery_prefers_bak1_then_bak2",
+        "test_invalid_backups_ignored_unrecoverable",
+        "test_quarantine_names_unique",
+        "test_stale_tmp_ignored_by_load",
+        "test_notes_unaffected_by_registry_corruption",
+        "test_missing_file_reported_as_fresh",
+        "test_settings_coercion_resets_invalid_values",
+        "test_unreadable_primary_recovers_from_backup",
+        "test_unreadable_primary_without_backup_is_unavailable",
+        "test_settings_valid_json_wrong_top_type_falls_back",
+        "test_note_roundtrip_unicode_and_spaces",
+        "test_move_suppressions_roundtrip_and_sanitizing",
+        "test_fingerprint_sanitize_valid_with_unknown_fields",
+        "test_fingerprint_sanitize_malformed",
+        "test_validation_sanitizes_record_fingerprint_not_rejects",
+        "test_registry_drops_duplicate_identity_and_equivalent_paths",
+        "test_registry_sanitizes_operational_types_and_launcher_ownership",
+        "test_duplicate_workspace_id_is_not_loaded",
+        "test_registry_size_limit_is_explicit_corruption",
+        "test_registry_count_limits_are_explicit_corruption",
+        "test_moved_from_invalid_ignored",
+        "test_move_note_absent_source_is_noop",
+        "test_move_note_moves_byte_identical",
+        "test_move_note_migrates_legacy_note_to_stable_project_key",
+        "test_move_note_collision_never_overwrites"
+      ]
+    },
+    {
+      "module": "tests.test_store",
+      "class": "RecoveryIdentityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects / repo_manager.store",
+      "behavior": "RecoveryIdentity",
+      "tests": [
+        "test_missing_primary_recovery_derives_stable_legacy_ids",
+        "test_unreadable_primary_derives_ids_in_memory_without_persisting"
+      ]
+    },
+    {
+      "module": "tests.test_store",
+      "class": "SettingsQuarantineTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects / repo_manager.store",
+      "behavior": "SettingsQuarantine",
+      "tests": [
+        "test_malformed_settings_load_defaults_and_are_quarantined",
+        "test_save_preserves_malformed_source_before_replacing",
+        "test_unpreservable_malformed_settings_block_the_save"
+      ]
+    },
+    {
+      "module": "tests.test_store",
+      "class": "BackupWorkspacePreservationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.projects / repo_manager.store",
+      "behavior": "BackupWorkspacePreservation",
+      "tests": [
+        "test_workspaces_survive_bare_save_while_primary_is_missing"
+      ]
+    },
+    {
+      "module": "tests.test_ua05_cleanup",
+      "class": "SyntheticClassifierTests",
+      "category": "CURRENT_CORE",
+      "gate": false,
+      "method_categories": {},
+      "production": "ua05_cleanup standalone maintenance utility (not Qt runtime)",
+      "behavior": "SyntheticClassifier",
+      "tests": [
+        "test_exact_fixture_record_is_confirmed",
+        "test_near_match_legitimate_record_is_not_confirmed",
+        "test_mismatched_name_path_suffix_is_ambiguous",
+        "test_ordinary_repos_dir_record_survives",
+        "test_fixture_name_at_non_fixture_path_survives"
+      ]
+    },
+    {
+      "module": "tests.test_ua05_cleanup",
+      "class": "CleanupManifestTests",
+      "category": "CURRENT_CORE",
+      "gate": false,
+      "method_categories": {},
+      "production": "ua05_cleanup standalone maintenance utility (not Qt runtime)",
+      "behavior": "CleanupManifest",
+      "tests": [
+        "test_analysis_confirms_exact_family_only",
+        "test_ambiguous_and_normal_records_survive_apply",
+        "test_extra_family_member_blocks_artifact",
+        "test_dry_run_never_writes",
+        "test_apply_rejects_source_hash_change",
+        "test_apply_removes_only_manifest_ids_and_preserves_rest",
+        "test_apply_does_not_touch_invalid_backup",
+        "test_preservation_dir_hashes_match_sources"
+      ]
+    },
+    {
+      "module": "tests.test_ua05_cleanup",
+      "class": "TwoPhasePreflightTests",
+      "category": "CURRENT_CORE",
+      "gate": false,
+      "method_categories": {},
+      "production": "ua05_cleanup standalone maintenance utility (not Qt runtime)",
+      "behavior": "TwoPhasePreflight",
+      "tests": [
+        "test_later_hash_mismatch_causes_zero_registry_writes",
+        "test_later_family_mismatch_causes_zero_registry_writes",
+        "test_missing_expected_hash_aborts_before_any_write",
+        "test_invalid_backup_preserved_and_never_rewritten",
+        "test_unrelated_malformed_record_aborts_instead_of_normalizing"
+      ]
+    },
+    {
+      "module": "tests.test_ua05_cleanup",
+      "class": "AtomicReplacementTests",
+      "category": "CURRENT_CORE",
+      "gate": false,
+      "method_categories": {},
+      "production": "ua05_cleanup standalone maintenance utility (not Qt runtime)",
+      "behavior": "AtomicReplacement",
+      "tests": [
+        "test_atomic_write_replaces_via_same_directory_os_replace",
+        "test_atomic_write_cleans_up_temp_file_on_failure",
+        "test_successful_apply_writes_through_atomic_write_helper"
+      ]
+    },
+    {
+      "module": "tests.test_ua05_cleanup",
+      "class": "WritePhaseReportingTests",
+      "category": "CURRENT_CORE",
+      "gate": false,
+      "method_categories": {},
+      "production": "ua05_cleanup standalone maintenance utility (not Qt runtime)",
+      "behavior": "WritePhaseReporting",
+      "tests": [
+        "test_post_write_reread_failure_reports_current_artifact_replaced",
+        "test_post_write_validation_failure_reports_current_artifact_replaced",
+        "test_atomic_write_failure_before_replacement_reports_none"
+      ]
+    },
+    {
+      "module": "tests.test_ua05_cleanup",
+      "class": "RegistryValidationTests",
+      "category": "CURRENT_CORE",
+      "gate": false,
+      "method_categories": {},
+      "production": "ua05_cleanup standalone maintenance utility (not Qt runtime)",
+      "behavior": "RegistryValidation",
+      "tests": [
+        "test_cleaned_result_accepted_by_repo_manager_validator",
+        "test_successful_cleanup_semantics_unchanged"
+      ]
+    },
+    {
+      "module": "tests.test_ua05_diagnostics",
+      "class": "Ua05DiagnosticTests",
+      "category": "CURRENT_CORE",
+      "gate": false,
+      "method_categories": {},
+      "production": "ua05_diagnostics standalone maintenance utility (not Qt runtime)",
+      "behavior": "Ua05Diagnostic",
+      "tests": [
+        "test_report_finds_persisted_synthetic_records_without_mutating_files",
+        "test_source_fixture_is_test_provenance_not_production_provenance",
+        "test_generic_production_store_reference_is_not_synthetic_provenance",
+        "test_actual_production_synthetic_generator_is_detected",
+        "test_source_directory_exclusions_skip_environment_fixtures",
+        "test_configured_synthetic_root_and_log_are_reported",
+        "test_backups_and_quarantine_are_inspected_but_not_recovered_or_changed",
+        "test_missing_and_malformed_files_are_nonfatal_and_reported",
+        "test_cli_json_and_text_outputs_are_read_only"
+      ]
+    },
+    {
+      "module": "tests.test_ua05_isolation",
+      "class": "RealDataIsolationTripwireTests",
+      "category": "CURRENT_CORE",
+      "gate": false,
+      "method_categories": {},
+      "production": "UA05 maintenance ownership tripwire (not Qt runtime)",
+      "behavior": "RealDataIsolationTripwire",
+      "tests": [
+        "test_isolated_fixture_writes_stay_in_tmp_and_real_data_unchanged",
+        "test_default_store_paths_target_real_appdata_name"
+      ]
+    },
+    {
+      "module": "tests.test_unavailable_launcher_visibility",
+      "class": "UnavailableLauncherVisibilityTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "UnavailableLauncherVisibility",
+      "tests": [
+        "test_mixed_availability_keeps_unavailable_candidate_in_hidden_view",
+        "test_ambiguous_healthy_candidates_and_unavailable_candidate_are_all_retained",
+        "test_all_unavailable_candidates_have_complete_reasons_and_no_primary",
+        "test_scaling_preserves_every_available_and_unavailable_candidate"
+      ]
+    },
+    {
+      "module": "tests.test_windows_process",
+      "class": "WindowsProcessTests",
+      "category": "CURRENT_WINDOWS_INTEGRATION",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.processes / repo_manager.windows_process",
+      "behavior": "WindowsProcess",
+      "tests": [
+        "test_failed_job_assignment_never_runs_the_suspended_program",
+        "test_cmd_stop_terminates_child_and_releases_its_file",
+        "test_parent_exit_does_not_report_success_while_child_survives",
+        "test_normal_exit_and_launch_failure"
+      ]
+    },
+    {
+      "module": "tests.test_workspaces",
+      "class": "WorkspaceTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "workspaces persisted schema retained by store; no Qt workspace screen",
+      "behavior": "Workspace",
+      "tests": [
+        "test_identity_is_stable_and_path_independent",
+        "test_add_remove_member_is_metadata_only",
+        "test_inspection_preserves_missing_stale_dirty_and_valid_states",
+        "test_invalid_git_observation_is_unavailable",
+        "test_unknown_repository_id_is_untracked_without_observation",
+        "test_workspace_validation_rejects_incomplete_members"
+      ]
+    },
+    {
+      "module": "tests.test_workspaces",
+      "class": "WorkspaceObservationHardeningTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "workspaces persisted schema retained by store; no Qt workspace screen",
+      "behavior": "WorkspaceObservationHardening",
+      "tests": [
+        "test_string_dirty_is_unavailable_not_ready",
+        "test_bool_dirty_is_unavailable_not_ready",
+        "test_negative_dirty_is_unavailable_not_ready",
+        "test_missing_git_status_is_unavailable_not_ready",
+        "test_int_dirty_still_valid_and_ready"
+      ]
+    },
+    {
+      "module": "tests.test_wp04_launchers",
+      "class": "Wp04LauncherTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.launchers",
+      "behavior": "Wp04Launcher",
+      "tests": [
+        "test_primary_is_none_when_best_candidates_are_equally_plausible",
+        "test_package_manager_lockfile_evidence",
+        "test_conflicting_lockfiles_are_explicit_and_unavailable",
+        "test_missing_evidence_manager_remains_relevant_but_unavailable",
+        "test_bounded_view_preserves_all_candidates",
+        "test_run_bat_requires_confirmation_when_callback_supplied"
+      ]
+    },
+    {
+      "module": "tests.test_qml_reconciliation",
+      "class": "CurrentQmlTests",
+      "category": "CURRENT_QML_UI",
+      "gate": true,
+      "method_categories": {},
+      "production": "Main.qml / GitDialog / repository ListView / Help / GitNotice; real QTest events and temporary Git",
+      "behavior": "CurrentQml",
+      "tests": [
+        "test_real_qml_diff_stage_unstage_and_explicit_local_commit",
+        "test_real_qml_keyboard_selection_search_tab_and_help",
+        "test_filter_resets_scroll_resize_and_teardown_without_delegate_warning",
+        "test_real_qml_missing_git_install_destination_and_path_recheck"
+      ]
+    },
+    {
+      "module": "tests.test_suite_layers",
+      "class": "SuiteGateTests",
+      "category": "CURRENT_PACKAGE_RUNTIME",
+      "gate": true,
+      "method_categories": {},
+      "production": "tests.run_layers taxonomy validation and current gate exclusion",
+      "behavior": "SuiteGate",
+      "tests": [
+        "test_unclassified_test_blocks_the_gate",
+        "test_current_gate_excludes_all_legacy_and_auxiliary_groups",
+        "test_deleted_or_duplicate_classification_blocks_the_gate"
+      ]
+    },
+    {
+      "module": "tests.test_git_environment",
+      "class": "GitEnvironmentTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.git_environment / scanner / git_operations: real poisoned temporary repositories",
+      "tests": [
+        "test_copy_removes_case_insensitive_redirection_and_config_injection"
+      ]
+    },
+    {
+      "module": "tests.test_git_environment",
+      "class": "PoisonedRepositoryTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.git_environment / scanner / git_operations: real poisoned temporary repositories",
+      "tests": [
+        "test_unsanitized_git_really_can_redirect_to_b",
+        "test_each_redirection_and_combination_cannot_change_scan_attribution",
+        "test_stage_and_unstage_only_change_a_index_and_preserve_content_heads",
+        "test_commit_is_only_in_a_and_preserves_unstaged_content",
+        "test_linked_worktree_still_resolves_its_own_index_and_branch",
+        "test_worktree_mutation_uses_a_common_repository",
+        "test_fetch_pull_push_use_only_approved_a_and_remote_not_injected_config"
+      ]
+    },
+    {
+      "module": "tests.test_data_isolation",
+      "class": "RealDataIsolationTripwireTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "store fixture isolation; retained public safety tripwire",
+      "tests": [
+        "test_isolated_fixture_writes_stay_in_tmp_and_real_data_unchanged"
+      ]
+    },
+    {
+      "module": "tests.test_documentation_and_reports",
+      "class": "DocumentationAndReportsTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "intelligence/reports: neutral current contracts retained from public",
+      "tests": [
+        "test_documentation_reports_presence_without_claiming_correctness",
+        "test_stack_detection_uses_known_files_only",
+        "test_export_excludes_secret_fields_and_preserves_identity",
+        "test_repository_report_is_deterministic_except_generation_timestamp",
+        "test_markdown_export_keeps_untrusted_values_on_their_lines",
+        "test_export_handles_cycles_and_atomic_writer_writes_complete_text",
+        "test_filesystem_observation_error_is_not_reported_as_missing"
+      ]
+    },
+    {
+      "module": "tests.test_health_evidence",
+      "class": "HealthEvidenceTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "health structured evidence contracts retained from public",
+      "tests": [
+        "test_finding_exposes_structured_evidence_and_guidance",
+        "test_missing_git_state_is_unknown_and_unavailable",
+        "test_prioritization_is_deterministic_not_numeric_scoring",
+        "test_not_applicable_summary_preserves_domain_state",
+        "test_evaluation_is_read_only"
+      ]
+    },
+    {
+      "module": "tests.test_launcher_boundaries",
+      "class": "LauncherBoundaryTests",
+      "category": "CURRENT_WINDOWS_INTEGRATION",
+      "gate": true,
+      "method_categories": {},
+      "production": "current launchers/process boundary contracts retained from public",
+      "tests": [
+        "test_primary_is_none_when_best_candidates_are_equally_plausible",
+        "test_package_manager_lockfile_evidence",
+        "test_conflicting_lockfiles_are_explicit_and_unavailable",
+        "test_missing_evidence_manager_remains_relevant_but_unavailable",
+        "test_bounded_view_preserves_all_candidates",
+        "test_run_bat_requires_confirmation_when_callback_supplied"
+      ]
+    },
+    {
+      "module": "tests.test_move_semantics",
+      "class": "ConfirmedMoveSemanticTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "current scanner/projects move contracts retained from public",
+      "tests": [
+        "test_revalidation_blocks_changed_filesystem_target",
+        "test_revalidation_blocks_identity_change",
+        "test_structured_success_preserves_existing_transaction"
+      ]
+    },
+    {
+      "module": "tests.test_project_classification",
+      "class": "DerivedClassificationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "current projects classification retained from public",
+      "tests": [
+        "test_git_repository_is_derived_from_scanner_evidence",
+        "test_broken_repository_does_not_become_authoritative_classification",
+        "test_path_without_current_scanner_evidence_is_unknown",
+        "test_folder_without_repository_is_non_git_location",
+        "test_archived_is_project_status_not_repository_ownership",
+        "test_unknown_is_supported_without_inference",
+        "test_classification_is_not_persisted_or_authorizing",
+        "test_display_label_is_stable_and_readable",
+        "test_summary_exposes_source_and_evidence_without_persisting_result"
+      ]
+    },
+    {
+      "module": "tests.test_worktree_semantics",
+      "class": "WorktreeIntegrationTests",
+      "category": "CURRENT_CORE",
+      "gate": true,
+      "method_categories": {},
+      "production": "current scanner worktree contracts retained from public",
+      "tests": [
+        "test_single_worktree_has_branch_and_head",
+        "test_multiple_worktrees_are_associated_independently",
+        "test_inspection_failure_is_not_reported_as_empty",
+        "test_creation_fails_closed_when_postcondition_inspection_unavailable",
+        "test_removal_fails_closed_when_postcondition_inspection_unavailable",
+        "test_creation_checks_collision_and_verifies_postcondition",
+        "test_removal_requires_confirmation_and_blocks_dirty_worktree",
+        "test_removal_verifies_absence",
+        "test_metadata_marks_worktree_inspection_unavailable",
+        "test_metadata_includes_worktrees_and_status_breakdown"
+      ]
+    }
+  ]
+}

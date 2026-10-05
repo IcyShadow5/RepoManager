@@ -54,6 +54,8 @@ class LauncherCandidate:
         return data
 
     def __eq__(self, other):
+        if isinstance(other, LauncherCandidate):
+            return self.as_dict() == other.as_dict()
         if isinstance(other, dict):
             return self.as_dict() == other
         return super().__eq__(other)
@@ -675,5 +677,9 @@ def generate_stub_bat(repo_path, confirm=None):
     # newline="" keeps the embedded \r\n line endings intact; text-mode
     # universal-newlines would double them into \r\r\n on Windows, which is
     # at best cosmetic but can confuse older cmd.exe parsing after edits.
-    target.write_text(STUB_BAT, encoding="ascii", newline="")
+    try:
+        with target.open("x", encoding="ascii", newline="") as output:
+            output.write(STUB_BAT)
+    except FileExistsError:
+        return False
     return True

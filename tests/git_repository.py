@@ -10,6 +10,13 @@ from pathlib import Path
 
 GIT_EXE = shutil.which("git")
 
+# R2.5B: fixture setup/mutation commands are test-harness operations, not
+# product observations, so they carry their own bounded budget. 30 s tolerates
+# temporary local Windows process/Git latency while still preventing the
+# minutes-long hangs seen under stress. Deliberately distinct from the
+# product's 10 s GIT_TIMEOUT observation budget, which must not change.
+FIXTURE_GIT_TIMEOUT = 30
+
 
 def canonical_path(value: str | os.PathLike[str]) -> str:
     """Return a filesystem-identity comparison key without rewriting paths."""
@@ -23,15 +30,34 @@ def require_git() -> str:
 
 
 def git(repository: Path, *args: str) -> str:
-    """Run Git against one explicitly supplied temporary repository."""
-    result = subprocess.run(
-        [require_git(), "-C", str(repository), *args],
-        check=True,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    """Run Git against one explicitly supplied temporary repository.
+
+    Fixture commands are non-interactive (stdin disconnected so pytest stdio
+    capture cannot leak an invalid inherited STDIN handle) and bounded by
+    FIXTURE_GIT_TIMEOUT. Timeouts and non-zero exits still fail loudly.
+    """
+    cmd = [require_git(), "-C", str(repository), *args]
+    try:
+        result = subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdin=subprocess.DEVNULL,
+            timeout=FIXTURE_GIT_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired as exc:
+        detail = (
+            f"fixture git timed out after {FIXTURE_GIT_TIMEOUT}s: "
+            f"cmd={cmd} cwd={repository}"
+        )
+        try:
+            exc.add_note(detail)
+        except Exception:
+            pass
+        raise
     return result.stdout.strip()
 
 

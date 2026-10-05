@@ -9,7 +9,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from repo_manager import main, store
+from repo_manager import project_actions, store
+from repo_manager.repository_service import RepositorySession
 
 
 class RegistryIgnoreRecoveryTests(unittest.TestCase):
@@ -34,9 +35,11 @@ class RegistryIgnoreRecoveryTests(unittest.TestCase):
         }
 
     def _persist_committed_ignore(self):
-        """Commit an explicit Ignore through the real Remove-button path."""
-        result = main.persist_project_ignore(
-            [self.project], "victim-1", store.save_projects)
+        """Commit an explicit Ignore through the current service boundary."""
+        session = RepositorySession()
+        session.records = [self.project]
+        session.set_ignored(project_actions.Target.capture(self.project), True)
+        result = session.records[0]
         self.assertIsNotNone(result)
         self.assertTrue(result["ignored"])
         persisted = json.loads(

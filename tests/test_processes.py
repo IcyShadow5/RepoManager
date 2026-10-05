@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -71,7 +72,7 @@ class StructuredInvocationTests(unittest.TestCase):
                     script.write_text(body, encoding="ascii")
                     process = processes.spawn_structured(
                         str(script), [sys.executable, str(output), value],
-                        cwd=str(root))
+                        cwd=str(root), creationflags=subprocess.CREATE_NO_WINDOW)
                     self.assertEqual(process.wait(timeout=10), 0)
                     self.assertEqual(output.read_text(encoding="utf-8"), value)
                     self.assertFalse((root / "injected.txt").exists())

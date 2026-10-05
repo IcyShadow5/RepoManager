@@ -1,0 +1,90 @@
+{
+  "qt_sources": [
+    {
+      "name": "qtbase",
+      "version": "6.11.2",
+      "commit": "ef55f427f2c8b410d34f8a7681020a3000cf6866",
+      "url": "https://codeload.github.com/qt/qtbase/tar.gz/ef55f427f2c8b410d34f8a7681020a3000cf6866",
+      "archive": "qtbase-6.11.2.tar.gz",
+      "bytes": 67782484,
+      "sha256": "12b3a9ba00613180caea4da77a1ae6fc1ca054b8822b316ba3a05fb4414fba56"
+    },
+    {
+      "name": "qtdeclarative",
+      "version": "6.11.2",
+      "commit": "4e3399c26ec57246c08de019cfcbda8d23604cfa",
+      "url": "https://codeload.github.com/qt/qtdeclarative/tar.gz/4e3399c26ec57246c08de019cfcbda8d23604cfa",
+      "archive": "qtdeclarative-6.11.2.tar.gz",
+      "bytes": 43272339,
+      "sha256": "81b22575c1ca068b58cf6b9f919f599e9e0c51bf8193165544007a2365558178"
+    },
+    {
+      "name": "qtshadertools",
+      "version": "6.11.2",
+      "commit": "c70b59ea4a47ccbee7e0d0353b9e91d719120bfd",
+      "url": "https://codeload.github.com/qt/qtshadertools/tar.gz/c70b59ea4a47ccbee7e0d0353b9e91d719120bfd",
+      "archive": "qtshadertools-6.11.2.tar.gz",
+      "bytes": 1856286,
+      "sha256": "3c716fe81aa3be7f091d89d6d1e0c07ccacf7998c04a55c56c8dbcc20fc1cdf0"
+    },
+    {
+      "name": "qtsvg",
+      "version": "6.11.2",
+      "commit": "17ca512f903f935282ebeca496aac5d11ba4199a",
+      "url": "https://codeload.github.com/qt/qtsvg/tar.gz/17ca512f903f935282ebeca496aac5d11ba4199a",
+      "archive": "qtsvg-6.11.2.tar.gz",
+      "bytes": 2630413,
+      "sha256": "67214f604e86af925d9e2c9f32af5e778a621cabfb51011b7e89aef268a6a150"
+    },
+    {
+      "name": "qtimageformats",
+      "version": "6.11.2",
+      "commit": "47b6139dda3b84d1d3ec15caf8d04eff8d744c8d",
+      "url": "https://codeload.github.com/qt/qtimageformats/tar.gz/47b6139dda3b84d1d3ec15caf8d04eff8d744c8d",
+      "archive": "qtimageformats-6.11.2.tar.gz",
+      "bytes": 2674711,
+      "sha256": "5a8390e7d8e1c974f230106c3f4fea5a2b5defc296814b24edb8de6f016328bf"
+    },
+    {
+      "name": "pyside-setup",
+      "version": "6.11.2",
+      "commit": "24627cd36e1593adf22eb1f2950e4248e7bcc1ec",
+      "url": "https://codeload.github.com/pyside/pyside-setup/tar.gz/24627cd36e1593adf22eb1f2950e4248e7bcc1ec",
+      "archive": "pyside-setup-6.11.2.tar.gz",
+      "bytes": 21038825,
+      "sha256": "943a1403fbf53db9e801b42b76ebdde0b62111c32c7fb8af9e8b235a51c6d277"
+    }
+  ],
+  "additional_notices": [
+    {
+      "file": "Microsoft-VC-Runtime.docx",
+      "url": "https://visualstudio.microsoft.com/wp-content/uploads/2025/10/Visual-C-V14-License-Redistributable_and_Runtime_ENU.docx",
+      "sha256": "08651651a7602fc7c0e2763de0fde1ff9f868df2780597cd1775ee9d6441c783"
+    },
+    {
+      "file": "OpenSSL-3.5.7.txt",
+      "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.7/LICENSE.txt",
+      "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
+    },
+    {
+      "file": "Microsoft-VC-Runtime.txt",
+      "url": "extracted text from Microsoft-VC-Runtime.docx",
+      "sha256": "3dfd057b91025067c08bd73c3cb0e6f712f76b6198b54413e14365d529f17ea6"
+    },
+    {
+      "file": "Expat-2.8.2.txt",
+      "url": "https://raw.githubusercontent.com/libexpat/libexpat/R_2_8_2/expat/COPYING",
+      "sha256": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87"
+    },
+    {
+      "file": "XZ-5.2.5-COPYING.txt",
+      "url": "https://raw.githubusercontent.com/tukaani-project/xz/v5.2.5/COPYING",
+      "sha256": "bcb02973ef6e87ea73d331b3a80df7748407f17efdb784b61b47e0e610d3bb5c"
+    },
+    {
+      "file": "ICU-Windows-72.1.txt",
+      "url": "https://raw.githubusercontent.com/unicode-org/icu/release-72-1/icu4c/LICENSE",
+      "sha256": "af3e84c401f1a35e8d32d6eb1a33fe587c3981aa5cd206033d9527c1855b57a2"
+    }
+  ]
+}

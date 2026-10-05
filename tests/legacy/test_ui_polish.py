@@ -1,3 +1,4 @@
+"""LEGACY / PARITY REFERENCE — NOT CURRENT UI PROOF."""
 """Tests for icon resolution, UI copy, semantic colors, and action grouping.
 
 Covers pure, Tk-free behaviour; these tests do not require a display and
@@ -198,8 +199,7 @@ class WorkingActionPresentationTests(unittest.TestCase):
         active = context_menu_layout("active")
         self.assertEqual(non_active[0][1], "Work on this (pin + Active)")
         self.assertEqual(active[0][1], "Stop working on this")
-        self.assertIn(("command", "Pin / Unpin", "_toggle_pinned"),
-                      active)
+        self.assertIn(("cascade", "Project", "project"), active)
 
 
 class ContextMenuGroupingTests(unittest.TestCase):
@@ -221,15 +221,14 @@ class ContextMenuGroupingTests(unittest.TestCase):
             label for group in self._groups() for label in group)
         for label in ("Work on this (pin + Active)",
                       "Open in Explorer", "Open Terminal", "Open Agent",
-                      "Set status", "Pin / Unpin",
-                      "Remove from RepoManager\u2026", "Open on GitHub",
-                      "Copy path", "Copy GitHub URL",
-                      "Commit & Push\u2026", "Pull"):
+                      "Project", "Repository", "Copy",
+                      "Remove from RepoManager\u2026", "Open repository website",
+                      "Changes…", "Commit…", "Push…", "Pull — fast-forward only…"):
             self.assertIn(label, all_labels)
 
     def test_mutating_git_never_mixed_with_read_only(self):
-        read_only = {"Open on GitHub", "Copy path", "Copy GitHub URL"}
-        mutating = {"Commit & Push…", "Pull"}
+        read_only = {"Open repository website", "Copy"}
+        mutating = {"Commit…", "Push…", "Pull — fast-forward only…"}
         for group in self._groups():
             content = set(group)
             self.assertFalse(content & read_only and content & mutating,
@@ -243,10 +242,10 @@ class ContextMenuGroupingTests(unittest.TestCase):
             any(set(group).issuperset(launch) for group in self._groups()))
 
     def test_project_metadata_actions_are_grouped_together(self):
-        metadata = {"Set status", "Pin / Unpin",
-                    "Remove from RepoManager\u2026"}
-        self.assertTrue(
-            any(set(group).issuperset(metadata) for group in self._groups()))
+        from repo_manager.project_actions import PROJECT_MENU
+        self.assertTrue({"Set status", "Pin / Unpin", "Notes", "Details…"}.issubset(
+            {item[1] for item in PROJECT_MENU}))
+        self.assertEqual(CONTEXT_MENU_LAYOUT[-1][2], "_remove_from_repomanager")
 
 
 if __name__ == "__main__":
