@@ -5,6 +5,7 @@ launcher behavior. Project records remain dictionary-shaped so the boundary
 can evolve without replacing the existing persistence mechanism.
 """
 from collections.abc import Callable, Iterable, Mapping
+from datetime import datetime
 import os
 from pathlib import Path
 from typing import Any
@@ -145,6 +146,112 @@ def is_ignored(project: Mapping[str, Any]) -> bool:
     lifecycle status. Missing legacy values are active/not ignored.
     """
     return project.get("ignored") is True
+
+
+PENDING_MOVE_CATEGORIES = frozenset({"strong", "possible"})
+_PENDING_MOVE_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+
+def sanitize_pending_move(owner: Mapping[str, Any]):
+    """Validate the durable pending_move relation on a Project record.
+
+    Returns ``(normalized_pending_or_None, reason_or_None)``: ``(None, None)``
+    when absent; ``(None, reason)`` when malformed (fail closed — the caller
+    strips it and never authorizes a move); ``(normalized, None)`` when
+    valid. Identity lists are normalized to the same shape produced by the
+    live identity observation (sorted remotes casefolded, sorted roots).
+    Never raises on mapping input.
+    """
+    try:
+        pending = owner.get("pending_move") if isinstance(owner, Mapping) \
+            else None
+    except Exception:
+        return None, "unreadable owner"
+    if pending is None:
+        return None, None
+    if not isinstance(pending, dict):
+        return None, "pending_move is not an object"
+    new_id = pending.get("new_project_id")
+    if not isinstance(new_id, str) or not new_id.strip():
+        return None, "invalid 'new_project_id'"
+    new_id = new_id.strip()
+    try:
+        owner_id = project_id(owner)
+    except Exception:
+        owner_id = None
+    if owner_id is not None and new_id == owner_id:
+        return None, "self-referential 'new_project_id'"
+    new_path = pending.get("new_path")
+    if not isinstance(new_path, str) or not new_path.strip():
+        return None, "invalid 'new_path'"
+    try:
+        new_key = repository_path_key(new_path)
+        owner_key = project_location_key(owner)
+    except Exception:
+        return None, "invalid 'new_path'"
+    if new_key is None:
+        return None, "invalid 'new_path'"
+    if owner_key is not None and new_key == owner_key:
+        return None, "self-referential 'new_path'"
+    identity = pending.get("identity")
+    if not isinstance(identity, dict):
+        return None, "invalid 'identity'"
+    remotes = identity.get("remotes")
+    roots = identity.get("root_commits")
+    if (not isinstance(remotes, list)
+            or not all(isinstance(item, str) for item in remotes)
+            or not isinstance(roots, list)
+            or not all(isinstance(item, str) for item in roots)):
+        return None, "invalid 'identity'"
+    if pending.get("category") not in PENDING_MOVE_CATEGORIES:
+        return None, "invalid 'category'"
+    detected_at = pending.get("detected_at")
+    if not isinstance(detected_at, str):
+        return None, "invalid 'detected_at'"
+    try:
+        datetime.strptime(detected_at, _PENDING_MOVE_TIME_FORMAT)
+    except ValueError:
+        return None, "invalid 'detected_at'"
+    return ({
+        "new_project_id": new_id,
+        "new_path": new_path,
+        "identity": {
+            "remotes": sorted(item.casefold() for item in remotes),
+            "root_commits": sorted(roots),
+        },
+        "category": pending["category"],
+        "detected_at": detected_at,
+    }, None)
+
+
+def counterpart_is_pristine(record: Mapping[str, Any], new_path: str) -> bool:
+    """Whether a scan-created occupant shows no user-owned curation.
+
+    A genuinely fresh counterpart carries only scanner defaults. Any
+    user-owned curation — status/focus/pin/ignore/launchers/name/moved_from —
+    means it must never be silently absorbed. Fail-closed on unreadable
+    input. Note ownership is checked separately by the caller when the
+    filesystem note locations are available.
+    """
+    if not isinstance(record, Mapping):
+        return False
+    if record.get("status", "idea") != "idea":
+        return False
+    if record.get("focus", "") != "":
+        return False
+    if record.get("pinned", False):
+        return False
+    if is_ignored(record):
+        return False
+    if record.get("custom_launchers", []):
+        return False
+    if not isinstance(new_path, str):
+        return False
+    if record.get("name") != repository_default_name(new_path):
+        return False
+    if record.get("moved_from"):
+        return False
+    return True
 
 
 def is_repository_backed(project: Mapping[str, Any]) -> bool:

@@ -1,87 +1,98 @@
 # RepoManager — Testing
 
-RepoManager uses the standard-library `unittest` framework. The project source
-baseline is Python 3.14. Windows CI and official V0.1.1 release verification
-use normal 64-bit CPython 3.14.7, not a free-threaded build. The application
-and suite require no third-party Python packages.
+RepoManager uses standard-library `unittest`. The current product is Python
+3.14.7 plus PySide6/QML; install the existing pinned
+`packaging/requirements-qt.txt` in the test environment. Qt is a runtime/test
+dependency. Tkinter is retained only for the separate classic parity reference.
 
-## Running tests
+## Current product gate
 
-Run the complete suite from the repository root:
-
-```text
-py -3.14 -B -m unittest discover -s tests -v
-```
-
-The portable equivalent is `python -B -m unittest discover -s tests -v` when
-`python` resolves to Python 3.14. `-B` prevents bytecode-cache noise in the
-working tree. Check `py -3.14 --version` before release verification; it must
-report 3.14.7 for the official V0.1.1 build and CI baseline.
-
-The separate `dependency audit` workflow checks hashed build/bootstrap pins
-and its own scanner environment using `pip-audit` on pull requests, relevant
-pushes, weekly, and on manual dispatch. The scanner is CI tooling only.
-Dependabot checks GitHub Actions and build/audit requirements weekly.
-These checks find known advisories; they do not certify that packages are
-free of malware. Repository-level Dependabot alerts must also be enabled in
-GitHub settings; a configuration file does not enable them by itself.
-
-Run selected areas when working on a specific feature:
+Run from the repository root with the verified Python environment:
 
 ```text
-python -B -m unittest tests.test_health tests.test_projects tests.test_scanner tests.test_store tests.test_main_logic
-python -B -m unittest tests.test_compatibility_lab
+python -B -m tests.run_layers --layer current
 ```
 
-Test counts are verification evidence for a particular working tree, not a
-repository contract, so this document intentionally does not hard-code them.
+The reviewed `tests/suite_manifest.json` assigns every test ID to one category.
+The runner refuses unclassified, duplicate or deleted IDs. The current gate
+imports no `repo_manager.main` and fails if a selected current test is skipped;
+missing Git, Qt or Windows capabilities must not silently create a green
+release claim. `--list` prints category counts without importing presentation
+modules. Counts describe a working tree and are not an API contract.
 
-## Test groups
+Run individual evidence layers:
 
-- `tests/test_scanner.py` covers repository discovery, Git metadata, remotes, fingerprints, registry merging, retention, move suggestions, ambiguity, suppression, and timestamps.
-- `tests/test_store.py` covers registry/settings validation, atomic persistence, legacy IDs, backups, corruption recovery, notes, and move-note handling.
-- `tests/test_projects.py` covers Project identity, curation, visibility, ordering, association checks, and metadata preservation.
-- `tests/test_launchers.py` covers launcher discovery, health and priority selection, typed commands, executor detection, and starter generation.
-- `tests/test_main_logic.py` covers filtering, sorting, row states, worker behavior, Git-step evaluation, move transactions, race guards, messages, and launcher resolution.
-- `tests/test_gui_scaling.py` covers dataset planning, availability caching, incremental Treeview updates, debounced saves, and display-dependent Tk paths.
-- `tests/test_health.py` covers Health statuses, severity, Finding fields, evidence, timestamps, freshness wording, rules, and non-mutation.
-- `tests/test_agents.py`, `tests/test_providers.py`, and
-  `tests/test_workspaces.py` cover the explicit Agent boundary, read-only
-  Provider observation, and Workspace membership/inspection semantics.
-- `tests/test_move_semantics.py`, `tests/test_project_classification.py`,
-  `tests/test_worktree_semantics.py`, `tests/test_health_evidence.py`, and
-  `tests/test_documentation_and_reports.py` cover move semantics, derived
-  Project classification, Worktree operations, Health evidence,
-  documentation/stack inspection, and metadata export/report behavior.
-- `tests/test_ui_polish.py` covers durable UI presentation helpers and guidance
-  behavior without replacing live GUI verification.
-- `tests/git_repository.py` provides deterministic real-Git fixtures;
-  `tests/test_compatibility_lab.py` exercises discovery and metadata behavior
-  across direct, nested, linked-Worktree, bare, detached, unborn, dirty, remote,
-  and ahead/behind repository states.
+```text
+python -B -m tests.run_layers --layer core
+python -B -m tests.run_layers --layer service
+python -B -m tests.run_layers --layer bridge
+python -B -m tests.run_layers --layer qml
+python -B -m tests.run_layers --layer package
+python -B -m tests.run_layers --layer windows
+```
 
-## Isolation and user-data safety
+`core` covers shared domain/scan/persistence contracts. `service` exercises
+application boundaries, including real temporary Git repositories. `bridge`
+instantiates Qt controllers/models and processes signals; it does not by itself
+render QML. `qml` launches real Main.qml/components in isolated subprocesses,
+uses QTest events, checks Git mutations only in temporary repositories and
+captures both global Qt messages and engine warnings. Offscreen Windows probes
+use the system Fonts directory; this is synthetic UI evidence, not physical DPI
+or native taskbar acceptance.
 
-Filesystem and real-Git tests create temporary repositories and fixtures.
-Persistence tests redirect `store.APP_DIR`, `REPOS_FILE`, `SETTINGS_FILE`, and
-`NOTES_DIR` into a temporary directory. GUI fixtures also redirect those paths
-and restore them after each test. Tests must never read or write the real
-`%LOCALAPPDATA%\RepoManager` registry as test data.
+`package` covers build preflight, collection, licenses, provenance, QML import
+closure and gate integrity. These are tooling tests, **not extracted-EXE launch
+proof**. `windows` mixes explicit mocked launch/metadata boundaries with actual
+controlled child-process and native-property tests. A property readback does
+not prove the physical taskbar icon or a Terminal prompt.
 
-New persistence or GUI tests must keep that boundary. Tests requiring Git skip
-when Git is unavailable; they must not point helper operations at a developer's
-real repositories.
+## Historical reference and full repository run
 
-## Environment limits
+```text
+python -B -m tests.run_layers --layer legacy
+python -B -m tests.run_layers --layer auxiliary
+python -B -m tests.run_layers --layer all
+python -B -m unittest discover -s tests -v
+```
 
-Tk tests may skip when no display is available. A green suite is
-`TEST-EVIDENCED`, not full GUI `RUNTIME-VERIFIED` evidence. Live Windows GUI
-interaction, external launcher behavior, WSL/Git Bash environments, hosted
-Provider state, and packaged installations need separate checks.
+`tests/legacy/` is **LEGACY / PARITY REFERENCE — NOT CURRENT UI PROOF**.
+The obsolete classic Light-default and Tk license-collector contracts remain
+quarantined rather than deleted. Valid contracts imported accidentally through
+Tk were moved to `test_current_contracts.py` or rebound to neutral production
+modules. UA05 maintenance tools have their own auxiliary, non-product gate.
+The full discovery command retains all references; its total must never be
+presented as current Qt UI coverage. CI runs the current gate and the historical
+reference in separately labelled jobs.
 
-Performance helpers are not a large-inventory benchmark. There is no
-end-to-end result establishing support for 10,000 repositories. The
-Compatibility Lab is active release-safety coverage, not generated data or a
-stress harness.
+## Portable and manual acceptance
 
-Keep tests aligned with the distinctions among Project, Repository, Working Tree, Branch, Worktree, Workspace, Git, Remote, Provider, Health, Policy, Workflow, Profile, Backup, Export, and Artifact. A normalized remote is not Provider authorization, and a `.git` file is not Worktree lifecycle management.
+Launch the exact built EXE from an extracted clean directory with isolated
+application data and controlled repositories. Use the guarded existing
+`packaging/qt_runtime_probe.py` instrumentation embedded in development packages
+for repeatable package evidence; it refuses owner data and unmarked roots.
+`--rc-qa <configuration.json>` is opt-in development QA, not normal startup.
+Its check count is a separate runtime result, never added to unittest counts.
+The portable acceptance harness is `tests/portable_acceptance.py`; it requires
+an explicitly marked isolated QA root and rejects owner application data. Rebuild only when production or packaging code changed. These prerelease-only
+options are inactive for stable 0.1.2; final stable acceptance must launch the
+ordinary EXE and exercise its UI, not override the prerelease guard.
+
+Normal Windows acceptance also covers native folder/file dialogs, Explorer,
+installed VS Code, a visible Terminal prompt/cwd, browser feedback draft,
+taskbar icon/title, minimize/restore/relaunch and physical display scaling.
+Programmatic/source QML tests do not replace these observations.
+
+## Isolation and limitations
+
+Persistence tests redirect APP_DIR, REPOS_FILE, SETTINGS_FILE and NOTES_DIR.
+Git fixtures use temporary repositories and local remotes, bounded subprocess
+budgets and disconnected stdin. No test should start an owner AI session,
+mutate an owner repository, alter global PATH or use owner credentials.
+Missing-runtime skips are tolerated only in the explicit historical reference.
+
+No coverage package is currently installed in the verified environment; there
+is no percentage claim. Branch and feature evidence, missing automation and
+manual-only acceptance are recorded in
+[release evidence](RELEASE_EVIDENCE.md) and the explicit suite manifest. Full host/network/provider
+acceptance, WSL sessions and a 10,000-repository performance claim are outside
+these tests. Test evidence applies only to the executed assertions and paths.

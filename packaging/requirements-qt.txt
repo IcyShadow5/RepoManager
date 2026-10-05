@@ -1,0 +1,2 @@
+# Qt presentation dependency for source execution and current-product tests.
+-r requirements-build-qt.txt

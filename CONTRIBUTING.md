@@ -1,7 +1,7 @@
 # Contributing to RepoManager
 
-RepoManager 0.1.1 development is supported on Windows 10 and Windows 11 with
-Python 3.14 and Git. CI and release verification use normal 64-bit CPython
+The current Qt candidate is developed on Windows 10 and Windows 11 with
+Python 3.14, PySide6 and Git. CI and release verification use normal 64-bit CPython
 3.14.7.
 
 ## Before submitting a change
@@ -15,10 +15,12 @@ Python 3.14 and Git. CI and release verification use normal 64-bit CPython
 - Update documentation when user-visible behavior, configuration, supported
   platforms, or build procedures change.
 
-Run the complete suite from the repository root:
+Install `packaging/requirements-qt.txt` in a local environment. Run the current
+product gate and the legacy reference separately from the repository root:
 
 ```text
-py -3.14 -B -m unittest discover -s tests -v
+python -B -m tests.run_layers --layer current
+python -B -m tests.run_layers --layer legacy
 ```
 
 Then check the patch for whitespace errors:

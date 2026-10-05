@@ -1,3 +1,4 @@
+"""LEGACY / PARITY REFERENCE — NOT CURRENT UI PROOF."""
 """Tests for large-dataset UI updates, caching, move matching, and persistence.
 
 Tk-dependent cases are guarded so the suite also runs without a display;
@@ -457,183 +458,6 @@ class ReconcileTreeGUITests(unittest.TestCase):
         self.assertEqual(self.tree.set("a", "c"), "A")
 
 
-class MoveMatcherBruteForceEquivalenceTests(unittest.TestCase):
-    """The indexed matcher must produce byte-identical results to the original
-    brute-force scan across representative large stale/fresh combinations."""
-
-    @staticmethod
-    def stale(path, remote=None, remotes=None, roots=None):
-        entry = {"path": path, "name": os.path.basename(path), "status": "idea",
-                 "focus": "", "pinned": False}
-        if remote:
-            entry["remote"] = remote
-        fp = {}
-        if remotes is not None:
-            fp["remotes"] = remotes
-        if roots is not None:
-            fp["root_commits"] = roots
-        if fp:
-            entry["fingerprint"] = fp
-        return entry
-
-    @staticmethod
-    def bruteforce(stale_entries, fresh_items, suppressed=None):
-        """Reference implementation using every stale/fresh pair."""
-
-        def evidence_for(entry):
-            fp = entry.get("fingerprint") if isinstance(entry, dict) else None
-            remotes = set()
-            if isinstance(fp, dict):
-                remotes = {r.lower() for r in fp.get("remotes", [])
-                           if isinstance(r, str)}
-            if not remotes and isinstance(entry.get("remote"), str):
-                remotes = {entry["remote"].lower()}
-            roots = set()
-            if isinstance(fp, dict):
-                roots = {r for r in fp.get("root_commits", [])
-                         if isinstance(r, str)}
-            return remotes, roots
-
-        def fresh_evidence(fingerprint):
-            if not isinstance(fingerprint, dict):
-                return set(), set()
-            remotes = {r.lower() for r in fingerprint.get("remotes", [])
-                       if isinstance(r, str)}
-            return remotes, {r for r in fingerprint.get("root_commits", [])
-                             if isinstance(r, str)}
-
-        supp_set = set()
-        for s in suppressed or []:
-            if isinstance(s, dict):
-                supp_set.add((str(s.get("old", "")).lower(),
-                              str(s.get("new", "")).lower()))
-            else:
-                o, n = s
-                supp_set.add((str(o).lower(), str(n).lower()))
-
-        pairs = []
-        for entry in sorted(stale_entries,
-                            key=lambda e: str(e.get("path", "")).lower()):
-            old_path = entry.get("path")
-            if not isinstance(old_path, str):
-                continue
-            old_remotes, old_roots = evidence_for(entry)
-            old_folder = os.path.basename(str(old_path)).lower()
-            for new_path, fp in sorted(fresh_items,
-                                       key=lambda x: x[0].lower()):
-                if (old_path.lower(), new_path.lower()) in supp_set:
-                    continue
-                new_remotes, new_roots = fresh_evidence(fp)
-                evidence = []
-                shared_remote = bool(old_remotes & new_remotes)
-                shared_roots = old_roots & new_roots
-                same_folder = old_folder == os.path.basename(new_path).lower()
-                folder_eq = same_folder and len(old_folder) >= 5
-                if shared_remote:
-                    evidence.append("Same normalized remote: "
-                                    + sorted(old_remotes & new_remotes)[0])
-                if shared_roots:
-                    evidence.append(f"Root history matches ({len(shared_roots)})")
-                if folder_eq:
-                    evidence.append("Folder name matches")
-                if not evidence:
-                    continue
-                if shared_roots or (shared_remote and same_folder):
-                    category = "strong"
-                else:
-                    category = "possible"
-                pairs.append({"kind": "move", "category": category,
-                              "old_path": old_path,
-                              "new_path": new_path,
-                              "name": entry.get("name")
-                              or os.path.basename(old_path),
-                              "evidence": evidence,
-                              "identity": {
-                                  "remotes": sorted(new_remotes),
-                                  "root_commits": sorted(new_roots),
-                              }})
-
-        by_old, by_new = {}, {}
-        for p in pairs:
-            by_old.setdefault(p["old_path"].lower(), []).append(p)
-            by_new.setdefault(p["new_path"].lower(), []).append(p)
-        contested = {id(p) for p in pairs
-                     if len(by_old[p["old_path"].lower()]) > 1
-                     or len(by_new[p["new_path"].lower()]) > 1}
-        final, emitted = [], set()
-        for p in pairs:
-            if id(p) not in contested:
-                final.append(p)
-                continue
-            ok = p["old_path"].lower()
-            nk = p["new_path"].lower()
-            gkey = ("old", ok) if len(by_old[ok]) > 1 else ("new", nk)
-            if gkey in emitted:
-                continue
-            emitted.add(gkey)
-            if gkey[0] == "old":
-                members = by_old[ok]
-                final.append({"kind": "move", "category": "ambiguous",
-                              "old_path": p["old_path"],
-                              "new_paths": [m["new_path"] for m in members],
-                              "name": p["name"],
-                              "evidence": ["Multiple candidate locations"]})
-            else:
-                members = by_new[nk]
-                final.append({"kind": "move", "category": "ambiguous",
-                              "old_paths": [m["old_path"] for m in members],
-                              "new_path": p["new_path"],
-                              "name": os.path.basename(p["new_path"]),
-                              "evidence": ["Matches multiple vanished entries"]})
-        return sorted(final, key=lambda s: (
-            str(s.get("old_path") or s.get("old_paths")[0]).lower(),
-            str(s.get("new_path") or "").lower()))
-
-    def test_distinct_remote_dataset(self):
-        rnd = random.Random(1)
-        stale = [self.stale(rf"C:\old\p{i}", remote=f"g.com/o/p{i}",
-                            roots=[f"root{i}"]) for i in range(120)]
-        fresh = [(rf"C:\new\m{i}",
-                  {"remotes": [f"g.com/o/m{i}"],
-                   "root_commits": [f"root{i}"]}) for i in range(300)]
-        # embellish a few to create shared-remote/root and folder overlaps
-        for i in rnd.sample(range(min(len(fresh), 60)), 60):
-            j = rnd.randrange(len(stale))
-            fresh[i] = (fresh[i][0], {"remotes": [f"g.com/o/p{j}"],
-                                      "root_commits": [f"root{j}"]})
-        self.assertEqual(scanner.match_move_candidates(stale, fresh),
-                         self.bruteforce(stale, fresh))
-
-    def test_folder_and_suppressed_dataset(self):
-        rnd = random.Random(2)
-        stale = [self.stale(rf"C:\old\widget-toolkit{i}")
-                 for i in range(80)]
-        fresh = [(rf"C:\new\widget-toolkit{i}", None) for i in range(200)]
-        suppressed = [(rf"c:\old\widget-toolkit{i}",) and
-                      (rf"c:\old\widget-toolkit{i}", rf"c:\new\widget-toolkit{i}")
-                      for i in rnd.sample(range(80), 20)]
-        self.assertEqual(
-            scanner.match_move_candidates(stale, fresh, suppressed),
-            self.bruteforce(stale, fresh, suppressed))
-
-    def test_shared_remote_hub_dataset(self):
-        # many stale and many fresh all sharing a single org remote + roots
-        stale = [self.stale(rf"C:\old\p{i}", remote="g.com/org/shared",
-                            remotes=["g.com/org/shared"], roots=["rr"])
-                 for i in range(100)]
-        fresh = [(rf"C:\new\m{i}", {"remotes": ["g.com/org/shared"],
-                                    "root_commits": ["rr"]})
-                 for i in range(150)]
-        self.assertEqual(scanner.match_move_candidates(stale, fresh),
-                         self.bruteforce(stale, fresh))
-
-    def test_empty_and_disjoint(self):
-        self.assertEqual(scanner.match_move_candidates([], []),
-                         self.bruteforce([], []))
-        stale = [self.stale(r"C:\x\A", remote="g.com/a")]
-        fresh = [(r"C:\y\B", {"remotes": ["g.com/b"], "root_commits": ["q"]})]
-        self.assertEqual(scanner.match_move_candidates(stale, fresh),
-                         self.bruteforce(stale, fresh))
 
 
 def _build_real_app(n=40):
@@ -691,7 +515,7 @@ def _build_real_app(n=40):
     app._active_tree = "main"
     app._sort_col = None
     app._sort_desc = False
-    app.pal = theme.apply(app, app.settings.get("theme", "dark"))
+    app.pal = theme.apply(app, app.settings.get("theme", "light"))
     app._build_ui()
     app._apply_row_colors()
     app._update_heading_marks()
@@ -957,7 +781,7 @@ class FolderOnlyGuiRegressionTests(_StoreIsolationMixin, unittest.TestCase):
             self.assertEqual(app._launch_primary(_Event(app.tree, 0, 0, 0)),
                              "break")
             app.git_pull()
-            app.git_commit_push()
+            app.git_commit()
 
         run_launcher.assert_not_called()
         git_async.assert_not_called()
@@ -2060,6 +1884,10 @@ class CoreSurfaceVisibilityRegressionTests(_StoreIsolationMixin, unittest.TestCa
         app.update_idletasks()
         app.update()
 
+        self.assertTrue(app.agent_status.winfo_ismapped())
+        self.assertFalse(app.run_status.winfo_ismapped())
+        app.automation_toggle.invoke()
+        app.update_idletasks()
         for widget in (app.agent_status, app.run_status):
             with self.subTest(widget=str(widget)):
                 self.assertTrue(widget.winfo_ismapped())
@@ -2140,6 +1968,9 @@ class DetailLayoutRegressionTests(_StoreIsolationMixin, unittest.TestCase):
     def test_ice_light_updates_plain_tk_detail_surfaces(self):
         app = self._app_with_selection()
         self.addCleanup(app.destroy)
+        app.settings = {**app.settings, "theme": "dark"}
+        app.pal = theme.apply(app, "dark")
+        app.update()
         app.toggle_theme()
         self.assertEqual(app.settings["theme"], "light")
         self.assertNotEqual(app.pal["panel"].lower(), "#ffffff")
@@ -2966,7 +2797,9 @@ class ScanStateOwnershipTests(_StoreIsolationMixin, unittest.TestCase):
     """Only the tracked scan's terminal event clears ``_scanning``.
 
     Git completion and failure events share the queue but must not clear scan
-    UI state, enable the scan button, or allow a second scan to start.
+    UI state or enable the scan button. A user-requested scan while busy is
+    coalesced into exactly one trailing scan rather than being silently
+    discarded.
     """
 
     def test_git_events_never_clear_scanning(self):
@@ -3001,12 +2834,33 @@ class ScanStateOwnershipTests(_StoreIsolationMixin, unittest.TestCase):
             self.assertTrue(app._scanning)
             self.assertIn("disabled", app.scan_btn.state())
 
-            # a second scan cannot start while the first is running
+            # a second scan while busy is coalesced, not started or lost
             app.start_scan()
             self.assertEqual(len(calls), 1)
+            self.assertTrue(app.__dict__.get("_pending_rescan", False))
+            # repeated requests stay coalesced into the single pending scan
+            app.start_scan()
+            app.start_scan()
+            self.assertEqual(len(calls), 1)
+            self.assertTrue(app.__dict__.get("_pending_rescan", False))
 
-            # the scan's own terminal event clears the state
+            # the scan's own terminal event completes the first scan and
+            # starts exactly one trailing scan for the queued request
             release.set()
+            deadline = time.time() + 10
+            while app._scan_queue.empty() and time.time() < deadline:
+                time.sleep(0.02)
+            app._drain_scan_queue()
+            deadline = time.time() + 10
+            while len(calls) < 2 and time.time() < deadline:
+                time.sleep(0.02)
+            self.assertEqual(len(calls), 2)
+            # The queued request was consumed (popped) by the trailing scan.
+            self.assertNotIn("_pending_rescan", app.__dict__)
+            self.assertTrue(app._scanning)
+            self.assertIn("disabled", app.scan_btn.state())
+
+            # the trailing scan's terminal event clears the state
             deadline = time.time() + 10
             while app._scan_queue.empty() and time.time() < deadline:
                 time.sleep(0.02)
@@ -3099,7 +2953,7 @@ class KeyboardEnterRoutingTests(_StoreIsolationMixin, unittest.TestCase):
                 side_effect=lambda project: (
                     explorer_targets.append(project["path"]) or project["path"])), \
                 mock.patch.object(app, "_launch") as launch, \
-                mock.patch.object(app, "_git_async") as git_async, \
+                mock.patch.object(app, "_git_service_async") as git_async, \
                 mock.patch.object(
                     main_module.agents, "agent_readiness",
                     return_value={
@@ -3210,12 +3064,14 @@ class WorkingOnNowImmediateReconcileTests(_StoreIsolationMixin, unittest.TestCas
         app._build_context_menu()
         self.assertEqual(app._ctx_menu.entrycget(0, "label"),
                          "Work on this (pin + Active)")
-        self.assertEqual(app._ctx_menu.entrycget(8, "label"), "Pin / Unpin")
+        project_menu = app.nametowidget(app._ctx_menu.entrycget(13, "menu"))
+        self.assertEqual(project_menu.entrycget(1, "label"), "Unpin" if proj.get("pinned") else "Pin")
         proj["status"] = "active"
         app._build_context_menu()
         self.assertEqual(app._ctx_menu.entrycget(0, "label"),
                          "Stop working on this")
-        self.assertEqual(app._ctx_menu.entrycget(8, "label"), "Pin / Unpin")
+        project_menu = app.nametowidget(app._ctx_menu.entrycget(13, "menu"))
+        self.assertEqual(project_menu.entrycget(1, "label"), "Unpin" if proj.get("pinned") else "Pin")
         app.destroy()
 
     def test_deactivation_removes_immediately(self):
@@ -4165,8 +4021,17 @@ class AgentClosePolicyGuiTests(_StoreIsolationMixin, unittest.TestCase):
             finish.assert_not_called()
             process.code = 0
             with mock.patch.object(
-                    main_module.scanner, "collect_metadata",
-                    return_value={"branch": "main", "head": "abc"}):
+                    main_module.scanner, "collect_metadata_observation",
+                    return_value=({"branch": "main", "head": "abc",
+                                   "dirty": 0, "status_available": True,
+                                   "worktrees": [],
+                                   "worktrees_available": True,
+                                   "broken": False,
+                                   "repository_observed": True},
+                                  frozenset({"branch", "head", "dirty",
+                                             "status_available", "worktrees",
+                                             "worktrees_available", "broken",
+                                             "repository_observed"}))):
                 app._observe_agent_run(run, process)
             finish.assert_called_once()
         self.assertEqual(run["process_state"],

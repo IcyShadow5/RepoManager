@@ -10,6 +10,7 @@ import shutil
 import subprocess
 from typing import Any, Callable, Mapping
 from uuid import uuid4
+import os
 
 from . import processes
 
@@ -46,6 +47,60 @@ def new_agent(agent_id: str, display_name: str, executable: str,
               *, args: list[str] | None = None) -> dict[str, Any]:
     return {"agent_id": agent_id, "display_name": display_name.strip(),
             "executable": executable, "args": list(args or [])}
+
+
+DETECTABLE_COMMANDS = (("opencode", "OpenCode"), ("codex", "Codex"), ("gemini", "Gemini CLI"))
+
+
+def validate_agent_targets(value):
+    if not isinstance(value, list) or len(value) > 20:
+        raise ValueError("Configure at most 20 Agent targets")
+    result, seen = [], set()
+    for item in value:
+        if not isinstance(item, dict):
+            raise ValueError("Agent target configuration is invalid")
+        ident, name, command = (item.get(key) for key in ("agent_id", "display_name", "executable"))
+        if (not all(isinstance(x, str) and x.strip() and len(x) <= 4096
+                    and not any(ord(c) < 32 for c in x) for x in (ident, name, command))
+                or not ident.startswith("custom:") or ident in seen or len(name) > 80):
+            raise ValueError("Each Agent target needs a unique identity, name and executable")
+        args = item.get("args", [])
+        if (not isinstance(args, list) or len(args) > 32
+                or any(not isinstance(arg, str) or len(arg) > 4096
+                       or any(ord(c) < 32 for c in arg) for arg in args)):
+            raise ValueError("Agent target arguments are invalid")
+        seen.add(ident)
+        result.append(new_agent(ident, name, command.strip(), args=args))
+    return result
+
+
+def agent_catalog(settings, *, which=None):
+    """Only local configured executables or discovered generic CLI commands."""
+    which = which or shutil.which
+    command = settings.get("agent_cmd", "opencode")
+    base = Path(command).stem.casefold() if isinstance(command, str) else ""
+    names = dict(DETECTABLE_COMMANDS)
+    entries = [new_agent("configured", names.get(base, "Configured Agent"), command)]
+    raw = settings.get("agent_targets", [])
+    try:
+        entries.extend(validate_agent_targets(raw))
+    except ValueError as exc:
+        entries.append({"agent_id": "invalid", "display_name": "Invalid Agent targets",
+                        "executable": "", "args": [], "configuration_error": str(exc)})
+    for command, name in DETECTABLE_COMMANDS:
+        if processes.resolve_executable(command, which=which):
+            entries.append(new_agent("detected:" + command, name, command))
+    result, seen = [], set()
+    for entry in entries:
+        availability = agent_availability(entry, which=which)
+        resolved = processes.resolve_executable(entry["executable"], which=which) if availability == AVAILABLE else None
+        key = (os.path.normcase(os.path.abspath(resolved)), tuple(entry["args"])) if resolved else None
+        if key is not None and key in seen:
+            continue
+        if key is not None:
+            seen.add(key)
+        result.append({**entry, "availability": availability, "resolved": resolved or ""})
+    return result
 
 
 def agent_availability(agent: Mapping[str, Any], *, which: Callable[[str], str | None] = shutil.which) -> str:
@@ -157,7 +212,7 @@ def _same_launch_contract(run: Mapping[str, Any], agent: Mapping[str, Any] | Non
 
 def start_run(run: dict[str, Any], *, agent: Mapping[str, Any] | None = None,
               target: Mapping[str, Any] | None = None,
-              popen: Callable[..., Any] = subprocess.Popen) -> Any:
+              popen: Callable[..., Any] | None = None) -> Any:
     """Revalidate and start exactly the structured argv in its directory."""
     valid, reason = _same_launch_contract(run, agent, target)
     if not valid:
@@ -166,9 +221,13 @@ def start_run(run: dict[str, Any], *, agent: Mapping[str, Any] | None = None,
         return None
     run["process_state"] = STARTING
     try:
-        process = processes.spawn_structured(
-            run["argv"][0], run["argv"][1:], cwd=run["cwd"], popen=popen,
-            start_new_session=True)
+        if popen is None:
+            process = processes.spawn_agent(
+                run["argv"][0], run["argv"][1:], cwd=run["cwd"])
+        else:
+            process = processes.spawn_structured(
+                run["argv"][0], run["argv"][1:], cwd=run["cwd"], popen=popen,
+                start_new_session=True)
     except (OSError, ValueError) as exc:
         run["process_state"] = FAILED_TO_START
         run["failure"] = str(exc)
@@ -211,22 +270,66 @@ def cancel_run(run: dict[str, Any], process: Any) -> str:
     return observe_run(run, process)
 
 
-def verify_post_run(run: dict[str, Any], *, observe: Callable[[str], Mapping[str, Any] | None]) -> dict[str, Any]:
-    """Record post-run Git metadata without judging the agent's changes."""
+# Minimum critical post-run fields that must have been actually observed
+# (not merely defaulted) before a TARGET_RECHECKED verdict is claimed.
+REQUIRED_POST_RUN_FIELDS = frozenset({
+    "branch", "head", "dirty", "status_available",
+    "worktrees", "worktrees_available",
+})
+
+
+def _split_observation(result: Any) -> tuple[Any, frozenset | None]:
+    """Split an observe() return into (metadata, observed-validity).
+
+    New-style observers (``collect_metadata_observation``) return a
+    ``(metadata, observed)`` pair; legacy observers return a metadata
+    mapping (or None) directly and are treated as fully observed for
+    backward compatibility.
+    """
+    if (isinstance(result, (tuple, list)) and len(result) == 2
+            and (result[0] is None or isinstance(result[0], Mapping))
+            and (result[1] is None or isinstance(
+                result[1], (set, frozenset, list, tuple)))):
+        observed = result[1]
+        return result[0], (frozenset(observed) if observed is not None
+                           else None)
+    return result, None
+
+
+def verify_post_run(run: dict[str, Any], *, observe: Callable[[str], Any]) -> dict[str, Any]:
+    """Record post-run Git metadata without judging the agent's changes.
+
+    Observation-aware: positively broken targets keep FAILED semantics;
+    failed/incomplete observations yield UNKNOWN (never TARGET_RECHECKED)
+    with an explicit reason; only sufficiently observed success claims
+    TARGET_RECHECKED. Partial facts are never presented as authoritative:
+    no ``post_run`` record is stored unless the verdict is TARGET_RECHECKED.
+    """
     try:
-        observed = observe(run["cwd"])
+        result = observe(run["cwd"])
     except Exception as exc:
         run["verification"] = UNKNOWN
         run["verification_evidence"] = [f"observation failed: {exc}"]
         return run
-    if not isinstance(observed, Mapping) or observed.get("broken"):
+    observed_meta, observed_validity = _split_observation(result)
+    if (not isinstance(observed_meta, Mapping)
+            or observed_meta.get("broken")):
         run["verification"] = FAILED
         run["verification_evidence"] = ["target Git metadata unavailable after run"]
         return run
+    if observed_validity is not None:
+        missing = sorted(REQUIRED_POST_RUN_FIELDS - set(observed_validity))
+        if missing:
+            run["verification"] = UNKNOWN
+            run["verification_evidence"] = [
+                "post-run repository observation incomplete: missing "
+                + ", ".join(missing)]
+            run.pop("post_run", None)
+            return run
     run["post_run"] = {
-        "branch": observed.get("branch"), "head": observed.get("head"),
-        "dirty": observed.get("dirty", 0),
-        "worktrees": observed.get("worktrees") or [],
+        "branch": observed_meta.get("branch"), "head": observed_meta.get("head"),
+        "dirty": observed_meta.get("dirty", 0),
+        "worktrees": observed_meta.get("worktrees") or [],
         "observed_at": utc_now(),
     }
     run["verification"] = TARGET_RECHECKED

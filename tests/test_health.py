@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from repo_manager import health
-from repo_manager import main
+from repo_manager import health_presentation as main
 
 
 class HealthTests(unittest.TestCase):

@@ -144,3 +144,19 @@ def spawn_structured(
     if start_new_session:
         kwargs["start_new_session"] = True
     return popen(argv_for_popen, **kwargs)
+
+
+def spawn_agent(executable: str, args: Iterable[str], *, cwd: str,
+                creationflags: int = 0):
+    """Contain Windows Agent descendants; retain the normal structured boundary."""
+    if os.name != "nt":
+        return spawn_structured(executable, args, cwd=cwd, start_new_session=True)
+    from .windows_process import WindowsProcess
+
+    if not Path(cwd).is_dir():
+        raise OSError(f"working directory not found: {cwd}")
+    argv, env = structured_invocation(executable, args)
+    command_line = (subprocess.list2cmdline(argv[:5]) + ' "' + argv[5] + '"'
+                    if env is not None else subprocess.list2cmdline(argv))
+    return WindowsProcess(argv[0], command_line, env=env, cwd=cwd,
+                          creationflags=creationflags)
