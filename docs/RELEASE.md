@@ -5,16 +5,16 @@ Users extract the ZIP and run
 `RepoManager\RepoManager.exe`; a separate Python installation is not required.
 Git remains an external runtime requirement and must be available on `PATH`.
 
-Public v0.1.1 already exists: it was published on 2026-09-12 from the
-separate Public Release repository as `RepoManager-0.1.1-windows-x64.zip`
-(SHA-256 `5b1cc5d3e5008b8aa7fc0a317146c2845fbb8ead967ddafc485fac46219e03c2`).
-The curated source version is **0.1.2**. Building the current tree does not
-publish or overwrite public v0.1.1. Uploading/tagging the prepared release
-requires separate owner approval.
+Public v0.1.2 was published on 2026-10-06 from clean source commit
+`50699772db687c85c5195876d18ed6ab634cb3c9` as
+`RepoManager-0.1.2-windows-x64.zip`
+(SHA-256 `FEE659B63BF7C35967FB559F1B8EB4077A60FD5CEECD3E879D25F8044DB2901B`).
 
-This document defines the build and verification contract. It does not claim
-that an artifact built from the current source tree is the published
-public release.
+The matching third-party source archive and release manifest were published
+alongside the Windows package. v0.1.1 remains available as the previous release.
+
+This document defines the build and verification contract used for the
+published v0.1.2 release and subsequent Windows release builds.
 
 ## Current desktop presentation
 
@@ -24,7 +24,7 @@ The Qt bundle excludes Tkinter/Tcl/Tk and collects the actual QML import closure
 with Qt's scanner. Basic is the only selectable Controls style. Missing imports,
 scanner warnings, unreviewed add-ons and binaries from unrelated developer tools
 fail the build. [Release evidence](RELEASE_EVIDENCE.md) separates current-product
-tests, extracted-package probes and owner acceptance. No new public release is claimed.
+tests, extracted-package probes and owner acceptance. The published v0.1.2 release uses this Qt presentation.
 
 The source release gate is `python -B -m tests.run_layers --layer current`.
 Report its core, service, Qt bridge, actual QML, packaging and Windows results
