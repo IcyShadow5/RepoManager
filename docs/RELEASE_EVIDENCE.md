@@ -1,9 +1,15 @@
 # Release evidence — 0.1.2
 
-This is the prepared Windows x64 v0.1.2 release, pending publication.
-Public v0.1.1 remains unchanged. Release identity comes from `repo_manager/version.py`; the exact clean source
-commit and binary hashes are recorded in `BUILD_INFO.json` and the build manifest.
-Do not use older Development ZIP hashes or a dirty tree's HEAD as provenance.
+Windows x64 v0.1.2 was published on 2026-10-06 from clean source commit
+`50699772db687c85c5195876d18ed6ab634cb3c9`.
+
+The portable Windows archive has SHA-256
+`FEE659B63BF7C35967FB559F1B8EB4077A60FD5CEECD3E879D25F8044DB2901B`.
+
+Release identity comes from `repo_manager/version.py`; the exact clean source
+commit and binary hashes are recorded in `BUILD_INFO.json` and the build
+manifest. Do not use older Development ZIP hashes or a dirty tree's HEAD as
+provenance.
 
 ## Reconciled baseline and current test catalog
 
