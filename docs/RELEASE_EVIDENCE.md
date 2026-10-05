@@ -14,7 +14,8 @@ Historical larger aggregate claims were not current Qt UI evidence. Intermediate
 focused-run logs are not substitutes for the complete classified gate.
 
 The RC2 catalog retains that coverage, adds eight adversarial Git environment
-cases, one real QML load-failure case and two PE import classification cases.
+cases, one real QML load-failure case, two PE import classification cases and
+one isolated source-companion entrypoint regression.
 It also retains 41 valid neutral/public safety tests from the public parent;
 their assertions are bound to current backend modules, not Tk widgets. The
 move-semantic assertions import `relocation` directly rather than the legacy UI.
@@ -25,12 +26,12 @@ move-semantic assertions import `relocation` directly rather than the legacy UI.
 | Services | 99 |
 | Qt Bridge | 61 |
 | Actual QML/UI | 7 |
-| Packaging/Tooling | 29 |
+| Packaging/Tooling | 30 |
 | Windows Integration | 21 |
-| Current product total | 843 |
+| Current product total | 844 |
 | Legacy/reference, separately | 366 |
 | Auxiliary/helper, separately | 37 |
-| Complete classified catalog | 1246 |
+| Complete classified catalog | 1247 |
 
 Counts above describe the source catalog. Executed results and runtime probe
 outputs belong to the exact candidate freeze. No legacy UI test is current UI

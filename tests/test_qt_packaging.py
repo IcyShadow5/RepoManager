@@ -3,6 +3,8 @@ import importlib.util
 import json
 from pathlib import Path
 import tempfile
+import subprocess
+import sys
 import unittest
 from unittest import mock
 
@@ -15,6 +17,18 @@ def module(name):
     return value
 
 class QtPackagingTests(unittest.TestCase):
+    def test_source_companion_isolated_entrypoint_rejects_missing_sources(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = Path(folder)
+            (base / 'manifest.json').write_text('[]')
+            archive = base / 'sources.zip'
+            result = subprocess.run([sys.executable, '-I', str(ROOT/'packaging/distribution_sources.py'),
+                str(base), str(archive), str(base/'metadata.json')], capture_output=True, text=True, timeout=20)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn('Source archives differ from the reviewed upstream lock', result.stderr)
+            self.assertNotIn('ModuleNotFoundError', result.stderr)
+            self.assertFalse(archive.exists())
+
     def test_pe_imports_distinguish_bundled_windows_api_and_icu(self):
         closure = module('pe_import_closure')
         for name, expected in (('Qt6Core.dll', 'bundled'), ('kernel32.dll', 'windows-system'),

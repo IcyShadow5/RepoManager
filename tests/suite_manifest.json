@@ -2823,7 +2823,8 @@
         "test_qml_scanner_warning_is_not_ignored",
         "test_missing_source_closure_fails_before_bundle_write",
         "test_existing_source_archive_is_never_overwritten",
-        "test_source_download_requires_reviewed_hash"
+        "test_source_download_requires_reviewed_hash",
+        "test_source_companion_isolated_entrypoint_rejects_missing_sources"
       ]
     },
     {

@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import zipfile
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from qt_runtime_licenses import source_notices
 
 
