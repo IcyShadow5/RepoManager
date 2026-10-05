@@ -19,7 +19,7 @@ from repo_manager import agents, store
 from repo_manager.qt_bridge import RepoManagerBridge
 from repo_manager.qt_icons import IconProvider
 from repo_manager.repository_service import RepositorySession
-from tests.git_repository import init_repository
+from tests.git_repository import canonical_path, init_repository
 from tests.qt_messages import QtMessages
 
 
@@ -150,7 +150,8 @@ def main():
                 copy_point = content.mapToScene(QPointF(100, 48))
                 QTest.mouseClick(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, copy_point.toPoint())
                 QTest.qWait(80)
-                check(app.clipboard().text() == str(selected), "actual menu Copy path action works")
+                copied = app.clipboard().text()
+                check(canonical_path(copied) == canonical_path(selected) and os.path.samefile(copied, selected), "actual menu Copy path action works")
 
                 dialog = find("settingsDialog")
                 dialog.open()

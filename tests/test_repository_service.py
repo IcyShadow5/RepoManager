@@ -9,7 +9,7 @@ from unittest import mock
 
 from repo_manager import project_actions, projects, store
 from repo_manager.repository_service import RepositorySession, ScanOutcome
-from tests.git_repository import init_repository
+from tests.git_repository import canonical_path, init_repository
 
 
 class IsolatedSessionTests(unittest.TestCase):
@@ -57,9 +57,9 @@ class RepositoryServiceTests(IsolatedSessionTests):
         nested = init_repository(collection / "group" / "project")
         deeper = init_repository(collection / "group" / "subgroup" / "deep")
         self.session.save_settings([str(collection)], 2, "opencode", "")
-        self.assertEqual({item["path"] for item in self.session.scan().records}, {str(nested)})
+        self.assertEqual({canonical_path(item["path"]) for item in self.session.scan().records}, {canonical_path(nested)})
         self.session.save_settings([str(collection)], 3, "opencode", "")
-        self.assertEqual({item["path"] for item in self.session.scan().records}, {str(nested), str(deeper)})
+        self.assertEqual({canonical_path(item["path"]) for item in self.session.scan().records}, {canonical_path(nested), canonical_path(deeper)})
 
     @unittest.skipUnless(os.name == "nt", "Windows drive-relative path semantics")
     def test_drive_relative_scan_root_is_not_a_whole_drive_search(self):
