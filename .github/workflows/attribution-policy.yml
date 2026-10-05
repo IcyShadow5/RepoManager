@@ -147,7 +147,7 @@ jobs:
           fi
           echo "trusted policy verified at $(git rev-parse HEAD)"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -222,7 +222,7 @@ jobs:
             fi
           done
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -274,7 +274,7 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
