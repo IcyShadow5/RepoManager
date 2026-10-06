@@ -1,10 +1,11 @@
 # RepoManager — Architecture
 
 RepoManager is a Windows desktop application built with Python 3.14 and
-PySide6/QML. The Qt portable candidate bundles normal 64-bit CPython 3.14.7
+PySide6/QML. The Qt portable release bundles normal 64-bit CPython 3.14.7
 and the reviewed Qt runtime, excluding Tkinter/Tcl/Tk. The `packaging/` directory owns the
-pinned PyInstaller build inputs and release-artifact manifest contract. The
-final public-release artifact is not established by this source description.
+pinned PyInstaller build inputs and release-artifact manifest contract. 
+The current public release is v0.1.2; release artifact identity and
+verification are recorded separately from this architecture description.
 
 ```text
 run.py → run_qt.main() → QApplication / single-instance lock / logging
@@ -103,7 +104,11 @@ embedded secrets.
 
 ## Projects, Workspaces, and Worktrees
 
-The current UI supports Project curation. Workspace persistence/metadata may exist internally, but v0.1.1 exposes no Workspace controls or repository-association picker. Workspaces are not coordinators for multi-repository changes, branch assignment, isolation, cleanup, or recovery.
+The current UI supports Project curation. Workspace persistence, membership
+metadata, and read-only inspection exist internally, but v0.1.2 exposes no
+dedicated Workspace management controls or general repository-association
+picker. Workspaces are not coordinators for multi-repository changes, branch
+assignment, isolation, cleanup, or recovery.
 
 Workspace records are persisted beside Projects in `repos.json`. Saving either
 collection preserves the other; invalid Workspace records are not promoted to
@@ -115,11 +120,11 @@ Changing a Project’s associated repository updates RepoManager metadata only. 
 
 ## Background work and mutations
 
-Scanning, metadata collection, and Git operations run away from Tk event handlers and return through a queue. Detecting a launcher never runs it; configured launcher and Agent commands run only after explicit user action. Pull is fast-forward-only. Independent Commit defaults to staged-only and never contacts a remote; stage-all is explicit. Push/Fetch/Pull preview destinations and recheck live remote configuration and branch/HEAD before execution. Changes, History and Remotes are bounded observations; diff disables external diff/textconv execution. Index/ref writes use the existing physical-repository guard and tracked queue callbacks. External editors/Git processes remain outside that in-process lock.
+Scanning, metadata collection, and Git operations run outside the Qt UI thread so longer-running work does not block the interface. Results are delivered back to the Qt presentation layer after the background work completes. Detecting a launcher never runs it; configured launcher and Agent commands run only after explicit user action. Pull is fast-forward-only. Independent Commit defaults to staged-only and never contacts a remote; stage-all is explicit. Push/Fetch/Pull preview destinations and recheck live remote configuration and branch/HEAD before execution. Changes, History and Remotes are bounded observations; diff disables external diff/textconv execution. Index/ref writes use the existing physical-repository guard and tracked worker callbacks. External editors/Git processes remain outside that in-process lock.
 
 Registry writes are serialized within the primary process, flush a temporary file, and replace the target atomically. Backups rotate, invalid data is quarantined, and valid backups can be used for recovery. The single-instance process boundary is not a distributed multi-writer protocol.
 
-Discovery, metadata collection, Health, and Provider observation are read-only with respect to managed repositories. Git writes, launcher runs, and starter generation are explicit actions. The generated `run.bat` is the limited current operation that writes into a repository, and it never overwrites an existing file.
+Discovery, metadata collection, Health, and Provider observation do not intentionally modify managed repositories. Git commands used for observation may still honor repository-local Git configuration and configured helpers. Git writes, launcher runs, and starter generation are separate explicit actions. The generated `run.bat` is the limited current non-Git operation that writes a file into a repository, and it never overwrites an existing file.
 
 Launcher execution is local code execution, not sandboxing. Validating a working directory does not prevent a child process from changing other files. Launchers use structured argument vectors through `processes.py`; batch files use the resolved Windows system command processor, and PowerShell scripts use the resolved PowerShell executable without changing execution policy. WSL and Git Bash remain explicit structured external executors.
 
