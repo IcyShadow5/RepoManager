@@ -1,13 +1,10 @@
 # RepoManager — Roadmap
 
-## Public v0.1.1 / prepared v0.1.2 release scope
+## Public v0.1.2 
 
-Public RepoManager v0.1.1 is already released from the separate Public Release
-repository. The curated v0.1.2 source includes post-v0.1.1 hardening,
-move reconciliation and the Qt presentation. Publication remains a separate
-owner-controlled step.
+Public RepoManager v0.1.2 is already released.
 
-The prepared v0.1.2 release provides:
+The v0.1.2 release provides:
 
 - bounded local Git discovery and metadata display;
 - stable Project IDs, curation, notes, filtering, sorting, and one-repository-per-Project association;
@@ -34,7 +31,7 @@ The current UI also includes Help/Guidance, empty-state guidance, keyboard
 behavior, dark and Ice Light themes, responsive/bounded columns, a scrollable
 detail panel, semantic state colors, and Workspace/Agent context presentation.
 These are current v0.1.2 capabilities, not roadmap promises; the newest
-everyday Git and review UI additions are not part of the public v0.1.1 artifact.
+everyday Git and review UI additions are part of the public v0.1.2 artifact.
 
 ## Current / release-relevant
 
@@ -71,8 +68,7 @@ Custom themes, background/opacity personalization, Agent History, advanced
 Agent workflows, Starship, Universal AI Integration Agent and Guard integrations,
 cloud services, monetization/paywalls/Pro/Cloud plans, Linux/macOS support,
 full self-update and GitHub Pages documentation are not part of v0.1.2.
-Full user, Changes/staging, Health and Agent guides and refreshed public
-screenshots belong to a separate documentation program after release approval.
+Full user, Changes/staging, Health and Agent guides belong to a separate documentation program.
 
 ## Historical v0.1.1 boundary
 

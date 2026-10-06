@@ -1,15 +1,16 @@
 # RepoManager — Product
 
-RepoManager is a local-first Windows desktop application for organizing and observing local Git work. It discovers repositories under configured roots, keeps curated Project records, shows repository state, supports explicit local actions, and reports lightweight repository Health. Public v0.1.1 is already released; this tree is prepared for the Qt release **0.1.2**, pending publication.
+RepoManager is a local-first Windows desktop application for organizing and observing local Git work. It discovers repositories under configured roots, keeps curated Project records, shows repository state, supports explicit local actions, and reports lightweight repository Health. RepoManager v0.1.2 is the current public release. 
+The current tree tracks post-release maintenance and future development.
 
 It runs directly from source with Python 3.14 and PySide6/QML. Tkinter is retained
 as a source-only reference and is excluded from the Qt portable package.
-The unsigned portable Windows build bundles normal
-64-bit CPython 3.14.7 and Qt, so packaged users do not need a separate Python
-installation. The published public v0.1.1 artifact already exists from the
-separate Public Release repository. The prepared v0.1.2 source/build does not
-publish or overwrite an existing public artifact. RepoManager does not synchronize its registry,
-settings, or notes to the cloud.
+The unsigned portable Windows build bundles normal 64-bit CPython 3.14.7 and Qt, 
+so packaged users do not need a separate Python installation. 
+The public v0.1.2 release is an unsigned portable Windows build. 
+Building or running the source does not publish release artifacts; 
+publication is a separate owner-controlled release step.
+RepoManager does not synchronize its registry, settings, or notes to the cloud.
 
 ## Projects and repositories
 
@@ -44,9 +45,10 @@ Git remains the source for local branch, status, history, and configured remotes
 
 RepoManager stores its registry, settings, notes, backups, and corruption quarantine files outside managed repositories under `%LOCALAPPDATA%\RepoManager`. Registry data uses JSON schema version 2, validation, rotating backups, recovery, and atomic file replacement. Atomic replacement prevents partial replacement of one write; it does not coordinate concurrent writers.
 
-Discovery, metadata collection, Health, and Provider observation do not modify managed repositories. Git actions, launcher runs, and the optional generated `run.bat` require explicit user action. The starter never overwrites an existing file.
+Discovery, metadata collection, Health, and Provider observation do not intentionally modify managed repositories. Git operations may still honor repository-local configuration and configured helpers. 
+Git actions, launcher runs, and the optional generated `run.bat` require explicit user action. The starter never overwrites an existing file.
 
-The application currently supports advisory move reconciliation, association updates through the move/reconciliation flows (no general repository-association picker is exposed in the UI), independent local Commit and confirmed Push, fast-forward-only Pull, explicit Fetch, Changes/Diff and per-file Stage/Unstage, recent History, read-only Remotes, and bounded metadata/report export. These everyday Git additions are new since public v0.1.1. Commit defaults to staged-only with an explicit stage-all alternative; Unstage never discards working files. An export is not a persistence backup or a repository archive.
+The application currently supports advisory move reconciliation, association updates through the move/reconciliation flows (no general repository-association picker is exposed in the UI), independent local Commit and confirmed Push, fast-forward-only Pull, explicit Fetch, Changes/Diff and per-file Stage/Unstage, recent History, read-only Remotes, and bounded metadata/report export. These everyday Git capabilities were added for v0.1.2 compared with v0.1.1. Commit defaults to staged-only with an explicit stage-all alternative; Unstage never discards working files. An export is not a persistence backup or a repository archive.
 
 Export/report filtering omits fields with credential-like keys; it does not
 scan arbitrary text or notes for embedded secrets. Selecting or refreshing a
@@ -56,7 +58,7 @@ network activity.
 
 ## What RepoManager does not do
 
-The 0.1.1 release does not provide:
+The 0.1.2 release does not provide:
 
 - a mature non-Git Project lifecycle;
 - full multi-repository Workspace coordination;
@@ -66,7 +68,7 @@ The 0.1.1 release does not provide:
 - a general Policy, Profile, or Workflow engine;
 - Drift detection or an Attention system;
 - import/archive package and restore workflows;
-- a packaged installer, updater, or release infrastructure;
+- a packaged installer or automatic updater;
 - broad cross-platform verification.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for implementation structure and [`ROADMAP.md`](ROADMAP.md) for future work.

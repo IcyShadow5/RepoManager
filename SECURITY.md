@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-RepoManager 0.1.1 is the current supported public release. The 0.1.x
+RepoManager 0.1.2 is the current supported public release. The 0.1.x
 line is the only line intended to receive security fixes. This policy must be
 updated if that support position changes.
 
@@ -15,7 +15,7 @@ GitHub Private Vulnerability Reporting is enabled on the public repository
 The public repository's [security policy](https://github.com/IcyShadow5/RepoManager/security/policy)
 also publishes the owner-approved fallback contact. Do not send secrets or
 exploit details through public issues. Unpublished candidates are not supported
-public releases; the current public release remains v0.1.1.
+public releases; the current public release remains v0.1.2.
 
 A useful report should include:
 
