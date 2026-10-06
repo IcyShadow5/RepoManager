@@ -68,7 +68,7 @@ Custom themes, background/opacity personalization, Agent History, advanced
 Agent workflows, Starship, Universal AI Integration Agent and Guard integrations,
 cloud services, monetization/paywalls/Pro/Cloud plans, Linux/macOS support,
 full self-update and GitHub Pages documentation are not part of v0.1.2.
-Full user, Changes/staging, Health and Agent guides belong to a separate documentation program after release approval.
+Full user, Changes/staging, Health and Agent guides belong to a separate documentation program.
 
 ## Historical v0.1.1 boundary
 
