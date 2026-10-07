@@ -1,6 +1,6 @@
 # RepoManager — Product
 
-RepoManager is a local-first Windows desktop application for organizing and observing local Git work. It discovers repositories under configured roots, keeps curated Project records, shows repository state, supports explicit local actions, and reports lightweight repository Health. Source version is 0.1.3. Published builds are listed on the
+RepoManager is a local-first Windows desktop application for organizing and observing local Git work. It discovers repositories under configured roots, keeps curated Project records, shows repository state, supports explicit local actions, and reports lightweight repository Health. Source version is 0.1.4. Published builds are listed on the
 [Releases page](https://github.com/IcyShadow5/RepoManager/releases/latest).
 
 It runs directly from source with Python 3.14 and PySide6/QML. Tkinter is retained
@@ -49,6 +49,9 @@ processes, and repository-local fsmonitor and filter helpers cannot execute. An
 observation that needs a helper or that reports a diagnostic stays unavailable
 instead of being shown as clean. Git actions, launcher runs, and Agent runs are
 separate user-authorized operations outside that automatic boundary.
+Read-only comparisons suppress Git's LF/CRLF round-trip warning without changing
+line-ending conversion. Explicit writes retain the repository's `core.safecrlf`
+setting; helper execution and other diagnostic failures remain blocked.
 Git actions, launcher runs, and the optional generated `run.bat` require explicit user action. The starter never overwrites an existing file.
 
 The application currently supports advisory move reconciliation, association updates through the move/reconciliation flows (no general repository-association picker is exposed in the UI), independent local Commit and confirmed Push, fast-forward-only Pull, explicit Fetch, Changes/Diff and per-file Stage/Unstage, recent History, read-only Remotes, and bounded metadata/report export. These everyday Git capabilities were added for v0.1.2 compared with v0.1.1. Commit defaults to staged-only with an explicit stage-all alternative; Unstage never discards working files. An export is not a persistence backup or a repository archive.

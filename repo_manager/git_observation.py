@@ -60,7 +60,9 @@ def run_read_only(command, *, env, timeout, capture_output=False, text=False,
     import _winapi
     import msvcrt
 
-    args = [native_git(), "-c", "core.fsmonitor=false", *command[1:]]
+    # Round-trip warnings protect writes, not read-only comparisons. Keep EOL
+    # conversion and all other diagnostic/helper rejection unchanged.
+    args = [native_git(), "-c", "core.fsmonitor=false", "-c", "core.safecrlf=false", *command[1:]]
     current = _winapi.GetCurrentProcess()
     handles = []
     process = None

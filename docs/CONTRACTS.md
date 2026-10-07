@@ -25,6 +25,11 @@ Git child process also fail closed; use an external Git tool for affected parent
 repositories. This boundary does not sandbox the installed Git binary, explicit
 Git mutation/network actions or user-launched Agents.
 
+Read-only Git uses `core.safecrlf=false` to suppress write-related LF/CRLF
+round-trip warnings. Line-ending conversion still applies. Explicit Git writes
+keep the configured safeguard; the child-process and other diagnostic checks
+remain unchanged.
+
 Scanner fingerprints use normalized remotes and root commits to suggest possible moves. They do not prove identity, ownership, authorization, or a move. Suggestions are advisory and require confirmation.
 
 An exact-path scan merge updates repository observations without replacing

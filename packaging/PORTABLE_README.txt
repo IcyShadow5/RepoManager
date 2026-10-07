@@ -1,4 +1,4 @@
-RepoManager - portable Qt Windows
+RepoManager 0.1.4 - portable Qt Windows
 
 Extract the complete RepoManager folder, then run RepoManager.exe.
 Keep _internal beside the executable. No Python installation is required.

@@ -5,6 +5,11 @@ Users extract the ZIP and run
 `RepoManager\RepoManager.exe`; a separate Python installation is not required.
 Git remains an external runtime requirement and must be available on `PATH`.
 
+The source version is 0.1.4; [its release notes](RELEASE_NOTES_0.1.4.md) describe
+the read-only diff hotfix. Published versions and their manifests are available
+on the [Releases page](https://github.com/IcyShadow5/RepoManager/releases/latest).
+The v0.1.2 record below is historical, not the current source identity.
+
 Public v0.1.2 was published on 2026-10-06 from clean source commit
 `50699772db687c85c5195876d18ed6ab634cb3c9` as
 `RepoManager-0.1.2-windows-x64.zip`
