@@ -92,7 +92,8 @@ third-party attribution files and referenced license files are retained.
 `BINARY_ORIGINS.json` records approved binary provenance without absolute build
 paths, and `BUILD_INFO.json` records the release identity and clean source commit.
 `PE_IMPORT_CLOSURE.json` distinguishes bundled dependencies from approved Windows
-components, including OS ICU. Qt builds reject a dirty source tree.
+components, including OS ICU. Release builds must use a clean committed source
+tree. The builder rejects dirty source trees for versions marked `-rc.N`.
 Classic instead collects Tcl/Tk notices from their active libraries.
 The PyInstaller notice is included. Missing required licenses or notices
 fail the build before the ZIP is produced. Matching Qt/PySide source archives

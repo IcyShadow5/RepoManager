@@ -1,4 +1,4 @@
-RepoManager 0.1.2 - portable Qt Windows
+RepoManager - portable Qt Windows
 
 Extract the complete RepoManager folder, then run RepoManager.exe.
 Keep _internal beside the executable. No Python installation is required.
@@ -20,5 +20,5 @@ LICENSE is the application license. THIRD_PARTY_NOTICES.md, REDISTRIBUTION.json
 and LICENSES document the bundled runtime components. THIRD_PARTY_SOURCES.json
 identifies the matching upstream source archives supplied beside the binary.
 
-Prerelease QA instrumentation is inactive in stable 0.1.2. Normal launch does
+Prerelease QA instrumentation is inactive in stable builds. Normal launch does
 not run a probe, load test fixtures or alter the user's PATH.
