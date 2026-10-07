@@ -109,10 +109,20 @@ class RepositoryServiceTests(IsolatedSessionTests):
     def test_exports_use_existing_report_schemas(self):
         record, target = self.seed()
         destination = self.root / "project.json"
-        self.session.export(target, destination, "project")
-        self.assertEqual(json.loads(destination.read_text(encoding="utf-8")), projects.build_project_export(record))
+        with mock.patch(
+            "repo_manager.reports._timestamp",
+            return_value="2026-10-07T00:00:00Z",
+        ):
+            self.session.export(target, destination, "project")
+            self.assertEqual(
+                json.loads(destination.read_text(encoding="utf-8")),
+                projects.build_project_export(record),
+            )
         self.session.export(target, self.root / "report.md", "report")
-        self.assertIn("alpha", (self.root / "report.md").read_text(encoding="utf-8"))
+        self.assertIn(
+            "alpha",
+            (self.root / "report.md").read_text(encoding="utf-8"),
+        )
 
     def test_stub_does_not_overwrite_existing_file(self):
         record, target = self.seed()
