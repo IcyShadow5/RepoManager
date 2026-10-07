@@ -135,7 +135,7 @@ AppDialog {
                     }
                     AppText { text: "Additional custom Agent targets"; font.weight: Font.DemiBold; Layout.topMargin: 6 }
                     AppText { visible: !!App.settingsData.agentConfigurationError; text: App.settingsData.agentConfigurationError + ". Reconfigure the additional targets before saving."; color: Design.Theme.error; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                    AppText { text: "Freebuff, OpenCode, Codex and Gemini CLI are offered when their commands are found on PATH. Add other configured executables here. Each target uses the selected repository as its working directory."; wrapMode: Text.WordWrap; color: Design.Theme.textSecondary; Layout.fillWidth: true }
+                    AppText { text: "Add other custom executables here. Each target uses the selected repository as its working directory."; wrapMode: Text.WordWrap; color: Design.Theme.textSecondary; Layout.fillWidth: true }
                     Repeater {
                         model: dialog.agentTargets
                         RowLayout {
