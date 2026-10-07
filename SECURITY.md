@@ -17,9 +17,8 @@ If GitHub Private Vulnerability Reporting is unavailable, email
 [icyshadow5.devsec@outlook.com](mailto:icyshadow5.devsec@outlook.com).
 This fallback mailbox is for private security/moderation reports, not general
 support or website contact. Do not send secrets or exploit details through
-public issues. Unpublished candidates are not supported
-public releases. During v0.1.3 candidate preparation, v0.1.2 remains the public
-release until the hotfix is published.
+public issues. Source checkouts and local builds do not establish publication
+or support; use the published release information linked above.
 
 A useful report should include:
 

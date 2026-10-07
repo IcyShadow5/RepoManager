@@ -135,7 +135,18 @@ class GitObservationBoundaryTests(unittest.TestCase):
         child = create_repository(self.root / 'child')
         git(self.repo, '-c', 'protocol.file.allow=always', 'submodule', 'add', str(child), 'module')
         git(self.repo, 'commit', '-qm', 'submodule fixture')
+        args = ['git', '-C', str(self.repo), 'status', '--porcelain', '--ignore-submodules=all']
+        def ignored_status():
+            return git_observation.run_read_only(
+                args, env=git_observation.git_environment(read_only=True),
+                timeout=10, capture_output=True, text=True)
+        benign = ignored_status()
+        self.assertEqual((benign.returncode, benign.stdout, benign.stderr), (0, '', ''))
         self.filter(self.repo / 'module')
+        # Ignoring submodules hides actual changes, so it cannot prove CLEAN.
+        hidden = ignored_status()
+        self.assertEqual((hidden.returncode, hidden.stdout, hidden.stderr), (0, '', ''))
+        self.assertFalse(self.marker.exists())
         self.assert_unobserved()
         with self.assertRaises(git_operations.GitError):
             git_operations.Repository(self.repo).state()

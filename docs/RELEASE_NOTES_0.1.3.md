@@ -1,7 +1,5 @@
 # RepoManager v0.1.3
 
-Unpublished hotfix candidate. The current public release remains v0.1.2.
-
 - Hardens automatic/read-only Git observation against repository-local external
   helper execution. Windows process isolation prevents Git from starting helper
   processes; observations that cannot complete safely remain unavailable rather

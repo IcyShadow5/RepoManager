@@ -24,13 +24,13 @@ open the tools you already use — from one PySide6/QML interface.
 *Actual v0.1.2 interface with controlled demo repositories. No private repository
 or personal filesystem information is shown.*
 
-This source prepares **0.1.3**. Until published, it is a hotfix candidate;
-**v0.1.2** remains the public release. The release badge and download link above track
-the latest published stable release; building this source does not publish it.
+This source contains **0.1.3**. The release badge and download link above identify
+the latest published stable release; a source checkout or local build does not
+establish publication.
 RepoManager keeps a separate Project registry and explicit repository actions:
 discovery is not permission to modify a repository.
 
-The candidate hardens automatic/read-only Git observation against external
+Version 0.1.3 hardens automatic/read-only Git observation against external
 repository helpers, adds Freebuff CLI detection and a direct **Agent Settings**
 shortcut. Freebuff is preferred for new installations when available; saved
 Agent choices are retained. Multiple available Agents still require an explicit
