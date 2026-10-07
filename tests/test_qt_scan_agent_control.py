@@ -173,13 +173,20 @@ class QtScanAgentTests(IsolatedSessionTests):
             self.assertEqual(self.bridge.agentInfo["command"], "freebuff")
         dialog = (Path(__file__).resolve().parents[1] / "repo_manager/qml/components/SettingsDialog.qml").read_text(encoding="utf-8")
         self.assertNotIn("External Agent", dialog)
-        self.assertIn("Configured Agent command", dialog)
-        self.assertIn("Optional explicit command or executable. This is separate from the selected Agent below.", dialog)
+        self.assertNotIn("Configured Agent command", dialog)
+        self.assertNotIn("Chosen from the Start Agent chooser.", dialog)
+        self.assertIn("Fallback / custom Agent command", dialog)
+        self.assertIn("Optional explicit command or executable. This is separate from the selected Agent above.", dialog)
         self.assertIn("Selected Agent", dialog)
         self.assertIn('objectName: "selectedAgentName"; text: App.agentInfo.agentName', dialog)
         self.assertIn('objectName: "selectedAgentCommand"; visible: !!App.agentInfo.command', dialog)
         self.assertIn('text: "Command: " + App.agentInfo.command', dialog)
         self.assertIn('objectName: "agentExecutable"', dialog)
+        integrations = dialog[dialog.index('visible: dialog.section === "Integrations"'):]
+        self.assertLess(integrations.index('text: "Selected Agent"'), integrations.index('text: "Fallback / custom Agent command"'))
+        self.assertLess(integrations.index('text: "Fallback / custom Agent command"'), integrations.index('objectName: "agentExecutable"'))
+        self.assertLess(integrations.index('objectName: "selectedAgentCommand"'), integrations.index('text: "Detected automatically when available: Freebuff, OpenCode, Codex and Gemini CLI."'))
+        self.assertLess(integrations.index('text: "Detected automatically when available: Freebuff, OpenCode, Codex and Gemini CLI."'), integrations.index('text: "Fallback / custom Agent command"'))
 
     def test_freebuff_launch_uses_repository_cwd_and_managed_stop(self):
         item = {**agents.new_agent("detected:freebuff", "Freebuff", "freebuff"),
