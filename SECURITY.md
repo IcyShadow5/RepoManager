@@ -31,5 +31,4 @@ A useful report should include:
 - any known workaround or suggested remediation.
 
 Please allow reasonable time for confirmation and remediation before public
-disclosure. Receipt, response time, and fix timing cannot be promised until a
-private reporting channel and maintainer process are configured.
+disclosure. Response and fix times depend on severity and maintainer availability.

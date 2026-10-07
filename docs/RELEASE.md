@@ -65,11 +65,11 @@ the matching Windows version resource under ignored `build/`, builds the
 windowed executable with PyInstaller, and produces:
 
 - `dist\RepoManager\` — runnable portable directory;
-- `dist\RepoManager-0.1.2-windows-x64.zip` — prepared Qt release;
-- `dist\RepoManager-0.1.2-windows-x64-manifest.json` — source `HEAD`, dirty
+- `dist\RepoManager-<version>-windows-x64.zip` — portable Qt package;
+- `dist\RepoManager-<version>-windows-x64-manifest.json` — source `HEAD`, dirty
   state, Python/Qt/PySide versions, installed build dependencies, requirement
   hashes, license hashes, PyInstaller version, archive size, and archive SHA-256.
-- `dist\RepoManager-0.1.2-third-party-sources.zip` and adjacent JSON —
+- `dist\RepoManager-<version>-third-party-sources.zip` and adjacent JSON —
   matching hash-verified Qt/PySide archives and required notice inputs; distribute
   this companion alongside the binary, not only a link to an internal folder.
 
@@ -92,7 +92,7 @@ third-party attribution files and referenced license files are retained.
 `BINARY_ORIGINS.json` records approved binary provenance without absolute build
 paths, and `BUILD_INFO.json` records the release identity and clean source commit.
 `PE_IMPORT_CLOSURE.json` distinguishes bundled dependencies from approved Windows
-components, including OS ICU. RC builds reject a dirty source tree.
+components, including OS ICU. Qt builds reject a dirty source tree.
 Classic instead collects Tcl/Tk notices from their active libraries.
 The PyInstaller notice is included. Missing required licenses or notices
 fail the build before the ZIP is produced. Matching Qt/PySide source archives

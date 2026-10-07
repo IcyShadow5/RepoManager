@@ -4,8 +4,9 @@ RepoManager is a Windows desktop application built with Python 3.14 and
 PySide6/QML. The Qt portable release bundles normal 64-bit CPython 3.14.7
 and the reviewed Qt runtime, excluding Tkinter/Tcl/Tk. The `packaging/` directory owns the
 pinned PyInstaller build inputs and release-artifact manifest contract. 
-The current public release is v0.1.2; release artifact identity and
-verification are recorded separately from this architecture description.
+Source version is 0.1.3. Published builds are listed on the
+[Releases page](https://github.com/IcyShadow5/RepoManager/releases/latest);
+artifact identity is recorded in each build manifest.
 
 ```text
 run.py → run_qt.main() → QApplication / single-instance lock / logging
@@ -124,7 +125,18 @@ Scanning, metadata collection, and Git operations run outside the Qt UI thread s
 
 Registry writes are serialized within the primary process, flush a temporary file, and replace the target atomically. Backups rotate, invalid data is quarantined, and valid backups can be used for recovery. The single-instance process boundary is not a distributed multi-writer protocol.
 
-Discovery, metadata collection, Health, and Provider observation do not intentionally modify managed repositories. Git commands used for observation may still honor repository-local Git configuration and configured helpers. Git writes, launcher runs, and starter generation are separate explicit actions. The generated `run.bat` is the limited current non-Git operation that writes a file into a repository, and it never overwrites an existing file.
+Discovery, metadata collection, Health, and Provider observation do not
+intentionally modify managed repositories. On Windows, automatic and read-only
+Git observation runs native Git inside a child-process restriction, so
+repository-local fsmonitor, filter and other configured helper execution is
+prevented. An observation that requires a helper process or that emits
+diagnostics fails closed and remains unavailable rather than clean, and cached
+working-tree counts do not override that unavailable state. Explicit Git writes
+and network operations, launcher runs, and Agent runs are separate boundaries
+and are not sandboxed by this read-only observation mechanism. Starter
+generation remains a separate explicit action: the generated `run.bat` is the
+limited current non-Git operation that writes a file into a repository, and it
+never overwrites an existing file.
 
 Launcher execution is local code execution, not sandboxing. Validating a working directory does not prevent a child process from changing other files. Launchers use structured argument vectors through `processes.py`; batch files use the resolved Windows system command processor, and PowerShell scripts use the resolved PowerShell executable without changing execution policy. WSL and Git Bash remain explicit structured external executors.
 

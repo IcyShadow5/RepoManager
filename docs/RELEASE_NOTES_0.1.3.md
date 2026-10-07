@@ -22,6 +22,10 @@ Submodule inspection also requires a Git child process. Until it has a separate
 safe observation path, affected parent repositories remain unobserved and their
 Changes/status-dependent actions require an external Git tool. Cached clean
 counts do not override this unavailable state.
+Git LFS filtering can also require a helper process. A repository whose status
+inspection depends on Git LFS filtering therefore stays unavailable and is never
+reported as clean; use an external Git tool for those repositories. RepoManager
+does not disable or modify Git LFS configuration.
 
 Official support remains Windows 10 22H2 / Windows 11 x64. The portable build is
 unsigned and Windows SmartScreen may warn. Git must be available on PATH.
