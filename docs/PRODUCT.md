@@ -45,7 +45,13 @@ Git remains the source for local branch, status, history, and configured remotes
 
 RepoManager stores its registry, settings, notes, backups, and corruption quarantine files outside managed repositories under `%LOCALAPPDATA%\RepoManager`. Registry data uses JSON schema version 2, validation, rotating backups, recovery, and atomic file replacement. Atomic replacement prevents partial replacement of one write; it does not coordinate concurrent writers.
 
-Discovery, metadata collection, Health, and Provider observation do not intentionally modify managed repositories. Git operations may still honor repository-local configuration and configured helpers. 
+Discovery, metadata collection, Health, and Provider observation do not
+intentionally modify managed repositories. On Windows, automatic and read-only
+Git observation runs Git so that it cannot start repository-configured helper
+processes, and repository-local fsmonitor and filter helpers cannot execute. An
+observation that needs a helper or that reports a diagnostic stays unavailable
+instead of being shown as clean. Git actions, launcher runs, and Agent runs are
+separate user-authorized operations outside that automatic boundary.
 Git actions, launcher runs, and the optional generated `run.bat` require explicit user action. The starter never overwrites an existing file.
 
 The application currently supports advisory move reconciliation, association updates through the move/reconciliation flows (no general repository-association picker is exposed in the UI), independent local Commit and confirmed Push, fast-forward-only Pull, explicit Fetch, Changes/Diff and per-file Stage/Unstage, recent History, read-only Remotes, and bounded metadata/report export. These everyday Git capabilities were added for v0.1.2 compared with v0.1.1. Commit defaults to staged-only with an explicit stage-all alternative; Unstage never discards working files. An export is not a persistence backup or a repository archive.
