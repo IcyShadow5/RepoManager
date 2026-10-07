@@ -44,7 +44,7 @@ cancellation and close confirmation, repository search/selection/curation/notes,
 Git Changes/diff/stage/unstage and confirmed Git actions, Health advisory
 ignore/restore with transparent scoring, Quick Run and the full Run tab,
 local Agent target selection/managed stop, Git onboarding, and reviewable
-Feedback. Dark is the default; Light remains available.
+Feedback. Dark and Light are available.
 
 Classic Tkinter is a source-only parity reference and is excluded from the Qt
 portable package. Guarded portable QA options are prerelease-only diagnostics,
