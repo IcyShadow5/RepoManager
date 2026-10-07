@@ -17,6 +17,11 @@ AppDialog {
     property int agentBrowseIndex: -1
     property string error: ""
     property string section: "Scan folders"
+    property string requestedSection: "Scan folders"
+    function openSection(value) {
+        requestedSection = value
+        open()
+    }
     function addRoot(value) {
         const result = App.addScanRoot(roots, value)
         error = result.error
@@ -32,7 +37,8 @@ AppDialog {
         agent.text = App.settingsData.agent
         godot.text = App.settingsData.godot
         manualRoot.text = ""
-        section = "Scan folders"
+        section = requestedSection
+        requestedSection = "Scan folders"
         error = ""
     }
     onSectionChanged: if (body.contentItem) body.contentItem.contentY = 0
@@ -124,7 +130,7 @@ AppDialog {
                     }
                     AppText { text: "Additional Agent targets"; font.weight: Font.DemiBold; Layout.topMargin: 6 }
                     AppText { visible: !!App.settingsData.agentConfigurationError; text: App.settingsData.agentConfigurationError + ". Reconfigure the additional targets before saving."; color: Design.Theme.error; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                    AppText { text: "OpenCode, Codex and Gemini CLI are offered when their commands are found on PATH. Add other configured executables here. Each target uses the selected repository as its working directory."; wrapMode: Text.WordWrap; color: Design.Theme.textSecondary; Layout.fillWidth: true }
+                    AppText { text: "Freebuff, OpenCode, Codex and Gemini CLI are offered when their commands are found on PATH. Add other configured executables here. Each target uses the selected repository as its working directory."; wrapMode: Text.WordWrap; color: Design.Theme.textSecondary; Layout.fillWidth: true }
                     Repeater {
                         model: dialog.agentTargets
                         RowLayout {

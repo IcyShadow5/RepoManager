@@ -43,7 +43,7 @@ HELP_TOPICS = {
         "repository. Ready means both its executable and the selected target "
         "were rechecked. After exit, Target rechecked means RepoManager "
         "observed Git state again; it does not approve the Agent's work."
-        " OpenCode, Codex and Gemini CLI are offered only when their commands "
+        " Freebuff, OpenCode, Codex and Gemini CLI are offered only when their commands "
         "are found locally. Configure other targets in Settings > Integrations. "
         "With multiple available targets, Start Agent opens a chooser and "
         "remembers your selection. One available target starts directly; no "

@@ -1,6 +1,7 @@
 """Qt view model backed by the existing RepositorySession and Git probe."""
 import threading
 import copy
+from pathlib import Path
 from uuid import uuid4
 from dataclasses import asdict
 
@@ -686,7 +687,9 @@ class RepoManagerBridge(QObject):
         choices = agents.agent_catalog(self.session.settings)
         valid = [item for item in choices if item["availability"] == agents.AVAILABLE]
         selected = next((item for item in valid if item["agent_id"] == self._selected_agent_id), None)
-        return selected or (valid[0] if len(valid) == 1 else None)
+        preferred = next((item for item in valid
+                          if Path(item["executable"]).stem.casefold() == "freebuff"), None)
+        return selected or (preferred if not self._selected_agent_id else None) or (valid[0] if len(valid) == 1 else None)
 
     def _agent_target(self):
         target = self._selected_target()
@@ -700,10 +703,10 @@ class RepoManagerBridge(QObject):
     def _refresh_agent(self):
         target = self._agent_target()
         catalog = agents.agent_catalog(self.session.settings)
-        self._agent_choices = [{**item, "ready": item["availability"] == agents.AVAILABLE,
-                                "selected": item["agent_id"] == self._selected_agent_id}
-                               for item in catalog]
         config = self._agent_config()
+        self._agent_choices = [{**item, "ready": item["availability"] == agents.AVAILABLE,
+                                "selected": bool(config and item["agent_id"] == config["agent_id"])}
+                               for item in catalog]
         if config:
             info = agents.agent_readiness(config, target)
         else:

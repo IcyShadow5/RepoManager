@@ -16,6 +16,15 @@ These are the behavioral rules that other parts of RepoManager should rely on.
 - A Remote is a URL. Provider data is informational and does not prove access, ownership, or authorization.
 - Classification or scan location does not grant ownership, trust, or permission to modify a repository.
 
+On Windows, automatic/read-only Git observations run native Git in a job that
+cannot start child processes. Repository-local fsmonitor helpers are disabled;
+filters, implicit transports and other helper paths cannot execute. Failed or
+diagnostic observations remain unavailable. Cached working-tree counts do not
+override current `status_available=False`. Submodule observations requiring a
+Git child process also fail closed; use an external Git tool for affected parent
+repositories. This boundary does not sandbox the installed Git binary, explicit
+Git mutation/network actions or user-launched Agents.
+
 Scanner fingerprints use normalized remotes and root commits to suggest possible moves. They do not prove identity, ownership, authorization, or a move. Suggestions are advisory and require confirmation.
 
 An exact-path scan merge updates repository observations without replacing

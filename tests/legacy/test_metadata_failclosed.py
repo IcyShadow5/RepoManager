@@ -106,12 +106,12 @@ class FailurePreservationTests(unittest.TestCase):
                 meta, observed = scanner.collect_metadata_observation(
                     str(repo))
             self.assertNotIn("dirty", observed)
-            self.assertNotIn("status_available", observed)
+            self.assertIn("status_available", observed)
             proj = [dict(cached)]
             apply_metadata_refresh(proj, [meta], [observed])
             self.assertEqual(proj[0]["dirty"], 0)
             self.assertEqual(proj[0]["staged"], 0)
-            self.assertTrue(proj[0]["status_available"])
+            self.assertFalse(proj[0]["status_available"])
 
     def test_04_upstream_generic_failure_preserved(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -276,11 +276,11 @@ class FailurePreservationTests(unittest.TestCase):
             def always_timeout(*args, **kwargs):
                 raise sp.TimeoutExpired(cmd=args, timeout=10)
 
-            with mock.patch.object(scanner.subprocess, "run",
+            with mock.patch.object(scanner, "run_read_only",
                                    side_effect=always_timeout):
                 meta, observed = scanner.collect_metadata_observation(
                     str(repo))
-            self.assertEqual(observed, frozenset())
+            self.assertEqual(observed, frozenset({"status_available"}))
             self.assertFalse(meta["broken"])
             proj = [dict(cached)]
             apply_metadata_refresh(proj, [meta], [observed])
@@ -487,7 +487,7 @@ class WholeRepoPositiveEvidenceTests(unittest.TestCase):
                 meta, observed = scanner.collect_metadata_observation(
                     str(repo))
             self.assertFalse(meta["broken"])
-            self.assertEqual(observed, frozenset())
+            self.assertEqual(observed, frozenset({"status_available"}))
             proj = [dict(cached)]
             apply_metadata_refresh(proj, [meta], [observed])
             self.assertEqual(proj[0]["branch"], cached["branch"])
@@ -511,7 +511,7 @@ class WholeRepoPositiveEvidenceTests(unittest.TestCase):
                 meta, observed = scanner.collect_metadata_observation(
                     str(repo))
             self.assertFalse(meta["broken"])
-            self.assertEqual(observed, frozenset())
+            self.assertEqual(observed, frozenset({"status_available"}))
             proj = [dict(cached)]
             apply_metadata_refresh(proj, [meta], [observed])
             self.assertEqual(proj[0]["branch"], cached["branch"])
@@ -576,7 +576,7 @@ class WholeRepoPositiveEvidenceTests(unittest.TestCase):
                 meta_a, observed_a = scanner.collect_metadata_observation(
                     str(repo))
             self.assertFalse(meta_a["broken"])
-            self.assertEqual(observed_a, frozenset())
+            self.assertEqual(observed_a, frozenset({"status_available"}))
             proj = [dict(cached)]
             apply_metadata_refresh(proj, [meta_a], [observed_a])
             self.assertEqual(proj[0]["branch"], cached["branch"])

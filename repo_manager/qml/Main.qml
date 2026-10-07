@@ -175,7 +175,7 @@ ApplicationWindow {
                 UI.MetricCard { Layout.fillWidth: true; label: "Modified working trees"; value: App.gitState === "available" ? String(App.modifiedCount) : "—"; iconName: "git-branch"; accent: Design.Theme.warning }
                 UI.MetricCard { Layout.fillWidth: true; label: "Unobserved"; value: String(App.unobservedCount); iconName: "info-circle"; accent: Design.Theme.info }
             }
-            UI.ContextStrip { Layout.fillWidth: true }
+            UI.ContextStrip { Layout.fillWidth: true; onSettingsRequested: settings.openSection("Integrations") }
             Rectangle {
                 Layout.fillWidth: true; implicitHeight: 62; radius: 6
                 color: Design.Theme.surface; border.color: Design.Theme.border

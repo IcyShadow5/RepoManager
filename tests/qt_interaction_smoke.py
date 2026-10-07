@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from unittest import mock
 
-from PySide6.QtCore import QObject, QPointF, Qt, QUrl
+from PySide6.QtCore import QCoreApplication, QEvent, QObject, QPointF, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonInstance
 from PySide6.QtQuickControls2 import QQuickStyle
@@ -154,8 +154,17 @@ def main():
                 check(canonical_path(copied) == canonical_path(selected) and os.path.samefile(copied, selected), "actual menu Copy path action works")
 
                 dialog = find("settingsDialog")
+                find("agentSettingsButton").forceActiveFocus()
+                QTest.keyClick(window, Qt.Key.Key_Return)
+                QTest.qWait(100)
+                check(dialog.property("visible") and dialog.property("section") == "Integrations",
+                      "Agent Settings keyboard shortcut opens the existing Integrations dialog")
+                QTest.keyClick(window, Qt.Key.Key_Escape)
+                QTest.qWait(100)
+                check(not dialog.property("visible"), "Escape closes Agent Settings")
                 dialog.open()
                 QTest.qWait(100)
+                check(dialog.property("section") == "Scan folders", "normal Settings retains its default section")
                 before = store.SETTINGS_FILE.read_bytes()
                 click(find("settingsTabHealth"))
                 check(dialog.property("section") == "Health", "central advisory Health settings are reachable")
@@ -355,6 +364,8 @@ def main():
                 wait_for(lambda: not bridge.scanning and not bridge._detail_loading)
                 window.close()
                 app.processEvents()
+                engine.deleteLater()
+                QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 if __name__ == "__main__":

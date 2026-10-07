@@ -24,10 +24,17 @@ open the tools you already use — from one PySide6/QML interface.
 *Actual v0.1.2 interface with controlled demo repositories. No private repository
 or personal filesystem information is shown.*
 
-The source snapshot is **0.1.2**. The release badge and download link above track
-the latest published stable release; building this source does not publish it.
+This source contains **0.1.3**. The release badge and download link above identify
+the latest published stable release; a source checkout or local build does not
+establish publication.
 RepoManager keeps a separate Project registry and explicit repository actions:
 discovery is not permission to modify a repository.
+
+Version 0.1.3 hardens automatic/read-only Git observation against external
+repository helpers, adds Freebuff CLI detection and a direct **Agent Settings**
+shortcut. Freebuff is preferred for new installations when available; saved
+Agent choices are retained. Multiple available Agents still require an explicit
+choice before launch. See [v0.1.3 release notes](docs/RELEASE_NOTES_0.1.3.md).
 
 ## v0.1.2 release scope
 
@@ -37,7 +44,7 @@ cancellation and close confirmation, repository search/selection/curation/notes,
 Git Changes/diff/stage/unstage and confirmed Git actions, Health advisory
 ignore/restore with transparent scoring, Quick Run and the full Run tab,
 local Agent target selection/managed stop, Git onboarding, and reviewable
-Feedback. Dark is the default; Light remains available.
+Feedback. Dark and Light are available.
 
 Classic Tkinter is a source-only parity reference and is excluded from the Qt
 portable package. Guarded portable QA options are prerelease-only diagnostics,

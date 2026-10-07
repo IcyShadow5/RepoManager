@@ -49,7 +49,8 @@ def new_agent(agent_id: str, display_name: str, executable: str,
             "executable": executable, "args": list(args or [])}
 
 
-DETECTABLE_COMMANDS = (("opencode", "OpenCode"), ("codex", "Codex"), ("gemini", "Gemini CLI"))
+DETECTABLE_COMMANDS = (("freebuff", "Freebuff"), ("opencode", "OpenCode"),
+                       ("codex", "Codex"), ("gemini", "Gemini CLI"))
 
 
 def validate_agent_targets(value):
@@ -90,16 +91,20 @@ def agent_catalog(settings, *, which=None):
     for command, name in DETECTABLE_COMMANDS:
         if processes.resolve_executable(command, which=which):
             entries.append(new_agent("detected:" + command, name, command))
-    result, seen = [], set()
+    result, seen = [], {}
     for entry in entries:
         availability = agent_availability(entry, which=which)
         resolved = processes.resolve_executable(entry["executable"], which=which) if availability == AVAILABLE else None
         key = (os.path.normcase(os.path.abspath(resolved)), tuple(entry["args"])) if resolved else None
         if key is not None and key in seen:
+            if entry["agent_id"] == settings.get("selected_agent_id"):
+                result[seen[key]] = {**entry, "availability": availability, "resolved": resolved}
             continue
         if key is not None:
-            seen.add(key)
+            seen[key] = len(result)
         result.append({**entry, "availability": availability, "resolved": resolved or ""})
+    result.sort(key=lambda item: not (item["availability"] == AVAILABLE
+                and Path(item["executable"]).stem.casefold() == "freebuff"))
     return result
 
 

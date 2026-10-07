@@ -15,6 +15,7 @@ import subprocess
 import tempfile
 from urllib.parse import urlsplit, urlunsplit
 from .git_environment import git_environment
+from .git_observation import run_read_only
 
 SUCCESS = "SUCCESS"
 FAILED = "FAILED"
@@ -166,7 +167,8 @@ class Repository:
         # Spool to temporary files, never collect unlimited pipe output in RAM.
         with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
             try:
-                completed = subprocess.run(
+                runner = subprocess.run if write else run_read_only
+                completed = runner(
                     ["git", "--no-pager", "-C", self.path, *args],
                     stdout=stdout, stderr=stderr, stdin=subprocess.DEVNULL,
                     env=env, timeout=120 if write else 20,
@@ -175,7 +177,9 @@ class Repository:
                 raise GitError(
                     "Git timed out; inspect repository state before retrying" if write
                     else "Git observation timed out", outcome=UNKNOWN if write else FAILED)
-            except OSError:
+            except OSError as exc:
+                if not write:
+                    raise GitError(f"Git observation unavailable: {exc}") from exc
                 raise GitError("Git could not be started; check Git installation")
             streams = []
             for stream in (stdout, stderr):

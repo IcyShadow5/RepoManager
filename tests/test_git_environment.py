@@ -22,7 +22,8 @@ class GitEnvironmentTests(unittest.TestCase):
         clean = git_environment(read_only=True, inherited=source)
         self.assertEqual(source, before)
         self.assertEqual(clean, {"PATH": "keep", "GIT_SSH_COMMAND": "configured transport",
-                                "GIT_TERMINAL_PROMPT": "0", "GIT_OPTIONAL_LOCKS": "0", "LC_ALL": "C"})
+                                "GIT_TERMINAL_PROMPT": "0", "GIT_OPTIONAL_LOCKS": "0", "LC_ALL": "C",
+                                "GIT_NO_LAZY_FETCH": "1", "GIT_ALLOW_PROTOCOL": ""})
         self.assertNotIn("GIT_OPTIONAL_LOCKS", git_environment(inherited=source))
 
 
