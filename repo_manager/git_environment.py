@@ -28,4 +28,6 @@ def git_environment(*, read_only: bool = False,
     env.update(GIT_TERMINAL_PROMPT="0", LC_ALL="C")
     if read_only:
         env["GIT_OPTIONAL_LOCKS"] = "0"
+        env["GIT_NO_LAZY_FETCH"] = "1"
+        env["GIT_ALLOW_PROTOCOL"] = ""
     return env

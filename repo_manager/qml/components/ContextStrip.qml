@@ -7,6 +7,7 @@ import "../design" as Design
 Rectangle {
     id: strip
     property var chooserAgents: []
+    signal settingsRequested()
     implicitHeight: App.agentRun.id ? 80 : 62
     radius: 6
     color: Design.Theme.surface
@@ -36,6 +37,7 @@ Rectangle {
             }
             AppButton { id: startAgent; objectName: "startAgentButton"; text: "Start Agent"; iconName: "player-play"; primary: true; tip: App.agentInfo.choiceCount > 1 ? "Choose an Agent to start in this repository" : App.agentInfo.reason; enabled: App.agentInfo.state === "READY" && !App.agentActive && !App.registryBlocked && App.gitState === "available"; onClicked: App.startAgent() }
             AppButton { text: "Stop Agent"; iconName: "player-stop"; enabled: App.agentActive; onClicked: App.stopAgent() }
+            AppButton { objectName: "agentSettingsButton"; iconName: "settings"; compact: true; tip: "Agent Settings"; Accessible.name: "Agent Settings"; onClicked: strip.settingsRequested() }
         }
         AppText {
             visible: !!App.agentRun.id

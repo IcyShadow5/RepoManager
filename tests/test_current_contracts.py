@@ -1033,7 +1033,7 @@ class MergeScanValidityTests(unittest.TestCase):
             with mock.patch.object(scanner, "_git", side_effect=fail_status):
                 merged, _ = scanner.merge_scan([dict(cached)], [str(repo)])
             self.assertEqual(merged[0]["dirty"], 0)
-            self.assertTrue(merged[0]["status_available"])
+            self.assertFalse(merged[0]["status_available"])
             self.assertEqual(merged[0]["branch"], "main")
 
     def test_18_merge_remote_worktree_partial_preserved(self):

@@ -8,6 +8,7 @@ from multiprocessing.pool import ThreadPool
 from multiprocessing import TimeoutError as PoolTimeout
 from pathlib import Path
 from .git_environment import git_environment
+from .git_observation import run_read_only
 from .scan_control import ScanCancelled, active_scan, checkpoint, current_control, progress
 
 from .projects import (counterpart_is_pristine, ensure_project_id, is_ignored,
@@ -91,7 +92,7 @@ def _git_result(path, *args):
     """Run Git and retain return-code evidence for stateful observations."""
     checkpoint()
     try:
-        r = subprocess.run(
+        r = run_read_only(
             ["git", "-C", str(path), *args],
             capture_output=True, text=True, timeout=GIT_TIMEOUT,
             encoding="utf-8", errors="replace",
@@ -554,8 +555,9 @@ def collect_metadata_observation(path):
     top-level metadata keys whose values were successfully observed during
     this call — including legitimate absences (detached ``branch=None``,
     explicit no-upstream ``NONE``, unborn ``head=None``, empty remotes).
-    Failed observations are absent from the set and their ``metadata``
-    values are defaults that must not overwrite cached state.
+    Failed value observations preserve cached state. ``status_available`` is
+    current validity evidence, including failure: cached counts must never
+    make an unavailable working-tree observation appear clean.
 
     The validity set is transient: never persist it to repos.json and never
     expose it in the project schema.
@@ -571,8 +573,8 @@ def collect_metadata_observation(path):
     if git_dir_rc is None:
         # Observation infrastructure failed (timeout/OSError/missing
         # executable). This is NOT positive evidence the repository is
-        # broken: preserve all previous state.
-        return meta, frozenset()
+        # broken: retain cached values but invalidate working-tree certainty.
+        return meta, frozenset({"status_available"})
     if git_dir_rc != 0:
         # A non-zero Git exit alone is NOT proof of a broken repository
         # (permission, safe.directory, transient I/O, translated stderr).
@@ -584,7 +586,7 @@ def collect_metadata_observation(path):
             meta["broken"] = True
             observed.update(TECHNICAL_OBSERVED_FIELDS)
             return meta, frozenset(observed)
-        return meta, frozenset()
+        return meta, frozenset({"status_available"})
     meta["repository_observed"] = True
     observed.update({"repository_observed", "broken"})
 
@@ -609,6 +611,7 @@ def collect_metadata_observation(path):
     # else: unobserved (timeout/OSError with rc None, or transient non-zero).
 
     # -- STATUS: success (even empty clean output) is observed.
+    observed.add("status_available")
     status = _git(p, "status", "--porcelain")
     if status is not None:
         meta["staged"], meta["unstaged"], meta["untracked"] = (

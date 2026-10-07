@@ -1348,7 +1348,9 @@
         "test_duplicate_command_is_not_a_second_choice",
         "test_custom_target_missing_and_invalid_settings_remain_explicit",
         "test_configuration_accepts_named_executable_and_rejects_duplicate_identity",
-        "test_resolving_targets_does_not_execute_them"
+        "test_resolving_targets_does_not_execute_them",
+        "test_freebuff_is_preferred_and_opencode_remains_available",
+        "test_duplicate_resolution_preserves_saved_agent_identity"
       ]
     },
     {
@@ -2859,6 +2861,8 @@
         "test_zero_agent_has_explanation_and_does_not_launch",
         "test_one_agent_starts_existing_launch_path_in_repository",
         "test_multiple_requires_explicit_choice_and_persists_selection",
+        "test_freebuff_default_still_requires_choice_and_preserves_saved_selection",
+        "test_freebuff_launch_uses_repository_cwd_and_managed_stop",
         "test_changed_repository_rejects_menu_selection",
         "test_disappeared_executable_or_failed_persistence_does_not_launch",
         "test_invalid_targets_settings_are_atomic",
@@ -3648,6 +3652,28 @@
         "test_removal_verifies_absence",
         "test_metadata_marks_worktree_inspection_unavailable",
         "test_metadata_includes_worktrees_and_status_breakdown"
+      ]
+    },
+    {
+      "module": "tests.test_git_observation_boundary",
+      "class": "GitObservationBoundaryTests",
+      "category": "CURRENT_WINDOWS_INTEGRATION",
+      "gate": true,
+      "method_categories": {},
+      "production": "git_observation / scanner / git_operations / WindowsProcess job isolation",
+      "behavior": "Real Git helper-execution prevention, fail-closed validity, linked worktrees and process isolation",
+      "tests": [
+        "test_fsmonitor_cannot_execute_during_scan",
+        "test_fsmonitor_cannot_execute_during_changes_status",
+        "test_failed_isolation_never_resumes_git_and_is_unavailable",
+        "test_clean_filter_scan_is_unobserved_without_execution",
+        "test_process_filter_scan_is_unobserved_without_execution",
+        "test_changes_status_cannot_execute_filter",
+        "test_working_tree_diff_cannot_execute_filter",
+        "test_benign_clean_and_modified_observations",
+        "test_linked_worktree_retains_metadata_and_blocks_helper",
+        "test_blocked_rescan_invalidates_cached_clean_without_losing_identity",
+        "test_submodule_observation_fails_closed_without_child_helper"
       ]
     }
   ]

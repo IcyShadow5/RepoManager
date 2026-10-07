@@ -132,6 +132,37 @@ class QtScanAgentTests(IsolatedSessionTests):
             self.assertEqual(self.bridge.agentInfo["agentName"], "Agent 1")
             self.assertEqual(RepositorySession().settings["selected_agent_id"], "custom:1")
 
+    def test_freebuff_default_still_requires_choice_and_preserves_saved_selection(self):
+        catalog = [{**agents.new_agent("detected:" + name, label, name),
+                    "availability": agents.AVAILABLE, "resolved": sys.executable}
+                   for name, label in (("freebuff", "Freebuff"), ("opencode", "OpenCode"))]
+        with mock.patch.object(agents, "agent_catalog", return_value=catalog), mock.patch.object(agents, "start_run") as start:
+            self.bridge._selected_agent_id = ""
+            self.bridge._refresh_agent()
+            self.assertEqual(self.bridge.agentInfo["agentName"], "Freebuff")
+            requested = []
+            self.bridge.agentChooserRequested.connect(lambda: requested.append(True))
+            self.bridge.startAgent()
+            start.assert_not_called()
+            self.assertEqual(requested, [True])
+            self.bridge._selected_agent_id = "detected:opencode"
+            self.bridge._refresh_agent()
+            self.assertEqual(self.bridge.agentInfo["agentName"], "OpenCode")
+
+    def test_freebuff_launch_uses_repository_cwd_and_managed_stop(self):
+        item = {**agents.new_agent("detected:freebuff", "Freebuff", "freebuff"),
+                "availability": agents.AVAILABLE, "resolved": sys.executable}
+        process = mock.Mock(pid=12, poll=mock.Mock(return_value=None))
+        with mock.patch.object(agents, "agent_catalog", return_value=[item]), mock.patch("repo_manager.processes.resolve_executable", return_value=sys.executable), mock.patch("repo_manager.processes.spawn_agent", return_value=process) as spawn:
+            self.bridge.startAgent()
+            self.assertEqual(spawn.call_args.kwargs["cwd"], self.record["path"])
+            self.assertEqual(spawn.call_args.args[0], sys.executable)
+            self.assertEqual(self.bridge.agentInfo["agentName"], "Freebuff")
+            process.terminate.side_effect = lambda: setattr(process.poll, "return_value", -15)
+            self.bridge.stopAgent()
+            process.terminate.assert_called_once()
+            self.assertFalse(self.bridge.agentActive)
+
     def test_changed_repository_rejects_menu_selection(self):
         with mock.patch.object(agents, "agent_catalog", return_value=self.catalog(2)), mock.patch.object(agents, "start_run") as start:
             self.bridge.startAgent()

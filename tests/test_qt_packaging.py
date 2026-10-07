@@ -88,7 +88,7 @@ class QtPackagingTests(unittest.TestCase):
 
     def test_identity_is_stable(self):
         from repo_manager.version import VERSION, is_prerelease
-        self.assertEqual(VERSION, "0.1.2")
+        self.assertEqual(VERSION, "0.1.3")
         self.assertFalse(is_prerelease())
         self.assertNotEqual(VERSION,'0.1.1')
 

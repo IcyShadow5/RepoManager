@@ -57,7 +57,8 @@ def native_api():
 
 class WindowsProcess:
     """Popen-like observation; terminal means the entire contained job is empty."""
-    def __init__(self, executable, command_line, *, env, cwd, creationflags=0):
+    def __init__(self, executable, command_line, *, env, cwd, creationflags=0,
+                 active_process_limit=0, std_handles=None):
         import _winapi
 
         self._api = native_api()
@@ -68,6 +69,8 @@ class WindowsProcess:
         self.returncode = None
         self.args = command_line
         self.pid = None
+        self.process_limit_exceeded = False
+        self._active_process_limit = active_process_limit
         thread = None
         try:
             self._job = self._api.CreateJobObjectW(None, None)
@@ -76,13 +79,22 @@ class WindowsProcess:
                 raise ctypes.WinError(ctypes.get_last_error())
             limits = ExtendedLimits()
             limits.Basic.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            if active_process_limit:
+                limits.Basic.LimitFlags |= 0x8  # JOB_OBJECT_LIMIT_ACTIVE_PROCESS
+                limits.Basic.ActiveProcessLimit = active_process_limit
             if not self._api.SetInformationJobObject(self._job, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
                 raise ctypes.WinError(ctypes.get_last_error())
             # CPython's Windows creation boundary retains both handles. Popen
             # closes the primary thread handle, which would prevent ResumeThread.
+            startup = subprocess.STARTUPINFO()
+            if std_handles is not None:
+                startup.dwFlags |= subprocess.STARTF_USESTDHANDLES
+                startup.hStdInput, startup.hStdOutput, startup.hStdError = std_handles
+                startup.lpAttributeList = {"handle_list": list(std_handles)}
+                creationflags |= 0x80000  # EXTENDED_STARTUPINFO_PRESENT
             self._process, thread, self.pid, _ = _winapi.CreateProcess(
-                executable, command_line, None, None, False,
-                creationflags | 0x4, env, cwd, subprocess.STARTUPINFO())
+                executable, command_line, None, None, std_handles is not None,
+                creationflags | 0x4, env, cwd, startup)
             if not self._api.AssignProcessToJobObject(self._job, self._process):
                 raise ctypes.WinError(ctypes.get_last_error())
             if self._api.ResumeThread(thread) == 0xFFFFFFFF:
@@ -106,6 +118,8 @@ class WindowsProcess:
             accounting = Accounting()
             if not self._api.QueryInformationJobObject(self._job, 1, ctypes.byref(accounting), ctypes.sizeof(accounting), None):
                 raise ctypes.WinError(ctypes.get_last_error())
+            if self._active_process_limit and accounting.TotalProcesses > self._active_process_limit:
+                self.process_limit_exceeded = True
             if accounting.ActiveProcesses:
                 self._observe_children(max(accounting.ActiveProcesses, 16))
                 return None

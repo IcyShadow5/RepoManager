@@ -2,7 +2,8 @@
 
 ## Supported versions
 
-RepoManager 0.1.2 is the current supported public release. The 0.1.x
+The current supported public release is listed on the
+[latest release page](https://github.com/IcyShadow5/RepoManager/releases/latest). The 0.1.x
 line is the only line intended to receive security fixes. This policy must be
 updated if that support position changes.
 
@@ -12,10 +13,13 @@ Do not open a public issue for an unresolved vulnerability.
 
 GitHub Private Vulnerability Reporting is enabled on the public repository
 (verified 2026-10-05). Use [Report a vulnerability](https://github.com/IcyShadow5/RepoManager/security/advisories/new).
-The public repository's [security policy](https://github.com/IcyShadow5/RepoManager/security/policy)
-also publishes the owner-approved fallback contact. Do not send secrets or
-exploit details through public issues. Unpublished candidates are not supported
-public releases; the current public release remains v0.1.2.
+If GitHub Private Vulnerability Reporting is unavailable, email
+[icyshadow5.devsec@outlook.com](mailto:icyshadow5.devsec@outlook.com).
+This fallback mailbox is for private security/moderation reports, not general
+support or website contact. Do not send secrets or exploit details through
+public issues. Unpublished candidates are not supported
+public releases. During v0.1.3 candidate preparation, v0.1.2 remains the public
+release until the hotfix is published.
 
 A useful report should include:
 

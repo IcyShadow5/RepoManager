@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from repo_manager import scanner, store
+from repo_manager import git_observation, scanner, store
 from repo_manager.scan_control import ScanControl, ScanCancelled, active_scan, checkpoint
 from tests.test_repository_service import IsolatedSessionTests
 
@@ -70,15 +70,16 @@ class ScanControlTests(unittest.TestCase):
 
     def test_current_git_timeout_reaps_process_before_cancel_is_reported(self):
         control, children = ScanControl(), []
-        original = subprocess.Popen
+        original = git_observation.WindowsProcess
 
         def spawn(*args, **kwargs):
-            child = original([sys.executable, "-c", "import time; time.sleep(30)"], **kwargs)
+            child = original(sys.executable, subprocess.list2cmdline(
+                [sys.executable, "-c", "import time; time.sleep(30)"]), **kwargs)
             children.append(child)
             control.cancel()
             return child
 
-        with mock.patch.object(scanner, "GIT_TIMEOUT", .15), mock.patch.object(subprocess, "Popen", side_effect=spawn):
+        with mock.patch.object(scanner, "GIT_TIMEOUT", .15), mock.patch.object(git_observation, "WindowsProcess", side_effect=spawn):
             started = time.monotonic()
             with active_scan(control), self.assertRaises(ScanCancelled):
                 scanner._git_result(Path.cwd(), "status")
