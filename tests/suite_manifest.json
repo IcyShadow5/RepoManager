@@ -2862,6 +2862,7 @@
         "test_one_agent_starts_existing_launch_path_in_repository",
         "test_multiple_requires_explicit_choice_and_persists_selection",
         "test_freebuff_default_still_requires_choice_and_preserves_saved_selection",
+        "test_settings_separates_selected_agent_from_configured_command",
         "test_freebuff_launch_uses_repository_cwd_and_managed_stop",
         "test_changed_repository_rejects_menu_selection",
         "test_disappeared_executable_or_failed_persistence_does_not_launch",
