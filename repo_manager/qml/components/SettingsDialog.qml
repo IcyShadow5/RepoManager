@@ -121,13 +121,17 @@ AppDialog {
                 }
                 ColumnLayout {
                     visible: dialog.section === "Integrations"; Layout.fillWidth: true; spacing: 10
-                    AppText { text: "External Agent"; font.weight: Font.DemiBold; font.pixelSize: 15 }
-                    AppText { text: "Launched explicitly for the selected repository. Enter an executable path or a command available on PATH, without arguments."; wrapMode: Text.WordWrap; color: Design.Theme.textSecondary; Layout.fillWidth: true }
+                    AppText { text: "Configured Agent command"; font.weight: Font.DemiBold; font.pixelSize: 15 }
+                    AppText { text: "Optional explicit command or executable. This is separate from the selected Agent below."; wrapMode: Text.WordWrap; color: Design.Theme.textSecondary; Layout.fillWidth: true }
                     RowLayout {
                         Layout.fillWidth: true
                         AppField { id: agent; objectName: "agentExecutable"; Layout.fillWidth: true; placeholderText: "opencode" }
                         AppButton { text: "Browse…"; compact: true; onClicked: { dialog.agentBrowseIndex = -1; agentFile.open() } }
                     }
+                    AppText { text: "Selected Agent"; font.weight: Font.DemiBold; Layout.topMargin: 6 }
+                    AppText { objectName: "selectedAgentName"; text: App.agentInfo.agentName; wrapMode: Text.WordWrap; color: Design.Theme.textSecondary; Layout.fillWidth: true }
+                    AppText { objectName: "selectedAgentCommand"; visible: !!App.agentInfo.command; text: "Command: " + App.agentInfo.command; color: Design.Theme.textMuted; Layout.fillWidth: true }
+                    AppText { text: "Chosen from the Start Agent chooser."; wrapMode: Text.WordWrap; color: Design.Theme.textMuted; Layout.fillWidth: true }
                     AppText { text: "Additional Agent targets"; font.weight: Font.DemiBold; Layout.topMargin: 6 }
                     AppText { visible: !!App.settingsData.agentConfigurationError; text: App.settingsData.agentConfigurationError + ". Reconfigure the additional targets before saving."; color: Design.Theme.error; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                     AppText { text: "Freebuff, OpenCode, Codex and Gemini CLI are offered when their commands are found on PATH. Add other configured executables here. Each target uses the selected repository as its working directory."; wrapMode: Text.WordWrap; color: Design.Theme.textSecondary; Layout.fillWidth: true }

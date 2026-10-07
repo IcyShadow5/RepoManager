@@ -4,6 +4,7 @@ import os
 import sys
 import threading
 import time
+from pathlib import Path
 from unittest import mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -148,6 +149,37 @@ class QtScanAgentTests(IsolatedSessionTests):
             self.bridge._selected_agent_id = "detected:opencode"
             self.bridge._refresh_agent()
             self.assertEqual(self.bridge.agentInfo["agentName"], "OpenCode")
+
+    def test_settings_separates_selected_agent_from_configured_command(self):
+        catalog = [{**agents.new_agent("detected:" + name, label, name),
+                    "availability": agents.AVAILABLE, "resolved": sys.executable}
+                   for name, label in (("freebuff", "Freebuff"), ("opencode", "OpenCode"))]
+        with mock.patch.object(agents, "agent_catalog", return_value=catalog):
+            self.session.save_settings([str(self.root)], 4, "opencode", "")
+            self.session.select_agent("detected:freebuff")
+            self.bridge._selected_agent_id = "detected:freebuff"
+            self.bridge._refresh_agent()
+            self.assertEqual(self.bridge.agentInfo["agentName"], "Freebuff")
+            self.assertEqual(self.bridge.agentInfo["command"], "freebuff")
+            self.assertEqual(self.bridge.settingsData["agent"], "opencode")
+            self.assertEqual(self.session.settings["agent_cmd"], "opencode")
+            self.assertEqual(self.session.settings["selected_agent_id"], "detected:freebuff")
+            with mock.patch.object(self.bridge, "scan") as scan:
+                self.assertTrue(self.bridge.saveSettings([str(self.root)], 4, self.bridge.settingsData["agent"], ""))
+                scan.assert_called_once_with()
+            self.assertEqual(self.session.settings["agent_cmd"], "opencode")
+            self.assertEqual(self.session.settings["selected_agent_id"], "detected:freebuff")
+            self.assertEqual(self.bridge.agentInfo["agentName"], "Freebuff")
+            self.assertEqual(self.bridge.agentInfo["command"], "freebuff")
+        dialog = (Path(__file__).resolve().parents[1] / "repo_manager/qml/components/SettingsDialog.qml").read_text(encoding="utf-8")
+        self.assertNotIn("External Agent", dialog)
+        self.assertIn("Configured Agent command", dialog)
+        self.assertIn("Optional explicit command or executable. This is separate from the selected Agent below.", dialog)
+        self.assertIn("Selected Agent", dialog)
+        self.assertIn('objectName: "selectedAgentName"; text: App.agentInfo.agentName', dialog)
+        self.assertIn('objectName: "selectedAgentCommand"; visible: !!App.agentInfo.command', dialog)
+        self.assertIn('text: "Command: " + App.agentInfo.command', dialog)
+        self.assertIn('objectName: "agentExecutable"', dialog)
 
     def test_freebuff_launch_uses_repository_cwd_and_managed_stop(self):
         item = {**agents.new_agent("detected:freebuff", "Freebuff", "freebuff"),
