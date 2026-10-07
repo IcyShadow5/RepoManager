@@ -4,52 +4,45 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![CPython 3.14.7](https://img.shields.io/badge/CPython-3.14.7-3776AB)](#run-from-source)
-[![Windows 10/11 x64](https://img.shields.io/badge/Windows-10%2F11%20x64-0078D4)](#platform-and-release-status)
+[![Windows 10/11 x64](https://img.shields.io/badge/Windows-10%2F11%20x64-0078D4)](#getting-started)
 [![Tests](https://github.com/IcyShadow5/RepoManager/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/IcyShadow5/RepoManager/actions/workflows/ci.yml)
 [![Dependency audit](https://github.com/IcyShadow5/RepoManager/actions/workflows/dependencies.yml/badge.svg?branch=main)](https://github.com/IcyShadow5/RepoManager/actions/workflows/dependencies.yml)
 
-**Current public release:** [![Latest stable release](https://img.shields.io/github/v/release/IcyShadow5/RepoManager?label=release&cacheSeconds=300)](https://github.com/IcyShadow5/RepoManager/releases/latest)
+A Windows desktop tool for developers who keep several local Git repositories.
+Find your repositories, review working-tree changes, keep project notes and open
+your editor, terminal or Agent from one PySide6/QML interface.
 
-A Windows desktop tool for finding, organizing and inspecting local Git
-repositories. See your working trees, review changes, keep project context and
-open the tools you already use — from one PySide6/QML interface.
-
-[**Download the Windows portable ZIP**](https://github.com/IcyShadow5/RepoManager/releases/latest)
-· [Getting started](#finding-your-repositories)
+[**Download**](https://github.com/IcyShadow5/RepoManager/releases/latest)
+· [Getting started](#getting-started)
 · [Documentation](#documentation)
-· [Report an issue](https://github.com/IcyShadow5/RepoManager/issues/new/choose)
+· [Issues](https://github.com/IcyShadow5/RepoManager/issues/new/choose)
+
+[![Latest stable release](https://img.shields.io/github/v/release/IcyShadow5/RepoManager?label=release&cacheSeconds=300)](https://github.com/IcyShadow5/RepoManager/releases/latest)
 
 ![RepoManager 0.1.2 — repository inventory, working context and selected project details in Dark mode](assets/screenshots/overview-dark.png)
 
-*Actual v0.1.2 interface with controlled demo repositories. No private repository
-or personal filesystem information is shown.*
+*The screenshots show the v0.1.2 interface with controlled demo repositories.*
 
-This source contains **0.1.3**. The release badge and download link above identify
-the latest published stable release; a source checkout or local build does not
-establish publication.
-RepoManager keeps a separate Project registry and explicit repository actions:
-discovery is not permission to modify a repository.
+Source version: **0.1.3**. The release badge and Download link identify the latest
+published build. See the [v0.1.3 release notes](docs/RELEASE_NOTES_0.1.3.md).
 
-Version 0.1.3 hardens automatic/read-only Git observation against external
-repository helpers, adds Freebuff CLI detection and a direct **Agent Settings**
-shortcut. Freebuff is preferred for new installations when available; saved
-Agent choices are retained. Multiple available Agents still require an explicit
-choice before launch. See [v0.1.3 release notes](docs/RELEASE_NOTES_0.1.3.md).
+## What it does
 
-## v0.1.2 release scope
+- Finds Git repositories under your chosen folders, including linked worktrees.
+  Scans run in the background and can be cancelled.
+- Shows branches, working-tree changes, remotes and recent commits in a searchable
+  repository table.
+- Keeps project status, focus, pins, notes and **Working on now** context.
+- Reviews Changes/diff, stages or unstages files, commits locally and confirms
+  Fetch, Push and fast-forward-only Pull.
+- Reports repository Health, with ignore/restore controls for advisory checks.
+- Opens Explorer, VS Code and Windows Terminal; detects project launchers for
+  Quick Run and offers local Agent selection with managed stop.
+- Reviews inventory issues and possible moves, and exports metadata as JSON or
+  Markdown.
 
-The standalone Python backend now uses **PySide6 + QML** by default. This is
-not RepoManager 2.0 or IC Platform. The release includes cooperative scan
-cancellation and close confirmation, repository search/selection/curation/notes,
-Git Changes/diff/stage/unstage and confirmed Git actions, Health advisory
-ignore/restore with transparent scoring, Quick Run and the full Run tab,
-local Agent target selection/managed stop, Git onboarding, and reviewable
-Feedback. Dark and Light are available.
-
-Classic Tkinter is a source-only parity reference and is excluded from the Qt
-portable package. Guarded portable QA options are prerelease-only diagnostics,
-not user CLI features. Custom themes, Agent history, cloud services, monetization,
-Linux/macOS support and automatic self-update are deferred.
+Dark and Light modes are available. More details are in the
+[product guide](docs/PRODUCT.md).
 
 ## Screenshots
 
@@ -67,84 +60,86 @@ Linux/macOS support and automatic self-update are deferred.
 
 </details>
 
-## Why use it?
+## Getting started
 
-RepoManager is aimed at developers who keep many local repositories and want a
-single view of what exists, what needs attention, and which tool can open a
-working tree. It combines local Git evidence with user-owned status, focus,
-pinning, and notes.
+Official support: **Windows 10 22H2 / Windows 11 x64**.
 
-Key capabilities include:
-
-- bounded discovery of Git repositories, including linked Worktrees;
-- branch, HEAD, working-tree, upstream, remote, latest-commit, and Worktree
-  observations;
-- stable Project records with status, focus, pinning, notes, filtering, and
-  sorting;
-- lightweight read-only Repository Health findings;
-- detection and explicit launch of supported editor, terminal, batch,
-  PowerShell, npm, Godot, Python, Roblox, WSL, and Git Bash commands;
-- independent local Commit and confirmed Push, fast-forward-only Pull, and
-  explicit Fetch;
-- bounded Changes/Diff with per-file Stage/Unstage, recent History, and
-  read-only Remote inspection (new since v0.1.1);
-- advisory repository-move reconciliation that requires confirmation;
-- metadata-only Project export and repository reports in JSON or Markdown;
-- local Provider correspondence, plus a read-only GitHub metadata lookup when
-  a selected Project has a supported GitHub remote.
-
-RepoManager is not a Git replacement, a cloud-sync service, an unattended
-automation engine, or a sandbox for commands it launches.
-
-## Platform and release status
-
-RepoManager v0.1.2 targets Windows 10 22H2 and Windows 11 x64. Linux and macOS are
-deferred; running generic Python source there does not make those platforms
-supported.
-
-The end-user distribution is an unsigned portable Windows ZIP built with
-normal 64-bit CPython 3.14.7. Historical releases remain available alongside the
-latest release.
-
-1. Open the [latest public release](https://github.com/IcyShadow5/RepoManager/releases/latest).
-2. Download its `RepoManager-<version>-windows-x64.zip` and extract the complete folder.
+1. Open the [Releases page](https://github.com/IcyShadow5/RepoManager/releases/latest).
+2. Download `RepoManager-<version>-windows-x64.zip` and extract the complete folder.
 3. Start `RepoManager\RepoManager.exe`.
+4. In **Settings > Scan folders**, add the folder containing your repositories
+   and choose **Save & scan**.
 
-The packaged application bundles Python, so end users do not need a separate
-Python installation. It is portable rather than installed; Git must still be
-available on `PATH` for repository discovery and Git features. Because the
-initial build is unsigned, Windows may display an unknown-publisher or
-reputation warning.
+Python and Qt are bundled; a separate Python installation is not needed.
+The portable build is unsigned, so Windows SmartScreen may warn or show an
+unknown publisher.
 
-RepoManager detects Git at startup. If Git cannot start, the application shows a requirement notice instead of
-running a repository scan. Use **Install Git** to open the official
-[Git for Windows installation page](https://git-scm.com/install/windows),
-complete the normal installation with Git available on `PATH`, then select
-**Check again**. This checks the current process environment and resumes
-scanning when Git is available. If Git was installed while RepoManager was
-open and Check again still cannot find it, restart RepoManager so it inherits
-the updated `PATH`. A Git command that fails for a repository-specific reason
-is reported separately from missing Git.
+**Git must be available on PATH.** If RepoManager cannot find or start Git,
+**Install Git** opens the official
+[Git for Windows page](https://git-scm.com/install/windows). After installation,
+use **Check again**. Restart RepoManager if it still cannot see the updated PATH.
 
-### Finding your repositories
+New profiles scan Desktop, Documents and Downloads, not the entire machine.
+Scan depth is relative to each root: depth 2 checks the root and up to two nested
+folder levels. Choose a nearer root or increase the depth for deeper repositories.
+**Add C:\** is an optional whole-drive scan and can take longer or encounter
+protected folders. Existing roots are preserved; Cancel discards unsaved changes.
 
-In **Settings > Scan folders**, add the folder containing your repository
-collection and choose **Save & scan**. New profiles start with Desktop, Documents,
-and Downloads below the current user folder; RepoManager does not search the whole
-machine automatically. Depth is relative to each root:
-depth 2 includes the root and up to two nested folder levels. Choose a nearer
-root or increase depth if a repository is deeper. Windows Settings offers
-**Add C:\\** as an optional whole-drive scope. This can take longer and encounter
-protected folders. Existing scan roots are preserved; Cancel discards unsaved
-folder additions. Invalid and duplicate additions are explained immediately.
+## Git and Agent workflow
+
+Select a repository to view its details. **Changes** shows staged and unstaged
+files with a diff preview. Unstage leaves working files intact. Commit defaults
+to staged changes and never pushes; stage-all is a separate explicit option.
+Push, Pull and Fetch show the destination before confirmation. Pull is
+fast-forward-only. See [Git actions](docs/PRODUCT.md#git-actions-and-scan-issues)
+for limits and error handling.
+
+**Quick Run** uses the same detected launchers as the full **Run** tab. Multiple
+launchers require a choice. External tools are optional: VS Code for its editor
+action, Windows Terminal for Terminal, and the relevant runtime for npm, Godot,
+Python, Roblox, PowerShell, WSL or Git Bash launchers. Terminal uses Windows
+Terminal's default profile; PowerShell 7 is not required for that action.
+
+Freebuff, OpenCode, Codex and Gemini CLI are detected when installed. Freebuff is
+preferred when there is no saved Agent selection; valid saved choices remain.
+With multiple available Agents, **Start Agent** opens a chooser before launch.
+The **Agent Settings** shortcut opens **Settings > Integrations**.
+
+**Selected Agent** and **Fallback / custom Agent command** are separate settings.
+Freebuff can be selected while `opencode` remains a configured alternative.
+Choosing an Agent does not replace that command. Every Agent start is initiated
+by the user and uses the selected repository as its working directory.
+
+## Safety and limitations
+
+- Automatic/read-only Git observation cannot start helper processes. Some Git
+  LFS or submodule observations therefore remain **unavailable**, rather than
+  being shown as clean. Use an external Git tool in those cases. RepoManager
+  does not disable Git LFS. The installed Git executable remains trusted.
+- Explicit Git writes/network operations, launchers and Agents are separate
+  user actions. They can execute configured code and are **not sandboxed**.
+- Health and post-run checks describe observed state; they do not certify
+  correctness or approve an Agent's work.
+- App data stays under `%LOCALAPPDATA%\RepoManager`, outside managed repositories.
+  Exports contain metadata, not repository backups. Review notes, reports and
+  screenshots before sharing; arbitrary text is not secret-scanned.
+- A selected GitHub remote can trigger a read-only request to `api.github.com`.
+  Feedback opens a draft for you to review and submit; there is no automatic
+  telemetry or report submission.
+- No installer, automatic updater, cloud sync, Agent orchestration or official
+  Linux/macOS support is provided. Conflict resolution, branch switching,
+  discard/reset/stash, hunk staging and submodule writes need an external Git tool.
+
+For bugs or suggestions, use **Feedback / Bug** in the app or
+[GitHub Issues](https://github.com/IcyShadow5/RepoManager/issues/new/choose).
+Report vulnerabilities privately through the [security policy](SECURITY.md).
+Help > Versions and updates > Official releases opens the release page for
+manual comparison and download. WinGet is not the documented installation path.
 
 ## Run from source
 
-Source execution requires Windows 10 22H2 or Windows 11 x64, Python 3.14 and Git
-on `PATH`. The official Windows build and CI baseline is normal 64-bit CPython
-3.14.7. Python 3.11 is not a supported or CI-tested source runtime.
-
-The current presentation uses PySide6 + QML. From the repository root:
+Requires Windows, Git on PATH and normal 64-bit CPython **3.14.7**, the build/CI
+baseline. From the repository root:
 
 ```text
 py -3.14 -m venv .venv
@@ -152,160 +147,37 @@ py -3.14 -m venv .venv
 .venv\Scripts\python.exe run.py
 ```
 
-The existing Python domain, scanner, Git and storage modules remain shared.
-The classic Tkinter reference (`run_classic.py`) is retained as a regression reference
-pending a separately approved removal package. It still
-uses only the Python standard library and requires Tkinter. Qt packaging and
-promotion to a public release require separate owner acceptance.
-
-Optional external tools enable additional launchers:
-
-| Tool | Enables |
-|---|---|
-| Windows Terminal (`wt.exe`) | Terminal action using its default profile; PowerShell 7 is not required |
-| VS Code | VS Code launch action |
-| Node.js / npm | npm launchers |
-| Godot | Godot project launchers |
-| WSL or Git Bash | shell launchers |
-
-Configured launchers and Agent commands execute as local processes with the
-selected working tree as their starting directory. They may execute arbitrary
-code and are not confined to that directory.
-
-## Data, network, and mutation boundaries
-
-RepoManager stores application-owned data under
-`%LOCALAPPDATA%\RepoManager`, outside managed repositories:
-
-- `repos.json` — schema-v2 Project and Workspace registry;
-- `settings.json` — scan, display, and launcher settings;
-- `notes/` — per-Project Markdown notes;
-- rotating registry backups and corruption-quarantine files;
-- `repo_manager.log` and its rotated log files.
-- `feedback/` — reports explicitly saved locally from the Qt Feedback dialog.
-
-Notes and logs are ordinary local files. Do not place credentials or other
-sensitive values in notes, configured commands, repository metadata, or other
-fields that may be displayed or logged.
-
-Discovery, local metadata collection, Health evaluation, and local Provider
-correspondence do not modify managed repositories. Actions that can mutate a
-repository—Git writes, launched commands, and optional `run.bat` generation—
-require explicit user action. The generated starter never overwrites an
-existing `run.bat`.
-
-## Feedback and bug reports
-
-The **Feedback / Bug** button offers four categories: positive feedback,
-improvement, bug, and UI issue. Add a short title and description, then save
-locally, copy the report, or open a prefilled issue draft in the public
-RepoManager GitHub tracker. Review and submit the draft yourself; opening it
-does not send a report. There is no automatic telemetry.
-
-Only the text you enter, application edition and version are
-included by default. Optional runtime information adds Python, Qt and OS
-versions. Repository paths, inventory, notes, logs and credentials are not
-attached automatically. Review your text for private information before sharing.
-
-Selecting or refreshing a Project whose chosen remote corresponds to GitHub
-starts a read-only HTTPS request to `api.github.com`. The UI does not
-accept or persist a GitHub token, so private repository metadata normally
-cannot be retrieved through this feature. Git Pull/Push and external launchers
-may also use the network according to Git and the launched tool's own
-configuration.
-
-Exports and reports copy metadata, not repository contents. They omit fields
-whose keys look credential-related, such as `token`, `password`, or
-`private_key`; they do not scan arbitrary text values or notes for embedded
-secrets. Review an export before sharing it.
-
-Registry writes use a flushed temporary file and replacement, with validation,
-rotating backups, and corruption quarantine. This reduces partial-write risk
-for an individual save but is not a universal crash, storage-device, or
-power-loss durability guarantee and does not coordinate multiple writers.
-
-Repository Health and post-command observations report evidence only. They do
-not certify correctness or security, and successful process completion does
-not prove that an external tool made correct changes.
+The shipped UI is PySide6/QML. `run_classic.py` retains a source-only Tkinter
+reference; it is excluded from the Qt portable package.
 
 ## Build and test
 
-The Windows build is defined by `packaging/build_windows.ps1`. It validates the
-requested interpreter, creates or reuses a matching isolated build environment,
-installs hash-pinned build tools, creates a PyInstaller `onedir` bundle, adds
-runtime license notices, and writes an adjacent integrity manifest. See
-[Windows release build](docs/RELEASE.md) for the exact contract and the
-required packaged-runtime checks.
+[Windows release build](docs/RELEASE.md) describes the pinned PyInstaller build,
+runtime notices, matching Qt/PySide sources and integrity manifest.
 
-Run the current Qt product gate with:
+Run the current product tests in an environment with the Qt and build/tooling
+dependencies installed:
 
 ```text
 .venv\Scripts\python.exe -B -m tests.run_layers --layer current
 ```
 
-The tests provide evidence for the exercised paths; they do not replace live
-Windows GUI, packaged-executable, network, or external-launcher verification.
-See [Testing](docs/TESTING.md) for separate core, service, bridge, actual QML,
-packaging and Windows layers. Legacy Tkinter parity is a separate reference,
-not current UI proof. [Release evidence](docs/RELEASE_EVIDENCE.md) records the
-reconciled baseline and current release scope.
-
-## Everyday Git
-
-Right-click a Project, or press Shift+F10 / the Menu key in either list.
-Changes opens a resizable staged/unstaged file list and bounded diff preview.
-Stage/Unstage apply to selected files; Unstage leaves working files intact.
-Commit defaults to staged changes, requires a message, works without a remote,
-and never pushes. Stage all current changes and commit is an explicit alternative:
-`git add -A` stages changes present at execution, not a locked preview snapshot.
-Git hooks and filters are not sandboxed.
-
-Push, Pull, and Fetch show a remote/destination preview before confirmation.
-Push is non-forced and can explicitly set an upstream. Pull requires a clean
-checkout and is fast-forward-only. Fetch does not prune or change checkout files.
-Multiple push destinations, mirror pushes, and non-standard fetch refspecs are
-blocked rather than guessed. No Git mutation is retried automatically.
-
-Repository submenus expose recent History, sanitized read-only Remotes, and a
-selected metadata refresh (not a full inventory scan). URL credential components
-are hidden, not arbitrary text secrets. Diff output is bounded to 2 MiB; Changes
-rejects status above 5,000 files. Conflict resolution, submodule writes, hunk
-staging, discard/reset/stash, and branch switching require an external Git tool.
-
-Scan issues and possible moves have separate review tabs with copyable paths.
-Ambiguous candidates require choosing an exact proven pair and confirming it;
-curated/note-owned targets cannot be silently absorbed. Missing pair provenance
-requires a rescan or Keep both. Later leaves suggestions unresolved; Keep both
-persists exact-pair suppression. No repository files are moved by reconciliation.
-
-## Current release limitations
-
-v0.1.2 does not include an installer, automatic updater, signing pipeline, cloud
-synchronization, Provider write/admin APIs, full Worktree lifecycle UI,
-coordinated multi-repository Workspace changes, Agent sessions/orchestration,
-or a general Policy/Profile/Workflow engine. Project export is not a registry
-backup or repository archive. Workspace metadata may be retained internally,
-but Workspace controls and the repository-association picker are not exposed.
-
-Help > Versions and updates > Official releases opens the public release page
-for manual comparison/download. It does not query or replace the application
-automatically. WinGet submission #433770 for public v0.1.1 remains open as of
-2026-10-05; WinGet installation is not advertised as available.
+[Testing](docs/TESTING.md) explains the separate test layers and portable/manual
+checks. Legacy Tkinter tests are a reference suite, not proof of the shipped UI.
 
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md) — implementation structure and trust
-  boundaries.
-- [Contracts](docs/CONTRACTS.md) — stable domain and mutation semantics.
-- [Windows release build](docs/RELEASE.md) — portable build and verification
-  requirements.
-- [Testing](docs/TESTING.md) — test strategy and environment boundaries.
-- [Security policy](SECURITY.md) — supported release line and vulnerability
-  reporting status.
-- [Contributing](CONTRIBUTING.md) — development and pull-request expectations.
+- [Product guide](docs/PRODUCT.md) — projects, Health, Git actions, data and sharing.
+- [Architecture](docs/ARCHITECTURE.md) — modules and process responsibilities.
+- [Contracts](docs/CONTRACTS.md) — identity, observation and mutation rules.
+- [Roadmap](docs/ROADMAP.md) — deferred work.
+- [Windows release build](docs/RELEASE.md) — build and redistribution requirements.
+- [Testing](docs/TESTING.md) — automated and manual verification.
+- [v0.1.3 release notes](docs/RELEASE_NOTES_0.1.3.md).
+- [v0.1.2 release evidence](docs/RELEASE_EVIDENCE.md) — historical release record.
+- [Security policy](SECURITY.md) and [Contributing](CONTRIBUTING.md).
 
 ## License
 
-RepoManager is licensed under the [MIT License](LICENSE). Runtime notices
-bundled with a portable build apply separately to their respective third-party
-components.
+RepoManager is licensed under the [MIT License](LICENSE). Bundled third-party
+components retain their own licenses and notices.

@@ -1,8 +1,13 @@
 # RepoManager — Roadmap
 
-## Public v0.1.2 
+## Release line
 
-Public RepoManager v0.1.2 is already released.
+Published builds are listed on the
+[Releases page](https://github.com/IcyShadow5/RepoManager/releases/latest).
+Source version 0.1.3 adds Freebuff detection, direct Agent Settings access and
+safer read-only Git observation. See the [release notes](RELEASE_NOTES_0.1.3.md).
+
+### v0.1.2 foundation
 
 The v0.1.2 release provides:
 
@@ -20,12 +25,9 @@ The v0.1.2 release provides:
 - read-only GitHub observation and bounded metadata/report export;
 - background work, logging, theming, and incremental UI updates.
 
-The application runs from source on Windows. Its intended public distribution
-is an unsigned portable Windows build; any future artifact from this
-source requires explicit publication approval plus clean
-curated release preparation, and must be built
-and verified from a curated release source. Linux and macOS are deferred,
-not supported by generic source availability.
+The application runs from source on Windows and is distributed as an unsigned
+portable Windows ZIP. Release builds come from a clean source revision. Linux
+and macOS remain deferred; source availability does not imply platform support.
 
 The current UI also includes Help/Guidance, empty-state guidance, keyboard
 behavior, dark and Ice Light themes, responsive/bounded columns, a scrollable
@@ -62,12 +64,12 @@ everyday Git and review UI additions are part of the public v0.1.2 artifact.
 
 Each of these needs clear safety rules and useful tests before it becomes part of the product.
 
-## Deferred beyond v0.1.2
+## Deferred features
 
 Custom themes, background/opacity personalization, Agent History, advanced
 Agent workflows, Starship, Universal AI Integration Agent and Guard integrations,
 cloud services, monetization/paywalls/Pro/Cloud plans, Linux/macOS support,
-full self-update and GitHub Pages documentation are not part of v0.1.2.
+full self-update and GitHub Pages documentation are not provided by this release line.
 Full user, Changes/staging, Health and Agent guides belong to a separate documentation program.
 
 ## Historical v0.1.1 boundary

@@ -73,8 +73,10 @@ for repeatable package evidence; it refuses owner data and unmarked roots.
 `--rc-qa <configuration.json>` is opt-in development QA, not normal startup.
 Its check count is a separate runtime result, never added to unittest counts.
 The portable acceptance harness is `tests/portable_acceptance.py`; it requires
-an explicitly marked isolated QA root and rejects owner application data. Rebuild only when production or packaging code changed. These prerelease-only
-options are inactive for stable 0.1.2; final stable acceptance must launch the
+an explicitly marked isolated QA root and rejects owner application data.
+Rebuild after changes to the release source revision so package provenance
+identifies the exact commit being distributed. These prerelease-only
+options are inactive for stable versions; final stable acceptance must launch the
 ordinary EXE and exercise its UI, not override the prerelease guard.
 
 Normal Windows acceptance also covers native folder/file dialogs, Explorer,

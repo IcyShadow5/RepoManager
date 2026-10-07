@@ -1,15 +1,12 @@
 # RepoManager — Product
 
-RepoManager is a local-first Windows desktop application for organizing and observing local Git work. It discovers repositories under configured roots, keeps curated Project records, shows repository state, supports explicit local actions, and reports lightweight repository Health. RepoManager v0.1.2 is the current public release. 
-The current tree tracks post-release maintenance and future development.
+RepoManager is a local-first Windows desktop application for organizing and observing local Git work. It discovers repositories under configured roots, keeps curated Project records, shows repository state, supports explicit local actions, and reports lightweight repository Health. Source version is 0.1.3. Published builds are listed on the
+[Releases page](https://github.com/IcyShadow5/RepoManager/releases/latest).
 
 It runs directly from source with Python 3.14 and PySide6/QML. Tkinter is retained
 as a source-only reference and is excluded from the Qt portable package.
 The unsigned portable Windows build bundles normal 64-bit CPython 3.14.7 and Qt, 
 so packaged users do not need a separate Python installation. 
-The public v0.1.2 release is an unsigned portable Windows build. 
-Building or running the source does not publish release artifacts; 
-publication is a separate owner-controlled release step.
 RepoManager does not synchronize its registry, settings, or notes to the cloud.
 
 ## Projects and repositories
@@ -45,7 +42,13 @@ Git remains the source for local branch, status, history, and configured remotes
 
 RepoManager stores its registry, settings, notes, backups, and corruption quarantine files outside managed repositories under `%LOCALAPPDATA%\RepoManager`. Registry data uses JSON schema version 2, validation, rotating backups, recovery, and atomic file replacement. Atomic replacement prevents partial replacement of one write; it does not coordinate concurrent writers.
 
-Discovery, metadata collection, Health, and Provider observation do not intentionally modify managed repositories. Git operations may still honor repository-local configuration and configured helpers. 
+Discovery, metadata collection, Health, and Provider observation do not
+intentionally modify managed repositories. On Windows, automatic and read-only
+Git observation runs Git so that it cannot start repository-configured helper
+processes, and repository-local fsmonitor and filter helpers cannot execute. An
+observation that needs a helper or that reports a diagnostic stays unavailable
+instead of being shown as clean. Git actions, launcher runs, and Agent runs are
+separate user-authorized operations outside that automatic boundary.
 Git actions, launcher runs, and the optional generated `run.bat` require explicit user action. The starter never overwrites an existing file.
 
 The application currently supports advisory move reconciliation, association updates through the move/reconciliation flows (no general repository-association picker is exposed in the UI), independent local Commit and confirmed Push, fast-forward-only Pull, explicit Fetch, Changes/Diff and per-file Stage/Unstage, recent History, read-only Remotes, and bounded metadata/report export. These everyday Git capabilities were added for v0.1.2 compared with v0.1.1. Commit defaults to staged-only with an explicit stage-all alternative; Unstage never discards working files. An export is not a persistence backup or a repository archive.
@@ -56,9 +59,93 @@ Project whose chosen remote corresponds to GitHub starts a read-only request
 to `api.github.com`. Git and explicitly launched tools may perform their own
 network activity.
 
+## Git actions and scan issues
+
+Right-click a Project, or press Shift+F10 / the Menu key in either list.
+Changes opens a resizable staged/unstaged file list and bounded diff preview.
+Stage/Unstage apply to selected files; Unstage leaves working files intact.
+Commit defaults to staged changes, requires a message, works without a remote,
+and never pushes. Stage all current changes and commit is an explicit alternative:
+`git add -A` stages changes present at execution, not a locked preview snapshot.
+Git hooks and filters are not sandboxed.
+
+Push, Pull, and Fetch show a remote/destination preview before confirmation.
+Push is non-forced and can explicitly set an upstream. Pull requires a clean
+checkout and is fast-forward-only. Fetch does not prune or change checkout files.
+Multiple push destinations, mirror pushes, and non-standard fetch refspecs are
+blocked rather than guessed. No Git mutation is retried automatically.
+
+Repository submenus expose recent History, sanitized read-only Remotes, and a
+selected metadata refresh (not a full inventory scan). URL credential components
+are hidden, not arbitrary text secrets. Diff output is bounded to 2 MiB; Changes
+rejects status above 5,000 files. Conflict resolution, submodule writes, hunk
+staging, discard/reset/stash, and branch switching require an external Git tool.
+
+Scan issues and possible moves have separate review tabs with copyable paths.
+Ambiguous candidates require choosing an exact proven pair and confirming it;
+curated/note-owned targets cannot be silently absorbed. Missing pair provenance
+requires a rescan or Keep both. Later leaves suggestions unresolved; Keep both
+persists exact-pair suppression. No repository files are moved by reconciliation.
+
+## Local data and sharing
+
+RepoManager stores application-owned data under
+`%LOCALAPPDATA%\RepoManager`, outside managed repositories:
+
+- `repos.json` — schema-v2 Project and Workspace registry;
+- `settings.json` — scan, display, and launcher settings;
+- `notes/` — per-Project Markdown notes;
+- rotating registry backups and corruption-quarantine files;
+- `repo_manager.log` and its rotated log files.
+- `feedback/` — reports explicitly saved locally from the Qt Feedback dialog.
+
+Notes and logs are ordinary local files. Do not place credentials or other
+sensitive values in notes, configured commands, repository metadata, or other
+fields that may be displayed or logged.
+
+Discovery, local metadata collection, Health evaluation, and local Provider
+correspondence do not modify managed repositories. Actions that can mutate a
+repository—Git writes, launched commands, and optional `run.bat` generation—
+require explicit user action. The generated starter never overwrites an
+existing `run.bat`.
+
+### Feedback and bug reports
+
+The **Feedback / Bug** button offers four categories: positive feedback,
+improvement, bug, and UI issue. Add a short title and description, then save
+locally, copy the report, or open a prefilled issue draft in the public
+RepoManager GitHub tracker. Review and submit the draft yourself; opening it
+does not send a report. There is no automatic telemetry.
+
+Only the text you enter, application edition and version are
+included by default. Optional runtime information adds Python, Qt and OS
+versions. Repository paths, inventory, notes, logs and credentials are not
+attached automatically. Review your text for private information before sharing.
+
+Selecting or refreshing a Project whose chosen remote corresponds to GitHub
+starts a read-only HTTPS request to `api.github.com`. The UI does not
+accept or persist a GitHub token, so private repository metadata normally
+cannot be retrieved through this feature. Git Pull/Push and external launchers
+may also use the network according to Git and the launched tool's own
+configuration.
+
+Exports and reports copy metadata, not repository contents. They omit fields
+whose keys look credential-related, such as `token`, `password`, or
+`private_key`; they do not scan arbitrary text values or notes for embedded
+secrets. Review an export before sharing it.
+
+Registry writes use a flushed temporary file and replacement, with validation,
+rotating backups, and corruption quarantine. This reduces partial-write risk
+for an individual save but is not a universal crash, storage-device, or
+power-loss durability guarantee and does not coordinate multiple writers.
+
+Repository Health and post-command observations report evidence only. They do
+not certify correctness or security, and successful process completion does
+not prove that an external tool made correct changes.
+
 ## What RepoManager does not do
 
-The 0.1.2 release does not provide:
+RepoManager does not provide:
 
 - a mature non-Git Project lifecycle;
 - full multi-repository Workspace coordination;
