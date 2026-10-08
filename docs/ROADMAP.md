@@ -4,8 +4,10 @@
 
 Published builds are listed on the
 [Releases page](https://github.com/IcyShadow5/RepoManager/releases/latest).
-Source version 0.1.3 adds Freebuff detection, direct Agent Settings access and
-safer read-only Git observation. See the [release notes](RELEASE_NOTES_0.1.3.md).
+Source version 0.1.4 fixes LF/CRLF diff previews while retaining read-only Git
+helper restrictions. See the [release notes](RELEASE_NOTES_0.1.4.md).
+v0.1.3 added Freebuff detection, direct Agent Settings access and safer read-only
+Git observation.
 
 ### v0.1.2 foundation
 

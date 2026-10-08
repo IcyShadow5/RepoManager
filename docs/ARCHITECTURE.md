@@ -4,7 +4,7 @@ RepoManager is a Windows desktop application built with Python 3.14 and
 PySide6/QML. The Qt portable release bundles normal 64-bit CPython 3.14.7
 and the reviewed Qt runtime, excluding Tkinter/Tcl/Tk. The `packaging/` directory owns the
 pinned PyInstaller build inputs and release-artifact manifest contract. 
-Source version is 0.1.3. Published builds are listed on the
+Source version is 0.1.4. Published builds are listed on the
 [Releases page](https://github.com/IcyShadow5/RepoManager/releases/latest);
 artifact identity is recorded in each build manifest.
 
@@ -137,6 +137,11 @@ and are not sandboxed by this read-only observation mechanism. Starter
 generation remains a separate explicit action: the generated `run.bat` is the
 limited current non-Git operation that writes a file into a repository, and it
 never overwrites an existing file.
+
+Read-only Git overrides `core.safecrlf=false` to avoid write-related LF/CRLF
+round-trip warnings during observation. Line-ending conversion, helper
+restrictions and rejection of other diagnostics remain active. Explicit Git
+writes retain the repository's configured line-ending safeguards.
 
 Launcher execution is local code execution, not sandboxing. Validating a working directory does not prevent a child process from changing other files. Launchers use structured argument vectors through `processes.py`; batch files use the resolved Windows system command processor, and PowerShell scripts use the resolved PowerShell executable without changing execution policy. WSL and Git Bash remain explicit structured external executors.
 

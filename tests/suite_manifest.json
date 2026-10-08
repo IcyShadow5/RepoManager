@@ -2780,7 +2780,8 @@
         "test_cancelled_confirmation_cannot_commit",
         "test_reassociated_target_cannot_receive_approved_mutation",
         "test_actual_ordinary_git_error_is_reported",
-        "test_network_input_change_invalidates_approval"
+        "test_network_input_change_invalidates_approval",
+        "test_lf_diff_external_refresh_repository_switch_history_and_remotes"
       ]
     },
     {
@@ -3675,6 +3676,24 @@
         "test_linked_worktree_retains_metadata_and_blocks_helper",
         "test_blocked_rescan_invalidates_cached_clean_without_losing_identity",
         "test_submodule_observation_fails_closed_without_child_helper"
+      ]
+    },
+    {
+      "module": "tests.test_git_observation_eol",
+      "class": "EolObservationTests",
+      "category": "CURRENT_WINDOWS_INTEGRATION",
+      "gate": true,
+      "method_categories": {},
+      "production": "repo_manager.git_observation / git_operations / scanner",
+      "behavior": "Native EOL observation, immutable state, error handling and helper isolation",
+      "tests": [
+        "test_native_roundtrip_warning_diff_preserves_index_head_config_and_files",
+        "test_line_endings_autocrlf_safecrlf_and_attributes_matrix",
+        "test_staged_unstaged_deleted_renamed_binary_and_untracked_previews",
+        "test_detached_and_unborn_without_remotes",
+        "test_other_diagnostics_and_nonzero_git_failures_remain_unavailable",
+        "test_explicit_stage_still_honors_repository_safecrlf",
+        "test_filters_remain_blocked_with_roundtrip_warning_configuration"
       ]
     }
   ]

@@ -23,8 +23,8 @@ your editor, terminal or Agent from one PySide6/QML interface.
 
 *The screenshots show the v0.1.2 interface with controlled demo repositories.*
 
-Source version: **0.1.3**. The release badge and Download link identify the latest
-published build. See the [v0.1.3 release notes](docs/RELEASE_NOTES_0.1.3.md).
+Source version: **0.1.4**. The release badge and Download link identify the latest
+published build. See the [v0.1.4 release notes](docs/RELEASE_NOTES_0.1.4.md).
 
 ## What it does
 
@@ -173,7 +173,8 @@ checks. Legacy Tkinter tests are a reference suite, not proof of the shipped UI.
 - [Roadmap](docs/ROADMAP.md) — deferred work.
 - [Windows release build](docs/RELEASE.md) — build and redistribution requirements.
 - [Testing](docs/TESTING.md) — automated and manual verification.
-- [v0.1.3 release notes](docs/RELEASE_NOTES_0.1.3.md).
+- [v0.1.4 release notes](docs/RELEASE_NOTES_0.1.4.md).
+- [v0.1.3 release notes](docs/RELEASE_NOTES_0.1.3.md) — previous release.
 - [v0.1.2 release evidence](docs/RELEASE_EVIDENCE.md) — historical release record.
 - [Security policy](SECURITY.md) and [Contributing](CONTRIBUTING.md).
 

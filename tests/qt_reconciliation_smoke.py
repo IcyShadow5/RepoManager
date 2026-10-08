@@ -116,7 +116,9 @@ def main(scenario):
                     if scenario == "git":
                         path = Path(bridge.selectedProject["path"])
                         commit(path, "baseline", content="old\n")
-                        (path / "tracked.txt").write_text("new current QML diff\n", encoding="utf-8")
+                        git(path, "config", "core.autocrlf", "true")
+                        git(path, "config", "core.safecrlf", "warn")
+                        (path / "tracked.txt").write_bytes(b"new current QML diff\n")
                         baseline = git(path, "rev-parse", "HEAD")
                         bridge.openGit("changes")
                         controller = bridge.gitController
@@ -125,6 +127,12 @@ def main(scenario):
                         click(next(x for x in items() if x.property("tip") == "Preview file differences" and x.isVisible()))
                         wait(lambda: not controller.busy)
                         check("+new current QML diff" in controller.content, "QML file preview displays real diff")
+                        (path / "tracked.txt").write_bytes(b"external editor refresh\n")
+                        click(text_item("Refresh"))
+                        wait(lambda: not controller.busy)
+                        click(next(x for x in items() if x.property("tip") == "Preview file differences" and x.isVisible()))
+                        wait(lambda: not controller.busy)
+                        check("+external editor refresh" in controller.content, "QML Refresh observes external LF edit under autocrlf")
                         def file_checkbox():
                             return next(x for x in items() if x.isVisible() and x.property("checked") is not None
                                         and x.property("text") == "" and x.property("indicator") is not None)

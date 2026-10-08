@@ -20,6 +20,12 @@ missing Git, Qt or Windows capabilities must not silently create a green
 release claim. `--list` prints category counts without importing presentation
 modules. Counts describe a working tree and are not an API contract.
 
+`test_git_observation_eol.py` exercises native LF/CRLF comparisons, staged and
+unstaged changes, file variants and preservation of HEAD/index/configuration.
+It also proves that other diagnostics and clean/process filters remain blocked
+and that explicit Stage still honors `core.safecrlf`. Qt bridge and QML tests
+cover external editing followed by Refresh and repository selection changes.
+
 Run individual evidence layers:
 
 ```text
