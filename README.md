@@ -19,9 +19,9 @@ your editor, terminal or Agent from one PySide6/QML interface.
 
 [![Latest stable release](https://img.shields.io/github/v/release/IcyShadow5/RepoManager?label=release&cacheSeconds=300)](https://github.com/IcyShadow5/RepoManager/releases/latest)
 
-![RepoManager 0.1.2 — repository inventory, working context and selected project details in Dark mode](assets/screenshots/overview-dark.png)
+![RepoManager 0.1.4 — repository inventory, working context and selected project details in Dark mode](assets/screenshots/overview-dark.png)
 
-*The screenshots show the v0.1.2 interface with controlled demo repositories.*
+*The screenshots show the released v0.1.4 application with controlled demo repositories.*
 
 Source version: **0.1.4**. The release badge and Download link identify the latest
 published build. See the [v0.1.4 release notes](docs/RELEASE_NOTES_0.1.4.md).
@@ -49,14 +49,14 @@ Dark and Light modes are available. More details are in the
 <details>
 <summary>Changes and diff preview</summary>
 
-![RepoManager 0.1.2 — actual Changes dialog with modified and untracked files and a selected diff](assets/screenshots/changes-dark.png)
+![RepoManager 0.1.4 — Changes dialog with modified and untracked files and a selected diff](assets/screenshots/changes-dark.png)
 
 </details>
 
 <details>
 <summary>Light mode</summary>
 
-![RepoManager 0.1.2 — repository inventory and selected details in Light mode](assets/screenshots/overview-light.png)
+![RepoManager 0.1.4 — repository inventory and selected details in Light mode](assets/screenshots/overview-light.png)
 
 </details>
 
