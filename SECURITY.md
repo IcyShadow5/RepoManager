@@ -15,10 +15,11 @@ GitHub Private Vulnerability Reporting is enabled on the public repository
 (verified 2026-10-05). Use [Report a vulnerability](https://github.com/IcyShadow5/RepoManager/security/advisories/new).
 If GitHub Private Vulnerability Reporting is unavailable, email
 [icyshadow5.devsec@outlook.com](mailto:icyshadow5.devsec@outlook.com).
-This fallback mailbox is for private security/moderation reports, not general
-support or website contact. Do not send secrets or exploit details through
-public issues. Source checkouts and local builds do not establish publication
-or support; use the published release information linked above.
+This fallback mailbox is for private security/moderation reports and privacy
+questions or requests under the [privacy policy](PRIVACY.md), not general
+product support or website contact. Do not send secrets or exploit details
+through public issues. Source checkouts and local builds do not establish
+publication or support; use the published release information linked above.
 
 A useful report should include:
 
